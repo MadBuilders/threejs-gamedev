@@ -1,6 +1,6 @@
 ---
 name: threejs-gamedev
-description: Build and maintain web games with pure Three.js, focused on reusable architecture, gameplay systems, asset pipelines, controls, performance, mobile constraints, debugging, and production-minded implementation patterns. Use when creating, extending, reviewing, or fixing a Three.js game without React or React Three Fiber, especially for decisions about code organization, render loop structure, assets, input, physics integration, optimization, or practical game-engine-style patterns.
+description: Build, extend and review web games with pure Three.js (no React or R3F). Covers architecture, render loop, assets, input, physics integration, rendering/RTT, performance and mobile trade-offs, audio, UI/HUD, cameras, shaders, AI/navigation, persistence, build/deploy and debugging. Use for singleplayer-first 3D/2.5D web games where control and clarity matter more than framework convenience. Not for React Three Fiber projects.
 ---
 
 # Three.js Gamedev
@@ -11,12 +11,53 @@ Trabajar con Three.js puro. No mezclar React ni R3F salvo que el usuario lo pida
 
 1. Si el usuario quiere empezar un juego nuevo, cerrar primero kickoff, stack y primer slice jugable.
 2. Identificar el problema principal.
-3. Leer solo las referencias necesarias.
+3. Leer solo las referencias necesarias (ver *Uso del contexto*).
 4. Preferir patrones mantenibles antes que demo code.
 5. Tratar docs/manual/examples/repo oficial como base canónica.
 6. Usar DeepWiki para preguntas concretas sobre estructura o implementación del repo oficial cuando ayude.
 7. Usar la búsqueda semántica del foro oficial (Discourse AI) para edge cases, dolores recurrentes o preguntas específicas del ecosistema.
 8. Explicitar tradeoffs de rendimiento, móvil y complejidad cuando importen.
+
+## Uso del contexto
+
+La skill tiene muchas referencias. Cargarlas todas en un turno es un anti-patrón.
+
+Reglas duras:
+- **Máximo 3 referencias por turno** salvo justificación clara.
+- **Nunca leer el bloque avanzado de multiplayer si el proyecto es singleplayer**.
+- Si el usuario pregunta algo transversal, leer primero el router de abajo y elegir; si sigue sin estar claro, preguntar antes de leer.
+- Si una referencia remite a otra, no encadenar lecturas sin criterio: evaluar si la segunda de verdad cambia la respuesta.
+
+## Router rápido
+
+Intención del usuario → referencia por la que empezar.
+
+- *"Quiero empezar un juego"* → `game-kickoff-planning.md`, luego `default-project-stack.md`.
+- *"¿Cómo organizo el código?"* → `architecture.md`.
+- *"¿En qué orden ataco el proyecto?"* → `phased-game-workflow.md`.
+- *"Carga de modelos/texturas/audio"* → `assets.md`, y si hay 3D complejo `gltf-pipeline.md`.
+- *"Animaciones de personaje"* → `animation-systems.md` + `animation-state-machines.md`.
+- *"Mover al jugador / cámara de seguimiento"* → `character-locomotion.md` + `cameras.md`.
+- *"Input (teclado, touch, gamepad)"* → `input-controls.md`.
+- *"Necesito física"* → `physics.md`.
+- *"Mundo grande / streaming / proceduralismo"* → `world-generation.md`.
+- *"Limpiar recursos / memory leak"* → `resource-lifecycle.md`.
+- *"Va lento en móvil"* → `mobile-performance.md` + `profiling-budgets.md`.
+- *"¿Es GPU, CPU o stutter?"* → `gpu-vs-cpu-heuristics.md` + `frame-pacing-stutter.md`.
+- *"Quality settings y escalado"* → `quality-tiers.md` + `adaptive-quality-scaling.md`.
+- *"Benchmark y regresiones"* → `benchmarking.md` + `stress-scenes-benchmarks.md`.
+- *"Luces y sombras"* → `lights-shadows.md`.
+- *"Espejos, portales, minimapas, agua"* → `render-targets.md` + `render-target-families.md` (+ `portal-*` o `minimap-fog-of-war.md` según caso).
+- *"Transparencias que se ven raras"* → `transparency-pitfalls.md`.
+- *"Postpro (bloom, SSAO, etc.)"* → `postprocessing.md`.
+- *"Audio del juego"* → `audio-systems.md`.
+- *"HUD, menús, overlays"* → `ui-hud.md`.
+- *"Shader custom (dissolve, water, terrain blend, etc.)"* → `custom-shaders.md`.
+- *"Pathfinding / enemigos / IA"* → `ai-navigation.md`.
+- *"Guardar partida, progreso, settings"* → `persistence-save.md`.
+- *"Build, compresión de assets, deploy"* → `build-deploy.md`.
+- *"Debug visual"* → `debugging.md`.
+- *"Multiplayer"* → ir a *Bloque avanzado* (bajo demanda explícita).
 
 ## Defaults
 
@@ -26,6 +67,7 @@ Trabajar con Three.js puro. No mezclar React ni R3F salvo que el usuario lo pida
 - Separar bootstrap, render, world/systems y gameplay cuando el proyecto lo pida.
 - Mantener addons explícitos y minimizados.
 - Diseñar primero para claridad, luego para optimización.
+- **Singleplayer first** salvo requisito claro de multiplayer.
 
 ## Mapa de referencias
 
@@ -44,10 +86,17 @@ Trabajar con Three.js puro. No mezclar React ni R3F salvo que el usuario lo pida
 - `references/animation-systems.md` para clips, mixers, actions y blending.
 - `references/animation-state-machines.md` para estados visuales, transiciones y one-shots.
 - `references/character-locomotion.md` para player controllers, grounded state, cámara y locomotion state.
+- `references/cameras.md` para follow cameras, spring-damped, orbital, cinematic y collision-aware.
 - `references/input-controls.md` para input abstraction, teclado, touch, gamepad y raycasting.
 - `references/physics.md` para integración de motor físico y límites de responsabilidad.
 - `references/world-generation.md` para streaming, chunking y contenido procedural.
+- `references/ai-navigation.md` para pathfinding, nav meshes, steering y behavior simple.
 - `references/resource-lifecycle.md` para ownership, limpieza y `dispose()`.
+
+### Presentación y UX
+- `references/audio-systems.md` para buses, spatial audio, loading y pool de voces.
+- `references/ui-hud.md` para HUD, menús, overlays DOM vs canvas y acoplamiento sano.
+- `references/persistence-save.md` para guardar partida, progreso y settings.
 
 ### Performance y validación
 - `references/mobile-performance.md` para presupuestos y reducción de coste.
@@ -57,7 +106,7 @@ Trabajar con Three.js puro. No mezclar React ni R3F salvo que el usuario lo pida
 - `references/quality-tiers.md` para presets coherentes por dispositivo.
 - `references/adaptive-quality-scaling.md` para histéresis, cooldown y `renderScale`.
 - `references/stress-scenes-benchmarks.md` para benches internos y escenas de estrés.
-- `references/benchmark-reporting.md`, `references/benchmark-diffs.md` y `references/benchmark-thresholds.md` para runs comparables, diffs y thresholds.
+- `references/benchmarking.md` para runs reproducibles, diffs, thresholds y clasificación final (reporting + diffs + thresholds unificados).
 
 ### Rendering, RTT y lighting
 - `references/render-targets.md` para RTT como subsistema, resolución, frecuencia y lifecycle.
@@ -69,9 +118,15 @@ Trabajar con Three.js puro. No mezclar React ni R3F salvo que el usuario lo pida
 - `references/transparency-pitfalls.md` para sorting, depth, alpha test y decisiones sanas con materiales transparentes.
 - `references/lights-shadows.md` para estrategia de iluminación y shadow maps.
 - `references/postprocessing.md` para cadenas de effects, resize y criterio de uso.
+- `references/custom-shaders.md` para `ShaderMaterial`, `onBeforeCompile`, patrones comunes y anti-patrones.
 
-### Debug y multiplayer
+### Debug y build
 - `references/debugging.md` para helpers e inspección visual.
+- `references/build-deploy.md` para Vite build, compresión de assets, cache busting y deploy.
+
+### Bloque avanzado (solo bajo demanda explícita)
+No cargar estas referencias por defecto. Entrar aquí solo si el usuario declara multiplayer como core del juego.
+
 - `references/multiplayer.md` para arquitectura base de red, snapshots e interest management.
 - `references/multiplayer-consistency-models.md` para rollback, lockstep e hit validation.
 - `references/server-rewind-weapons.md` para rewind o lag compensation por arma.
@@ -84,6 +139,7 @@ Trabajar con Three.js puro. No mezclar React ni R3F salvo que el usuario lo pida
 - Marcar qué es core, qué es addon y qué es doctrina de proyecto.
 - Recomendar herramientas externas solo cuando añadan un pipeline claro.
 - Si una decisión afecta móvil o rendimiento, explicitar el tradeoff.
+- Si una referencia declara un anti-patrón, no contradecirlo sin justificar por qué este caso es excepción.
 
 ## Fuentes base
 
@@ -96,4 +152,4 @@ Trabajar con Three.js puro. No mezclar React ni R3F salvo que el usuario lo pida
 
 ## Estado actual
 
-**v1 sólida en borrador**. Mejorar por casos reales, no por expansión abstracta.
+**v1.1**. Núcleo estable. Se itera por casos reales, no por expansión abstracta. El bloque avanzado de multiplayer se mantiene como bloque cerrado hasta que un proyecto real lo pida.

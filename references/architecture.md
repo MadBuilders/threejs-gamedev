@@ -108,16 +108,87 @@ La revisión del repo y de la docs deja una regla útil: distinguir claramente e
 
 En la arquitectura del juego, los addons deberían entrar como dependencias explícitas en systems concretos, no desperdigados como si fueran base del motor.
 
+## Bootstrap recomendado (TS)
+
+### Mal ejemplo
+Todo pegado en `main.ts`, input y gameplay mezclados, resize y loop ad-hoc:
+
+```ts
+const canvas = document.querySelector('canvas')!;
+const renderer = new THREE.WebGLRenderer({ canvas });
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight);
+renderer.setSize(innerWidth, innerHeight);
+
+const player = new THREE.Mesh(/* ... */);
+scene.add(player);
+
+addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowUp') player.position.z -= 0.1;
+});
+
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+function tick() {
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+tick();
+```
+
+Problemas: input DOM toca gameplay directo, resize hace tres cosas, no hay `dt`, no hay `dispose`, la cámara y el jugador no tienen sistemas detrás.
+
+### Buen ejemplo
+Capas explícitas, loop con `dt`, resize centralizado, input abstraído:
+
+```ts
+const renderer = createRenderer(canvas);
+const scene = createScene();
+const camera = createMainCamera();
+const world = createWorld(scene);
+const input = createInputSystem();
+const player = createPlayer({ scene, input });
+const cameraRig = createCameraRig(camera, player);
+
+const resize = createResize(renderer, camera);
+resize.install();
+
+const clock = new THREE.Clock();
+
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  input.update(dt);
+  player.update(dt);
+  cameraRig.update(dt);
+  world.update(dt);
+  renderer.render(scene, camera);
+});
+```
+
+Claves:
+- cada factory vive en su módulo (`app/bootstrap`, `systems/input`, `entities/player`, `world/...`).
+- `dt` con clamp para evitar pasos enormes al volver de una pestaña suspendida.
+- input es un sistema, no un listener suelto.
+- resize centralizado, con cleanup si hace falta.
+- la cámara es un rig que consume estado, no un hijo del mesh (ver `cameras.md`).
+
 ## Anti-patrones iniciales
-- `main.js` gigante con todo mezclado
+- `main.ts` gigante con todo mezclado
 - input DOM disparando gameplay directo por todos lados
 - assets cargados desde cualquier archivo sin coordinación
 - cámara, player y reglas pegados en una sola clase
+- `requestAnimationFrame` custom en vez de `setAnimationLoop`
+- update loop sin `dt` (todo acoplado al frame rate)
+- no hacer clamp del `dt`: un tab inactivo devuelve un delta enorme y rompe física
 - optimizar demasiado pronto sin medir el coste real
 
-## Pendiente de ampliar en Ola 1
-- bootstrap recomendado exacto
-- manejo de tiempo y delta
-- políticas sobre addons
-- relación entre scene graph y estado de juego
-- checklist de arranque para prototipos vs proyectos más serios
+## Referencias asociadas
+- `phased-game-workflow.md`
+- `default-project-stack.md`
+- `resource-lifecycle.md`
+- `cameras.md`
+- `input-controls.md`
