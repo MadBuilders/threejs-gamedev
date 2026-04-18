@@ -80,6 +80,40 @@ Para muchos juegos web, la combinación ganadora es:
 - fake shadows para secundarios
 - o directamente sombras muy selectivas solo donde ayudan de verdad
 
+## IBL con HDRI (image-based lighting)
+Técnica desproporcionadamente útil para escenas PBR: cargar un HDRI equirectangular, pasarlo por `PMREMGenerator` y asignarlo tanto a `scene.background` como a `scene.environment`. Con una sola llamada obtienes:
+- **skybox** detrás de todo (resuelve "el cielo se ve feo"),
+- **reflexión + diffuse ambient** coherentes para todos los materiales PBR, sin añadir luces extra.
+
+Receta mínima:
+```ts
+// Three r168+ sustituyó RGBELoader por HDRLoader. API equivalente.
+const hdr = await new HDRLoader().loadAsync(url);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envRT = pmrem.fromEquirectangular(hdr);
+hdr.dispose();
+pmrem.dispose();
+scene.background = envRT.texture;
+scene.environment = envRT.texture;
+```
+
+Cuándo compensa:
+- cualquier escena outdoor con materiales PBR
+- quieres que personajes, props, metales se iluminen "bien" sin pelearte con 3-4 luces puntuales
+- la cámara ve cielo real y no quieres un fondo pintado
+
+Gotchas:
+- si ya tenías `HemisphereLight` o luces ambientales fuertes, **bájalas cuando metas env map**, o todo queda doblemente iluminado y se lava el contraste.
+- la `DirectionalLight` que representa el sol sigue siendo necesaria si quieres sombras (el env map por sí solo no las proyecta).
+- dirección del sol del HDRI ≈ dirección de tu `DirectionalLight`, o cantará.
+- Poly Haven (CC0) es el default razonable; 1K basta casi siempre para fondo, 2K si el cielo está muy en pantalla.
+- descomprimir un HDR a PMREM cuesta; hacerlo una vez en boot, no por frame.
+- disposer el `RenderTarget` de PMREM si la escena se destruye (lo que devuelve `fromEquirectangular` es un `WebGLRenderTarget`).
+
+Anti-patrón: `new RGBELoader().load(...)` y asignarlo directamente a `scene.environment` sin PMREM. Aparenta funcionar pero las reflexiones salen con artefactos y la iluminación ambiental está mal prefiltrada.
+
+`backgroundIntensity` (Three r155+) permite bajar el brillo del cielo visible sin tocar la intensidad del IBL sobre los materiales, útil cuando el HDRI es demasiado luminoso como fondo pero sí sirve como IBL.
+
 ## Pendiente de ampliar
 - tipos de `shadowMap`
 - comparación directional / spot / point en coste real

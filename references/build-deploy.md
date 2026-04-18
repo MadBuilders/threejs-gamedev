@@ -30,6 +30,7 @@ Evitar soportar navegadores que no tienen WebGL2 salvo requisito claro. Declarar
 
 ## Assets: pipeline
 - modelos en **glTF / glb** con **Draco** o **Meshopt** (ver `gltf-pipeline.md`).
+- para **inspección y optimización reproducible** del binario: CLI **gltf-transform** (`@gltf-transform/cli`, ver sección homónima en `gltf-pipeline.md`).
 - texturas en **KTX2** con **Basis Universal** para juegos con mucha textura. Para proyectos pequeños, WebP/AVIF es aceptable.
 - audio en **ogg/webm-opus** (ver `audio-systems.md`).
 - atlas de sprites/íconos para HUD.

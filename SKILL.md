@@ -35,15 +35,22 @@ Intención del usuario → referencia por la que empezar.
 - *"Quiero empezar un juego"* → `game-kickoff-planning.md`, luego `default-project-stack.md`.
 - *"¿Cómo organizo el código?"* → `architecture.md`.
 - *"¿En qué orden ataco el proyecto?"* → `phased-game-workflow.md`.
-- *"Carga de modelos/texturas/audio"* → `assets.md`, y si hay 3D complejo `gltf-pipeline.md`.
+- *"Carga de modelos/texturas/audio"* → `assets.md`, y si hay 3D complejo `gltf-pipeline.md` (incluye **gltf-transform** para inspección/optimización de GLB).
+- *"Texturas: maps, color space, tiling, compresión"* → `texturing-pipeline.md` (incluye **ribbon meshes sobre curvas** para caminos/ríos).
+- *"El cielo se ve feo / materiales PBR apagados"* → `lights-shadows.md` sección **IBL con HDRI**.
+- *"Cargar GLBs/HDRIs sin bloquear el boot"* → `assets.md` sección **placeholder first, swap later** (+ disposal correcto).
 - *"Animaciones de personaje"* → `animation-systems.md` + `animation-state-machines.md`.
 - *"Mover al jugador / cámara de seguimiento"* → `character-locomotion.md` + `cameras.md`.
+- *"Tank / sin strafe, girar con A-D"* → `character-locomotion.md` sección **tank / vehicle-lite**.
+- *"Mirar alrededor con el ratón sin que la cámara rompa el control"* → `cameras.md` (**seguimiento + offset**) + `input-controls.md` (**hold-to-look / pointer capture**).
+- *"Minimapa o radar sin otro render pass"* → `ui-hud.md` (**Canvas 2D**), no `render-targets.md` salvo que necesites ver el mundo texturizado.
 - *"Input (teclado, touch, gamepad)"* → `input-controls.md`.
 - *"Necesito física"* → `physics.md`.
 - *"Mundo grande / streaming / proceduralismo"* → `world-generation.md`.
 - *"Limpiar recursos / memory leak"* → `resource-lifecycle.md`.
 - *"Va lento en móvil"* → `mobile-performance.md` + `profiling-budgets.md`.
 - *"¿Es GPU, CPU o stutter?"* → `gpu-vs-cpu-heuristics.md` + `frame-pacing-stutter.md`.
+- *"Animaciones distorsionan el mesh (scale de hueso raíz, root motion no deseado)"* → `gltf-pipeline.md` sección **tracks de scale**.
 - *"Quality settings y escalado"* → `quality-tiers.md` + `adaptive-quality-scaling.md`.
 - *"Benchmark y regresiones"* → `benchmarking.md` + `stress-scenes-benchmarks.md`.
 - *"Luces y sombras"* → `lights-shadows.md`.
@@ -83,9 +90,10 @@ Intención del usuario → referencia por la que empezar.
 - `references/architecture.md` para estructura, bootstrap, loop, resize y lifecycle.
 - `references/assets.md` para formatos, loaders e importación.
 - `references/gltf-pipeline.md` para export, carga coordinada, compresión e instanciación.
+- `references/texturing-pipeline.md` para maps, color space, tiling/anisotropy, compresión y blending de terreno.
 - `references/animation-systems.md` para clips, mixers, actions y blending.
 - `references/animation-state-machines.md` para estados visuales, transiciones y one-shots.
-- `references/character-locomotion.md` para player controllers, grounded state, cámara y locomotion state.
+- `references/character-locomotion.md` para player controllers, grounded state, cámara, locomotion state y variantes (**tank controls** cuando el strafe compite con otra mecánica).
 - `references/cameras.md` para follow cameras, spring-damped, orbital, cinematic y collision-aware.
 - `references/input-controls.md` para input abstraction, teclado, touch, gamepad y raycasting.
 - `references/physics.md` para integración de motor físico y límites de responsabilidad.
@@ -152,4 +160,14 @@ No cargar estas referencias por defecto. Entrar aquí solo si el usuario declara
 
 ## Estado actual
 
-**v1.1**. Núcleo estable. Se itera por casos reales, no por expansión abstracta. El bloque avanzado de multiplayer se mantiene como bloque cerrado hasta que un proyecto real lo pida.
+**v1.2**. Añadidos patrones genéricos probados en producción web:
+- `cameras.md`: **follow detrás + yaw/pitch offset con decay** (visuales desacoplados del frame de movimiento cuando otra mecánica fija la referencia).
+- `input-controls.md`: **hold-to-look** con `pointerdown` + `setPointerCapture` como alternativa a pointer lock.
+- `character-locomotion.md`: **tank / vehicle-lite** (W/S eje, A/D giran; facing como estado, no derivado de velocidad).
+- `ui-hud.md`: **minimapa/radar con Canvas 2D**, player-up.
+- `gltf-pipeline.md`: **tracks de scale** en clips que distorsionan rigs retargeteados + sección **gltf-transform (CLI)**.
+- `texturing-pipeline.md` nuevo: maps, color space, tiling, compresión y **ribbon meshes sobre curvas** para caminos/ríos.
+- `lights-shadows.md`: **IBL con HDRI** (`PMREMGenerator` como `scene.environment` + `scene.background`).
+- `assets.md`: **placeholder first, swap later** y recetas de `dispose()` al sustituir material/textura/render-target.
+
+Router actualizado. Bloque avanzado de multiplayer se mantiene cerrado hasta que un proyecto real lo pida.

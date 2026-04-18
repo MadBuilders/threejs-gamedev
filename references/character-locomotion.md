@@ -33,6 +33,20 @@ Patrón sano:
 - movimiento relativo a cámara proyectada en plano
 - suele requerir mejor giro, facing y blending de animación
 
+### Tank / vehicle-lite (sin strafe)
+
+Cuando **no** quieres A/D como strafe lateral (p. ej. la mano derecha o otra mecánica ya consume ejes “laterales”, o quieres que girar el cuerpo sea una decisión costosa):
+
+- **W/S**: empujan en la dirección **forward/back** del personaje (en su frame), no en el de la cámara.
+- **A/D**: cambian **solo el yaw** (`facing`) a ritmo constante.
+- **Facing como estado**: lo actualiza el input de giro, no `atan2(velocity)` (si derivaras facing de velocidad, los pivotes en seco o el “derrape” de intención se vuelven raros).
+
+Parámetros típicos a exponer: velocidad de giro (rad/s), eventualmente asimetría adelante/atrás si la fantasía del juego lo pide (no es obligatorio).
+
+Ventajas: esquema estable con free-look o cámara auto-follow; cada giro es explícito (útil si otra simulación acoplada al personaje reacciona a **velocidad angular**).
+
+Tradeoff: no hay strafe; las curvas son “W + A” o “W + D”, no “solo D”.
+
 ### Runner / lane / arcade
 - locomotion más guionizada
 - menos libertad, más control del feel

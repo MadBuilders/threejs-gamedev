@@ -79,6 +79,23 @@ Cuando un muro se mete entre cámara y personaje:
 - mapear después teclado/ratón/gamepad/touch a esos ejes (ver `input-controls.md`).
 - sensibilidad y invert configurables por usuario y persistidos (ver `persistence-save.md`).
 
+## Seguimiento detrás + offset opcional (free-look sin acoplar gameplay)
+
+Útil cuando **otra mecánica** (equilibrio, aim secundario, dirección de empuje…) debe usar un frame de referencia estable, pero quieres que la cámara **no sea fija**.
+
+Patrón:
+1. **Yaw base de seguimiento** anclado a la orientación del personaje (p. ej. `π − facing` para quedar detrás en convención +Z/XZ habitual).
+2. **Offsets de yaw/pitch** opcionales que solo existen mientras el jugador mantiene un botón de *look-around* (o mientras arrastra).
+3. Al soltar, **decay exponencial** de los offsets hacia 0 (λ ~5 s⁻¹: vuelta en ~200–400 ms). La cámara vuelve sola detrás sin paso explícito por tecla.
+
+Qué gana:
+- Movimiento y otras mecánicas que usan un frame fijo **no dependen del yaw de cámara**; el jugador no “rompe” controles mirando alrededor.
+- No hace falta pointer lock; el cursor puede seguir visible (ver `input-controls.md`, hold-to-look).
+
+Qué vigilar:
+- Si el movimiento sigue siendo camera-relative, los offsets rotan también el significado de “adelante”. Para evitarlo, o bien el movimiento es **world- o character-relative**, o la cámara solo **orbita visualmente** mientras el gameplay usa `facing` del personaje.
+- Orden de update: calcular **facing / velocidad del personaje antes** de posicionar la cámara si el follow yaw depende de `facing`, para no introducir frame de lag evitable.
+
 ## Pause, cutscenes y takeover
 - estado claro: gameplay, cinematic, menu, photo.
 - en cinematic, input de gameplay silenciado; cámara consume timeline.

@@ -49,8 +49,8 @@ Capas:
 
 ## Acoplamiento sano gameplay ↔ UI
 Patrón:
-1. Gameplay expone estado (`player.milkLevel`, `run.spillMeter`, `world.currentObjective`).
-2. Gameplay emite eventos de dominio (`onObjectiveReached`, `onMilkSpilled`, `onPause`).
+1. Gameplay expone estado (`player.health`, `run.score`, `world.currentObjective`).
+2. Gameplay emite eventos de dominio (`onObjectiveReached`, `onRunFailed`, `onPause`).
 3. UI observa estado o se suscribe a eventos y pinta.
 4. UI nunca muta estado de gameplay directamente. Llama a *commands* bien definidos (`pause()`, `requestRestart()`, `setSettingsVolume()`).
 
@@ -92,6 +92,18 @@ Cuando el HUD vive en el mundo:
 - DOM tranquilo no compite con el render. Animaciones CSS pesadas (sombras grandes, blurs) sí pueden costar, sobre todo en móvil.
 - Evitar reflows por frame (tocar `layout` en cada update). Batch de cambios o escritura en variables CSS.
 - Canvas 2D para HUDs muy dinámicos con muchos elementos puede ser más barato que DOM.
+
+## Minimapa / radar barato (Canvas 2D)
+
+Para **orientación** (goal, spawn, obstáculos) no hace falta un segundo render pass Three.js ni RTT de la escena.
+
+Patrón:
+- Un `<canvas>` 2D en el overlay DOM (misma resolución lógica, `devicePixelRatio` en el backing store si quieres nitidez).
+- Cada frame: `clearRect`, dibujar puntos/rectángulos en **coordenadas de mundo → píxeles** con escala `metrosPorPixel = radioMetros / (tamañoCanvas/2)`.
+- **Radar player-up**: `ctx.translate(cx, cy); ctx.rotate(facing − π)` (o la convención que encaje con tu `forward = (sin f, cos f)`), dibujar goal/spawn/obstáculos **debajo** de esa rotación; el icono del jugador (triángulo) y una marca cardinal fija **encima**, sin rotar, para que “arriba = adelante del personaje”.
+- Goal fuera de rango: proyectar al borde del círculo (clamp por magnitud) y dibujar una **flecha apuntando radial hacia fuera** (rotada para que su apex coincida con la dirección al goal).
+
+Ventaja frente a `WebGLRenderTarget` + cámara cenital: coste casi nulo (~docenas de primitivas 2D por frame), sin segundo frustum ni limpieza de depth. Ver también `render-target-families.md` cuando sí necesitas **la vista real** texturizada (mapa “fotográfico”, niebla de guerra, etc.).
 
 ## Debug UI
 Separada del HUD final, activable por tecla o query param:

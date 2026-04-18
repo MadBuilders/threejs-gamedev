@@ -34,7 +34,7 @@ Cada bus con su `GainNode` conectado al master. Settings de usuario modifican vo
 - Formatos: `ogg` o `webm/opus` preferente; `mp3` como fallback.
 - SFX cortos: decodificados en memoria (`AudioBuffer`).
 - Música y ambientes largos: streaming con `<audio>` + `MediaElementAudioSourceNode` para no inflar memoria.
-- Registro por clave lógica (`sfx/jug-hit`), no por path.
+- Registro por clave lógica (`sfx/player-hit`), no por path.
 
 ## Pool de voces
 Límites duros por bus:
@@ -75,7 +75,7 @@ Implementar como transiciones cortas de gain en el bus, no tocando sonidos indiv
 
 ## Gameplay hooks
 Acoplamiento sano:
-- gameplay emite eventos de dominio (`onJugHit`, `onStepGrass`, `onMilkSpill`).
+- gameplay emite eventos de dominio (`onPlayerHit`, `onStepGrass`, `onPenalty`).
 - un suscriptor mapea eventos a llamadas al `AudioService`.
 - el `AudioService` decide qué bus, qué pool, qué prioridad.
 

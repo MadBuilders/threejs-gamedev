@@ -49,6 +49,16 @@ Antes de integrar:
 - texturas con tamaño sensato
 - polycount proporcional al uso real
 
+## Animación: cuidado con tracks de **scale**
+
+En rigs exportados desde herramientas de IA o con retarget ruidoso, un clip puede llevar **keyframes de scale** en huesos raíz o torso. En reproducción eso se traduce en “inflado” o clipping durante el walk.
+
+Opciones:
+- arreglar en DCC / re-export limpio;
+- en runtime, **eliminar tracks de scale** del `AnimationClip` al cargar (quedan posición y rotación), si el modelo ya tiene escala correcta en bind pose.
+
+Relacionado: `animation-systems.md` y bounding boxes en skinned meshes (`Box3.setFromObject(..., true)`).
+
 ## Orquestación de carga
 Cuando haya varios modelos o dependencias:
 - usar `LoadingManager`
@@ -107,6 +117,36 @@ Patrón base:
 - detectar soporte real del renderer para KTX2
 - configurar loaders auxiliares explícitamente
 - no meter compresión a ciegas sin validar pipeline y dispositivos objetivo
+
+## gltf-transform (CLI)
+
+[gltf-transform](https://gltf-transform.dev/) es la herramienta de referencia para **inspeccionar, limpiar y optimizar** glTF/GLB en pipeline reproducible. No sustituye a Blender/Substance para authoring, pero sí a **export ad hoc** y a “bajar megas” antes de subir a `public/`.
+
+**Paquete:** `@gltf-transform/cli` (el binario suele invocarse como `gltf-transform` vía `npx` o `pnpm dlx`).
+
+**Cuándo usarla**
+- Antes de integrar un GLB enorme: entender qué pesa (geometría vs texturas vs extensiones).
+- Antes de producción: deduplicar accessors, simplificar materiales, comprimir geometría (p. ej. Meshopt) o texturas según el proyecto.
+- En CI: validar que un export no ha crecido más de un umbral (combinar con `benchmarking.md` si aplica).
+
+**Comandos típicos (ejemplos)**
+
+```bash
+# Estructura, tamaños, meshes, animaciones, texturas
+npx @gltf-transform/cli inspect modelo.glb
+
+# Optimización general (revisar flags en la doc del paquete; evolucionan entre versiones)
+npx @gltf-transform/cli optimize entrada.glb salida.glb
+```
+
+**Reglas sanas**
+- Fijar **versión mayor** del CLI en el proyecto (script en `package.json` o documentado en README) para que `optimize` sea reproducible entre máquinas.
+- Tras optimizar, **probar en el juego real** (Three.js + extensiones que uses: Meshopt decoder, KTX2, etc.).
+- No tratar la compresión como magia: si el asset sigue gigante, el cuello a menudo son **texturas 4K** u opciones de export del DCC.
+
+**Anti-patrones**
+- Optimizar una sola vez “a mano” sin script ni versión fijada y olvidar cómo se regeneró el artefacto.
+- Asumir que `optimize` siempre baja calidad visual: depende de flags y del contenido.
 
 ## Recomendación actual
 Con lo revisado en esta ola, la apuesta más sana para proyectos serios sería:

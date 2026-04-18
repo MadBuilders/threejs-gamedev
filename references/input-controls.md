@@ -98,6 +98,21 @@ Si usas pointer lock en escritorio, tratar su ciclo de vida como parte del dise�
 
 No asumir que pointer lock es solo una línea de código sin implicaciones de UX.
 
+### Hold-to-look sin pointer lock (ratón visible)
+
+Cuando quieres **mirar alrededor** a ratón pero:
+- el juego no exige aim fino continuo, y
+- prefieres **no** ocultar el cursor ni exigir click-to-play permanente,
+
+alternativa sana: **mantener pulsado** un botón (suelen ser `pointerdown` en el canvas con `setPointerCapture` para seguir recibiendo `pointermove` aunque el cursor salga un poco fuera).
+
+Reglas prácticas:
+- Acumular `movementX/Y` solo mientras el botón está abajo.
+- `pointerup`/`pointercancel` en `window` y en el canvas, más `blur`: soltar el botón aunque pierdas foco.
+- Si la cámara aplica **offset que decae al soltar**, no necesitas “reset vista” extra para la mayoría de jugadores.
+
+Esto se combina bien con cámaras **follow + offset decay** (ver `cameras.md`).
+
 ## Gamepad
 Diseñar para soportarlo si el tipo de juego lo agradece, pero sin forzarlo desde el día 1.
 
