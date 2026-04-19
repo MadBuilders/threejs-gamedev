@@ -279,5 +279,46 @@ Para cualquier juego multijugador serio, crear explícitamente:
 
 Three.js debería entrar sobre todo en la última capa.
 
+## Stack concreto recomendado: Colyseus (TypeScript)
+
+Para juegos casual / cooperativo / competitivo ligero (no shooter de alto nivel), [Colyseus](https://colyseus.io/) es una elección sensata como capa de red. Cubre transporte (WebSocket), schema sincronizado, salas, lifecycle de jugadores y broadcast con muy poco código. Ya está probado en producción para Three.js puro.
+
+**Por qué considerarlo como default:**
+- Servidor autoritativo desde el primer día sin tener que escribir el protocolo a mano.
+- Schema declarativo (`@colyseus/schema`) que se serializa eficientemente y se hidrata en el cliente como objeto vivo.
+- Un solo monorepo (cliente Vite/TS + `server/` Node/TS) con tipos compartibles si quieres.
+- Patches binarios automáticos en cada `setPatchRate` (default 50 ms), no se reenvía estado completo.
+
+**Cuándo NO**: shooter competitivo de alta cadencia (rollback, hit validation), juego con presupuesto de bw mínimo (turnos por DataChannel/UDP), o cuando ya tienes infraestructura propia. Para esos casos, ver `multiplayer-consistency-models.md` y considerar un protocolo a medida.
+
+### Colyseus 0.17: gotchas concretos
+Colyseus 0.17 introdujo cambios de API que rompen ejemplos de versiones anteriores y que la doc no siempre deja claros. Estos son los que cuestan tiempo:
+
+- **`MapSchema` no es un `Map` real**: no `for...of`, no spread, no `[...map]`. Usar `forEach((value, key) => ...)`. `.get(key)` y `.set(key, value)` sí funcionan.
+- **Listeners de schema NO van en el objeto schema**. En 0.17 desaparecieron `players.onAdd(...)` / `players.onRemove(...)` directos. La API correcta es:
+  ```ts
+  import { getStateCallbacks } from '@colyseus/sdk';
+  const $ = getStateCallbacks(room);
+  $(room.state).players.onAdd((player, sessionId) => { /* ... */ });
+  $(room.state).players.onRemove((player, sessionId) => { /* ... */ });
+  ```
+  Los tipos del SDK son débiles aquí; un cast estructural a través de `unknown` resuelve sin perder seguridad real.
+- **El estado puede no estar hidratado cuando `joinOrCreate` resuelve**. Acceder a `room.state.players` justo tras el `await` puede dar `undefined`. Patrón seguro: registrar callbacks tras `joinOrCreate` y, para "replay" del estado actual a un suscriptor que llega tarde, usar `room.onStateChange.once(() => seedAllPlayers())`.
+- **Schema necesita `useDefineForClassFields: false` en `tsconfig`** del lado servidor (y a veces cliente, depende del bundler). Sin esto, los decoradores de schema fallan silenciosamente y los campos no se sincronizan.
+- **Express 5 + `@colyseus/ws-transport`**: instalar `@types/express` explícitamente o el typecheck del server casca con `Could not find a declaration file for module 'express'`.
+
+### Patrón de integración con Three.js puro
+La separación **obligatoria** entre network state, game state, presentation y scene graph (sección de arriba) sigue aplicando, pero con Colyseus se concreta así:
+
+- **Conexión no bloqueante**: `connectMultiplayer()` se lanza en background, el primer frame del juego no espera a la red. Mientras no hay handle, un `OFFLINE_MULTIPLAYER_HANDLE` no-op deja al juego correr en singleplayer (muy útil para dev sin servidor levantado).
+- **Pose 20 Hz throttled**: el render corre a 60 Hz, pero `sendPose()` rate-limita a 20 Hz internamente. La frecuencia se ajusta en un solo sitio.
+- **`MultiplayerHandle` único**: la API que ve el resto del juego son ~6 métodos (`status`, `selfName`, `selfSessionId`, `sendPose`, `subscribeRemotePlayers`, `dispose`). Esto encapsula Colyseus completo y permite swap a otro transport sin tocar `main.ts`.
+- **Manager de remotos separado**: un módulo `remotePlayers.ts` se suscribe vía el handle, mantiene `Map<sessionId, RemoteAvatar>` con buffer de snapshots para interpolación (~100 ms behind), y reusa el patrón source/instance de `animation-systems.md` para clonar el modelo del personaje (skinned mesh + materiales tinte + jug propios).
+- **Identidad visual determinista**: el servidor asigna un `colorHue` al unirse desde una paleta fija (e.g. 8 valores HSL bien separados), no el cliente. Garantiza consistencia entre todos los clientes sin negociar.
+
+### Smoke test multi-cliente
+Antes de validar visualmente con dos pestañas, vale la pena un smoke headless con dos `Client`s reales que se observan mutuamente. Detecta regresiones de schema y broadcast en <3 s. Ejemplo en el repo de `lechera` (`server/scripts/smoke-multi.mjs`).
+
 ## Pendiente de ampliar
 - multiplayer con física compleja
+- transporte UDP / WebTransport para juegos sensibles a latencia

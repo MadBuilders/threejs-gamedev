@@ -133,12 +133,14 @@ Intención del usuario → referencia por la que empezar.
 - `references/build-deploy.md` para Vite build, compresión de assets, cache busting y deploy.
 
 ### Bloque avanzado (solo bajo demanda explícita)
-No cargar estas referencias por defecto. Entrar aquí solo si el usuario declara multiplayer como core del juego.
+No cargar estas referencias por defecto. Entrar aquí solo si el usuario declara multiplayer como core del juego, o si va a añadirlo a un proyecto singleplayer existente.
 
-- `references/multiplayer.md` para arquitectura base de red, snapshots e interest management.
+- `references/multiplayer.md` para arquitectura base de red, snapshots, interest management y **stack concreto recomendado (Colyseus)** con sus gotchas en 0.17.
 - `references/multiplayer-consistency-models.md` para rollback, lockstep e hit validation.
 - `references/server-rewind-weapons.md` para rewind o lag compensation por arma.
 - `references/anti-cheat-anomalies.md` para telemetría, scoring de sospecha y mitigaciones.
+
+Default sano para juegos casual / cooperativo / competitivo ligero: empezar por `multiplayer.md` y plantear Colyseus con monorepo (`client/` + `server/`). Saltar a los otros tres solo si el género lo justifica.
 
 ## Reglas de criterio
 
@@ -160,7 +162,12 @@ No cargar estas referencias por defecto. Entrar aquí solo si el usuario declara
 
 ## Estado actual
 
-**v1.2**. Añadidos patrones genéricos probados en producción web:
+**v1.3**. Añadidos aprendizajes de un proyecto multijugador real (cliente Three.js puro + servidor Colyseus en monorepo):
+
+- `multiplayer.md`: nueva sección **Stack concreto recomendado: Colyseus** con cuándo elegirlo, cuándo no, y los **gotchas de la 0.17** que cuestan tiempo (`MapSchema` no iterable, `getStateCallbacks` reemplaza a `onAdd`/`onRemove` directos, hidratación tardía del estado, `useDefineForClassFields: false`, `@types/express` para Express 5). También: patrón de integración con conexión no bloqueante, `MultiplayerHandle` único como capa de aislamiento, identidad visual determinista server-side (color hue desde paleta fija), y smoke test multi-cliente headless.
+- `animation-systems.md`: sección **Gotchas concretos al clonar SkinnedMesh** (no vale `Object3D.clone`, exports nombrados de `SkeletonUtils.js`, materiales y geometrías compartidos por el clone, regla de ownership en `dispose`) + patrón **source + instance** (`loadCharacterSource` / `createCharacterInstance`) para reusar GLBs entre jugador local, NPCs y remotos sin refetch ni doble parseo. Anti-patrones extendidos.
+
+**v1.2**. Patrones genéricos probados en producción web:
 - `cameras.md`: **follow detrás + yaw/pitch offset con decay** (visuales desacoplados del frame de movimiento cuando otra mecánica fija la referencia).
 - `input-controls.md`: **hold-to-look** con `pointerdown` + `setPointerCapture` como alternativa a pointer lock.
 - `character-locomotion.md`: **tank / vehicle-lite** (W/S eje, A/D giran; facing como estado, no derivado de velocidad).
@@ -170,4 +177,4 @@ No cargar estas referencias por defecto. Entrar aquí solo si el usuario declara
 - `lights-shadows.md`: **IBL con HDRI** (`PMREMGenerator` como `scene.environment` + `scene.background`).
 - `assets.md`: **placeholder first, swap later** y recetas de `dispose()` al sustituir material/textura/render-target.
 
-Router actualizado. Bloque avanzado de multiplayer se mantiene cerrado hasta que un proyecto real lo pida.
+Router actualizado. El bloque avanzado de multiplayer ya tiene un default concreto (Colyseus) además de la doctrina general; sigue cargándose solo bajo demanda.
