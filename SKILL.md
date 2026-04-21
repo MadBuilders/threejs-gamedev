@@ -47,6 +47,11 @@ Intención del usuario → referencia por la que empezar.
 - *"Input (teclado, touch, gamepad)"* → `input-controls.md`.
 - *"Necesito física"* → `physics.md`.
 - *"Mundo grande / streaming / proceduralismo"* → `world-generation.md`.
+- *"Horizon feo / quiero relieve real en el terreno"* → `world-generation.md` + aplicar **Patrones de producción** de abajo (**heightfield / grid terrain**, **terrain como sistema**).
+- *"Horizonte vacío pero el gameplay es plano"* → `world-generation.md` sección **Relieve de horizonte como silueta** (no meter heightfield completo para esto).
+- *"Cientos de árboles/props iguales van lentos"* → `gltf-pipeline.md` sección **Migración de `clone()` a `InstancedMesh` por leaf**.
+- *"Sombras caras o con poca nitidez cerca del jugador"* → `lights-shadows.md` sección **Shadow camera que sigue al foco**.
+- *"Stutter rítmico sin FPS obvio bajo"* → `profiling-budgets.md` (bullet de **asignaciones per-frame en el hot path**).
 - *"Quiero source editable y runtime rápido"* → aplicar **Patrones de producción** de abajo y leer `assets.md` / `world-generation.md` según el cuello.
 - *"Quiero editor de niveles / mapa authored"* → `level-editor-in-browser.md` (+ **Level editors / authored worlds** de abajo para doctrina).
 - *"Limpiar recursos / memory leak"* → `resource-lifecycle.md`.
@@ -84,6 +89,10 @@ Intención del usuario → referencia por la que empezar.
 - **Worker-first para trabajo pesado**: terreno, chunking, máscaras, nubes o preprocesos largos no deberían competir con input/cámara/HUD en el hilo principal.
 - **Authored data + LOD + instancing**: usar data authored para decidir *qué* va dónde; usar LOD e instancing para decidir *cómo* se dibuja barato. No mezclar layout con optimización ad-hoc.
 - **Boot con fallbacks**: si falta un asset o artifact secundario, el juego debería degradar con una ruta más simple en vez de romper el arranque completo.
+- **Heightfield / grid terrain para relieve real**: si el horizonte o el suelo necesitan forma de verdad, modelar el terreno como datos de altura (authorados, generados o mixtos) en vez de “parchear” un plano con fórmulas locales difíciles de razonar.
+- **Heightfield no implica física**: un heightfield puede servir solo para render, solo para placement, o para render + colliders. No meter Rapier “porque hay colinas” si el juego solo necesita `getGroundHeight(x, z)` y quizá la normal del terreno.
+- **Terreno como sistema, no como truco visual**: separar `terrain data` / `terrain build` / `terrain render` del resto de `level.ts`. Cuando el relieve importa, conviene que terreno, horizonte y posibles colliders salgan del mismo modelo mental.
+- **Rapier cuando la interacción lo pide**: ruedas, suspensión, cuerpos rígidos apoyados en pendiente o contacto físico continuo sí empujan hacia Rapier/heightfield collider. Un walking game con relieve suave suele poder seguir kinemático.
 
 ## Level editors / authored worlds
 
@@ -93,6 +102,7 @@ Intención del usuario → referencia por la que empezar.
 - **Fallback sano**: si el artifact derivado falta, cargar el source authored. Si eso falla, usar un default interno para no romper el arranque.
 - **Data antes que render code**: paths, placements, spawn, boundary, props y tuning del layout deberían vivir en data editable, no enterrados en constantes visuales.
 - **El editor es una ruta del mismo bundle**: activar con `?editor=1` y reusar bootstrap (renderer, scene, loaders) para que la preview *sea* el juego. Ver `level-editor-in-browser.md` para patrones concretos: save endpoint dev, doble `TransformControls` para translate+rotate simultáneos, snap+Shift, draft en `localStorage`, catálogo de assets extensible y disposal correcto de helpers.
+- **Si el terreno importa, también debería authorarse**: para mundos con relieve real, tratar el terreno como data editable (height grid, masks, splines, stamps o mezcla) y no como una deformación escondida en el código de render del nivel.
 
 ## Mapa de referencias
 
@@ -180,6 +190,23 @@ Default sano para juegos casual / cooperativo / competitivo ligero: empezar por 
 - búsqueda semántica del foro oficial (`/discourse-ai/embeddings/semantic-search.json`) como ayuda puntual para problemas concretos
 
 ## Estado actual
+
+**v1.9**. Recogidos aprendizajes de una pasada de optimización sobre un juego single-player 3D ya en producción:
+
+- `world-generation.md`: nueva sección **Relieve de horizonte como silueta** para el caso "el gameplay es plano pero el horizonte se ve vacío". Receta reutilizable basada en **máscara radial · patrón angular · detalle fbm**, con tradeoffs frente a heightfield authored y aviso explícito de que es render-only (no tocar colliders / navmesh con esto).
+- `gltf-pipeline.md` (Caso 3): sección nueva **Migración de `clone()` a `InstancedMesh` por leaf** con la plantilla reutilizable de aplanar leaf meshes al cargar y exponer un factory `createInstancedMeshes(placements)` paralelo al `instance()` existente. Incluye reglas sobre agrupar por variante, mantener `instance()` para casos interactivos y qué pasa con obstáculos/colisión.
+- `lights-shadows.md`: sección nueva **Shadow camera que sigue al foco** (sun position + `sun.target` moviéndose con el jugador manteniendo el offset original) como alternativa al frustum gigante estático. Permite bajar `mapSize` y combinar con `PCFShadowMap` sin perder nitidez cerca.
+- `assets.md`: nueva sección **Prefetch paralelo para colecciones de props** con el patrón `Promise.all(uniqueKinds.map(getModel))` cuando el loader ya cachea por kind; elimina el serializado oculto del primer prop de cada tipo. Nota sobre pool limitado si los kinds únicos son cientos.
+- `ui-hud.md` (minimap): bullet extra sobre **cull por distancia antes del píxel math** (`dx² + dz² > radio² · 2`) cuando la lista de obstáculos crece a cientos.
+- `profiling-budgets.md`: el bullet CPU-bound sobre "trabajo JS evitable" se expande a **asignaciones per-frame en el hot path**, con la receta de scratch buffers a nivel de módulo y el gotcha de no reasignar arrays compartidos con `result.xxx` (usar `length = 0`).
+- `SKILL.md`: cinco entradas nuevas en el router para cada uno de los patrones anteriores.
+
+**v1.8**. Terreno/worldbuilding más explícito para juegos con relieve real:
+
+- `SKILL.md`: router rápido con una entrada nueva para *horizon feo / quiero relieve real en el terreno*.
+- `SKILL.md`: en **Patrones de producción** se añaden dos heurísticas nuevas: **heightfield / grid terrain** y **terrain como sistema**.
+- `SKILL.md`: se aclara que **heightfield no implica Rapier** y que Rapier entra sobre todo cuando hay ruedas/suspensión o contacto físico continuo.
+- `SKILL.md`: en **Level editors / authored worlds** se fija que, si el terreno importa, también debería authorarse como data editable y no vivir como deformación opaca en render code.
 
 **v1.7**. Recogidos aprendizajes de montar un editor de niveles real dentro del bundle del juego:
 

@@ -102,6 +102,7 @@ Patrón:
 - Cada frame: `clearRect`, dibujar puntos/rectángulos en **coordenadas de mundo → píxeles** con escala `metrosPorPixel = radioMetros / (tamañoCanvas/2)`.
 - **Radar player-up**: `ctx.translate(cx, cy); ctx.rotate(facing − π)` (o la convención que encaje con tu `forward = (sin f, cos f)`), dibujar goal/spawn/obstáculos **debajo** de esa rotación; el icono del jugador (triángulo) y una marca cardinal fija **encima**, sin rotar, para que “arriba = adelante del personaje”.
 - Goal fuera de rango: proyectar al borde del círculo (clamp por magnitud) y dibujar una **flecha apuntando radial hacia fuera** (rotada para que su apex coincida con la dirección al goal).
+- **Cull por distancia antes del píxel math**: cuando los obstáculos crecen (cientos de árboles/props en mundos abiertos), iterar la lista completa cada frame aunque la mayoría quede fuera del radar es desperdicio en CPU de canvas 2D. Early-out con `dx² + dz² > radio² · 2` (factor √2 para no recortar cajas cuyo centro está off-radar pero cuyo half-extent todavía entra en el disco) antes de calcular coordenadas de píxel o llamar a `fillRect`.
 
 Ventaja frente a `WebGLRenderTarget` + cámara cenital: coste casi nulo (~docenas de primitivas 2D por frame), sin segundo frustum ni limpieza de depth. Ver también `render-target-families.md` cuando sí necesitas **la vista real** texturizada (mapa “fotográfico”, niebla de guerra, etc.).
 

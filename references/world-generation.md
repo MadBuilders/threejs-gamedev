@@ -53,6 +53,35 @@ Para terrenos tipo mapa de alturas:
 - raycasting contra el terreno es útil para placement, navegación o debug
 - helpers visuales de impacto ayudan mucho a entender qué pasa
 
+## Relieve de horizonte como silueta
+Problema frecuente: la zona jugable es plana (o casi), pero el horizonte se ve vacío y el cielo muere contra el suelo. Meter un heightfield authored completo es overkill; lo que quieres es **silueta decorativa** alrededor de la zona jugable, no terreno navegable.
+
+Patrones fallidos habituales:
+- **Parches cardinales**: cuatro bumps rectangulares en N/S/E/O. Se nota que son cuatro objetos distintos, el resto del horizonte queda plano y cuando el jugador gira la cámara rompe la ilusión.
+- **Parches radiales simples**: una función `height(r) = bump(r)` produce un anillo perfectamente simétrico tipo donut, también legible como artificial.
+
+Patrón reutilizable para silueta continua:
+1. **Máscara radial**: sobre un plano grande concéntrico con la zona jugable, `heightMask(r)` vale 0 dentro del radio de juego, sube hasta una cresta en `r ≈ rPlay + offset`, y vuelve a bajar antes del borde del plano para no levantar la piel visible del mundo.
+2. **Modulación angular** (low-freq): un término `peaks(θ)` con 2-4 picos por vuelta rompe la simetría del aro y genera valles entre picos, que es lo que hace que el ojo lo lea como sierra y no como donut.
+3. **Detalle de ruido** (high-freq): `fbm(x, z)` o similar añade silueta irregular sin dominar la forma.
+4. **Altura final**: `h(x,z) = radialMask(r) · peaks(θ) · detail(x,z)`, clamped a ≥ 0.
+
+Reglas:
+- Separar los tres ingredientes (máscara radial, patrón angular, detalle) hace el resultado fácil de tunear; mezclarlo todo en una sola función de ruido termina en magic numbers.
+- La cresta debería caer en una banda donde **ningún sistema gameplay pise el terreno** (collider plano dentro de `rPlay`, sombras y navegación asumen Y=0). Es render-only.
+- Funciona igual con un plano `PlaneGeometry` subdividido y escribiendo Z en los vértices, que con un heightfield authored; elegir según cuánto control se quiera.
+- Si **el terreno es parte del gameplay** (colisiones, altura del jugador, navmesh), este patrón no aplica: usa heightfield authored / bake real. Este es un patrón para mundos planos que solo necesitan fondo.
+
+Cuándo es suficiente:
+- juegos top-down / tercera persona con zona jugable cerrada
+- el horizonte está lejos y pequeño en pantalla
+- no hay cámara libre que permita al jugador verlo desde arriba
+
+Cuándo escalar a heightfield authored:
+- la cámara puede ver el relieve desde ángulos que destapan la forma geométrica
+- hay mecánicas que dependen de la altura (trepar, rodar, agua)
+- el autor quiere control artístico específico ("aquí una cadena, allí un cañón")
+
 ## Geometría combinada vs instancing
 ### Combinar geometría
 Buena opción cuando:

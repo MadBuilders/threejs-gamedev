@@ -98,6 +98,62 @@ No todo asset cargado debe añadirse tal cual a escena.
 
 La example `webgl_loader_gltf_instancing` deja una pista útil: glTF puede convivir con `EXT_mesh_gpu_instancing`, así que parte del coste puede resolverse ya desde el asset pipeline.
 
+#### Migración de `clone()` a `InstancedMesh` por leaf
+Patrón recurrente: una función `loadXxxModel()` devuelve un wrapper que expone `instance()` implementado como `wrapper.clone(true)`. Sirve hasta que el nivel escala a decenas o cientos de copias del mismo GLB: cada instancia aporta sus propios `Object3D` (transform, matrix world update) y una draw call por leaf mesh del wrapper.
+
+Plantilla reutilizable para extender el mismo factory con instancing de verdad, sin obligar a cambiar el resto del juego:
+
+```ts
+// 1) Al cargar el GLB, extraer los leaf meshes aplanados con su matriz
+//    local respecto al wrapper (la que ya aplica escala, recentrado, etc.).
+const leafMeshes: { geometry: THREE.BufferGeometry; material: THREE.Material; baseMatrix: THREE.Matrix4 }[] = [];
+wrapper.updateMatrixWorld(true);
+wrapper.traverse((obj) => {
+  const mesh = obj as THREE.Mesh;
+  if (!mesh.isMesh) return;
+  leafMeshes.push({
+    geometry: mesh.geometry,
+    material: mesh.material as THREE.Material,
+    baseMatrix: mesh.matrixWorld.clone(),
+  });
+});
+
+// 2) Nuevo método: una InstancedMesh por leaf, N matrices.
+function createInstancedMeshes(placements: ReadonlyArray<{ x: number; z: number; yaw: number }>) {
+  const group = new THREE.Group();
+  const tmp = new THREE.Matrix4();
+  const placement = new THREE.Matrix4();
+
+  for (const leaf of leafMeshes) {
+    const im = new THREE.InstancedMesh(leaf.geometry, leaf.material, placements.length);
+    im.castShadow = castShadow;
+    im.receiveShadow = true;
+    // Con instancias esparcidas por todo el mundo, el frustum culling
+    // per-instance puede esconder instancias reales; suele merecer la pena
+    // dejarlo a cargo del bounding sphere global.
+    im.frustumCulled = false;
+
+    for (let i = 0; i < placements.length; i++) {
+      const p = placements[i]!;
+      placement.makeRotationY(p.yaw).setPosition(p.x, 0, p.z);
+      tmp.multiplyMatrices(placement, leaf.baseMatrix);
+      im.setMatrixAt(i, tmp);
+    }
+    im.instanceMatrix.needsUpdate = true;
+    group.add(im);
+  }
+  return group;
+}
+```
+
+Puntos a cuidar:
+- **Agrupar placements por variante** antes de llamar al instanced factory: si tu juego mezcla "árbol A" y "árbol B", son dos `InstancedMesh` distintos (no los fuerces a uno mismo aunque compartan escala).
+- **Conservar `instance()` para casos raros**: obstáculos interactivos, props que necesitan animación propia o swap de material; esos siguen con `clone(true)`. El instanced path es el default para "decoración densa".
+- **Los obstáculos de colisión que apuntaban a la instancia individual ahora deben apuntar al grupo instanced completo** (si los necesitas). Verifica dónde se usa ese `visual` (en muchos juegos solo para debug o para hacer un swap puntual); si el único lifecycle es "vive desde boot hasta fin del nivel", compartir la referencia es seguro.
+- **Draw calls**: pasas de `N × leafCount` a `leafCount` (una por submesh del GLB), no "a 1" salvo que el GLB tenga un único mesh.
+- **Sombras**: `InstancedMesh` casta sombra por instancia igual que un mesh normal; el shadow pass también se beneficia del colapso de draw calls.
+- Si los GLBs llevan `EXT_mesh_gpu_instancing` de origen, este paso en runtime sobra: resuelve ya el pipeline.
+
 ## Compresión
 La revisión oficial empuja varias ideas distintas:
 

@@ -94,6 +94,37 @@ Reglas:
 
 Este patrón también limpia el ciclo de desarrollo: cambios en código se ven al instante sin esperar a que recargue cada GLB/HDRI de turno.
 
+## Prefetch paralelo para colecciones de props
+Cuando un nivel coloca muchas copias de pocos "kinds" (casas, árboles, rocas, props con una factory por kind), el bucle natural es:
+
+```ts
+for (const placement of level.props) {
+  const model = await getModel(placement.kind);   // ← serializa los fetches
+  addInstance(model, placement);
+}
+```
+
+Si el loader ya cachea por kind, esto sigue siendo serial la primera vez que aparece cada kind: el primer prop de cada tipo bloquea al siguiente hasta que su GLB resuelve. Con 4-5 kinds distintos y red mediocre puedes perder varios segundos de boot sin necesidad.
+
+Truco genérico: **preload en paralelo de los kinds únicos** antes del bucle de placement.
+
+```ts
+const uniqueKinds = Array.from(new Set(level.props.map((p) => p.kind)));
+await Promise.all(uniqueKinds.map((k) => getModel(k)));
+
+for (const placement of level.props) {
+  const model = await getModel(placement.kind);   // ← ahora hit de cache instantáneo
+  addInstance(model, placement);
+}
+```
+
+Requisitos para que funcione limpio:
+- el loader debe **cachear por kind**, o harás el fetch dos veces.
+- el `await` dentro del bucle sigue siendo útil: si el cache fallara por cualquier motivo, sigue cargando en vez de crashear.
+- si los kinds únicos son muchísimos (cientos), `Promise.all` no es el patrón; querrás un pool con concurrencia limitada (p. ej. 4-8 fetches simultáneos).
+
+Este mismo patrón aplica a HDRIs, sprites y cualquier recurso con factory cacheada.
+
 ## Disposal sin drama
 Cuando sustituyes un recurso, el viejo no se libera solo. Mini-recetas:
 

@@ -52,6 +52,7 @@ Sospechar de:
 - demasiados nodos en scene graph
 - merges o reconstrucciones frecuentes
 - trabajo JS evitable
+- **asignaciones per-frame en el hot path**: `vec.clone()`, `array.map(...)`, `const arr: Foo[] = []` dentro del loop. Aisladamente son baratos; multiplicados por 60 Hz y por todas las entidades generan presión de GC que aparece como stutter rítmico, no como FPS bajo constante. Patrón sano: **scratch buffers a nivel de módulo** reutilizados (pre-alocar un `Vector3` y usarlo con `.copy()`/`.set()`; array persistente con `length = 0` al empezar el frame y `push()` solo cuando crece). Importante: si un scratch está aliased en un `result` público, limpiarlo in-place en `reset()` en vez de reasignar (`arr.length = 0`, no `arr = []`), o los callers siguen viendo datos viejos.
 
 ### GPU-bound
 Sospechar de:

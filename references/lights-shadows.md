@@ -61,6 +61,28 @@ Regla práctica:
 - ajustar top, bottom, left, right, near y far al área útil real
 - evitar cajas gigantes si la acción ocurre en una zona pequeña
 
+### Shadow camera que sigue al foco
+Para un juego con una **zona jugable grande** y sombras que importan cerca del jugador, la tentación es agrandar el frustum de la shadow camera hasta cubrir el mapa entero. Eso sale caro dos veces: baja la resolución efectiva (cada texel del shadow map cubre más mundo) y obliga a subir `mapSize` para compensar.
+
+Patrón más barato: **mantener un frustum ajustado pequeño y moverlo con el jugador** (o con el foco de cámara).
+
+Receta:
+- En boot, guarda el offset original del sol como `SUN_OFFSET = sun.position.clone()`.
+- `scene.add(sun.target)`: la `DirectionalLight` apunta desde `position` hacia `target.position`, así que necesitas el target en escena para que la matriz se actualice.
+- Cada frame, tras mover al jugador:
+  ```ts
+  sun.position.set(player.x + SUN_OFFSET.x, SUN_OFFSET.y, player.z + SUN_OFFSET.z);
+  sun.target.position.set(player.x, 0, player.z);
+  sun.target.updateMatrixWorld(true);
+  ```
+- Con el frustum parked sobre el jugador, puedes usar half-extents del orden de "lo que la cámara tercera persona ve cerca" (por ejemplo ~20-25 m) y `mapSize` más bajo (`512²` o `768²`) sin perder nitidez.
+
+Tradeoffs:
+- la dirección del sol sigue constante (solo se desplaza, no rota), así que la iluminación queda estable aunque el jugador avance.
+- sombras lejos del jugador desaparecen; para un juego single-player tercera persona suele ser lo que quieres. Si hay gameplay dependiente de sombras lejanas (sigilo, puzzles), este patrón no sirve.
+- combina bien con `PCFShadowMap` (más barato) en vez de `PCFSoftShadowMap`; con el frustum ajustado no suele hacer falta el blur extra.
+- si bajas mucho `mapSize`, sube un poco `shadow.bias` negativo (`-0.0005` es un punto de partida sano) para evitar acne en el suelo.
+
 ## Helpers y debug
 Útiles cuando se trabaja con sombras:
 - `CameraHelper` sobre la shadow camera
