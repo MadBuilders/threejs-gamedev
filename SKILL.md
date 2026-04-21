@@ -47,6 +47,8 @@ Intención del usuario → referencia por la que empezar.
 - *"Input (teclado, touch, gamepad)"* → `input-controls.md`.
 - *"Necesito física"* → `physics.md`.
 - *"Mundo grande / streaming / proceduralismo"* → `world-generation.md`.
+- *"Quiero source editable y runtime rápido"* → aplicar **Patrones de producción** de abajo y leer `assets.md` / `world-generation.md` según el cuello.
+- *"Quiero editor de niveles / mapa authored"* → `level-editor-in-browser.md` (+ **Level editors / authored worlds** de abajo para doctrina).
 - *"Limpiar recursos / memory leak"* → `resource-lifecycle.md`.
 - *"Va lento en móvil"* → `mobile-performance.md` + `profiling-budgets.md`.
 - *"¿Es GPU, CPU o stutter?"* → `gpu-vs-cpu-heuristics.md` + `frame-pacing-stutter.md`.
@@ -76,6 +78,22 @@ Intención del usuario → referencia por la que empezar.
 - Diseñar primero para claridad, luego para optimización.
 - **Singleplayer first** salvo requisito claro de multiplayer.
 
+## Patrones de producción
+
+- **Source editable -> artifact de runtime**: cuando un mundo/nivel crece, separar el archivo cómodo de editar (JSON, curvas, placements) del archivo cómodo de cargar en juego. Mantener fallback al source mientras el pipeline madura.
+- **Worker-first para trabajo pesado**: terreno, chunking, máscaras, nubes o preprocesos largos no deberían competir con input/cámara/HUD en el hilo principal.
+- **Authored data + LOD + instancing**: usar data authored para decidir *qué* va dónde; usar LOD e instancing para decidir *cómo* se dibuja barato. No mezclar layout con optimización ad-hoc.
+- **Boot con fallbacks**: si falta un asset o artifact secundario, el juego debería degradar con una ruta más simple en vez de romper el arranque completo.
+
+## Level editors / authored worlds
+
+- **El editor escribe source humano**: JSON o estructuras fáciles de inspeccionar/diffear. El editor no debería escribir formatos opacos como fuente principal.
+- **Runtime loader separado del editor**: `levelDefinition` / schema por un lado, render/runtime por otro. Así el editor no arrastra dependencias del juego entero.
+- **El bake es opcional y posterior**: primero validar que el workflow authored funciona. Solo añadir artifact/binario cuando el tamaño, el parseo o el boot lo justifiquen.
+- **Fallback sano**: si el artifact derivado falta, cargar el source authored. Si eso falla, usar un default interno para no romper el arranque.
+- **Data antes que render code**: paths, placements, spawn, boundary, props y tuning del layout deberían vivir en data editable, no enterrados en constantes visuales.
+- **El editor es una ruta del mismo bundle**: activar con `?editor=1` y reusar bootstrap (renderer, scene, loaders) para que la preview *sea* el juego. Ver `level-editor-in-browser.md` para patrones concretos: save endpoint dev, doble `TransformControls` para translate+rotate simultáneos, snap+Shift, draft en `localStorage`, catálogo de assets extensible y disposal correcto de helpers.
+
 ## Mapa de referencias
 
 ### Kickoff y defaults de proyecto
@@ -98,6 +116,7 @@ Intención del usuario → referencia por la que empezar.
 - `references/input-controls.md` para input abstraction, teclado, touch, gamepad y raycasting.
 - `references/physics.md` para integración de motor físico y límites de responsabilidad.
 - `references/world-generation.md` para streaming, chunking y contenido procedural.
+- `references/level-editor-in-browser.md` para meter un editor de niveles dentro de la misma app (save endpoint dev, dual `TransformControls`, snap, draft en `localStorage`, asset catalog, gotchas de disposal).
 - `references/ai-navigation.md` para pathfinding, nav meshes, steering y behavior simple.
 - `references/resource-lifecycle.md` para ownership, limpieza y `dispose()`.
 
@@ -161,6 +180,21 @@ Default sano para juegos casual / cooperativo / competitivo ligero: empezar por 
 - búsqueda semántica del foro oficial (`/discourse-ai/embeddings/semantic-search.json`) como ayuda puntual para problemas concretos
 
 ## Estado actual
+
+**v1.7**. Recogidos aprendizajes de montar un editor de niveles real dentro del bundle del juego:
+
+- Nueva referencia `level-editor-in-browser.md` con patrones probados: editor como subruta `?editor=1` que reusa el bootstrap, save vía endpoint dev `POST /dev/level` con guard de `NODE_ENV`, `localStorage` draft con restore silencioso, **doble `TransformControls`** al mismo objeto (translate XZ + rotate Y simultáneos) para evitar el toggle move/rotate, snap 0.5m / 15° con Shift para libre, catálogo de assets centralizado para extensibilidad sin tocar el editor, backward-compat del schema con campos opcionales + helpers `resolveXxx`, y la trampa clásica de `group.children` que no se vacía al hacer sólo `dispose()` (helpers fantasma).
+- `SKILL.md`: router y bloque **Level editors / authored worlds** apuntan a la nueva referencia. Añadida doctrina de que **el editor es una ruta del mismo bundle**, no una app aparte.
+
+**v1.6**. Authoring/editor pipeline más explícito:
+
+- `SKILL.md`: nueva entrada de router para **editor de niveles / mapa authored**.
+- Nuevo bloque **Level editors / authored worlds** para fijar el patrón reusable: source humano, loader separado, bake opcional, fallback al source y layout guardado como data.
+
+**v1.5**. Patrones de producción reforzados a partir de juegos web ya enviados:
+
+- `SKILL.md`: nuevo bloque **Patrones de producción** para recordar cuatro heurísticas que suelen llegar tarde pero conviene modelar pronto: **source editable -> artifact de runtime**, **worker-first heavy subsystems**, **authored data + LOD + instancing**, y **boot con fallbacks**.
+- Router rápido: añadida una entrada explícita para cuando el problema es menos "cómo renderizo esto" y más "cómo paso de datos/editing a runtime sin romper el proyecto".
 
 **v1.4**. Ajustes tras seguir iterando el mismo proyecto real hasta una fase más madura:
 
