@@ -7,6 +7,12 @@ Usar un `AGENTS.md` dentro de cada juego como memoria operativa del proyecto, pa
 **Si una decisión importa mañana, escríbela hoy.**
 No confiar en recordar por magia por qué se eligió una librería, qué carpeta manda o qué bug quedó pendiente.
 
+Regla hermana:
+**si el proyecto cambió de fase, refrescar el `AGENTS.md`.**
+Un `AGENTS.md` útil no es una foto fija del kickoff para siempre. Si el juego
+ya tiene multiplayer, editor interno, audio, nuevo layout de carpetas o una
+fase distinta, la memoria operativa tiene que reflejarlo.
+
 ## Cuándo crearlo
 Crear `AGENTS.md` casi desde el principio cuando el juego pase de idea suelta a proyecto real.
 
@@ -53,6 +59,16 @@ Sí hace falta dejar rastro de:
 - problemas conocidos
 - siguientes pasos claros
 
+### 6. Documentos satélite cuando el proyecto crece
+Cuando un subsistema deja de ser “una nota más” y pasa a tener roadmap propio
+(por ejemplo multiplayer, economía, herramientas internas o pipeline de
+contenido), crear un documento hermano y enlazarlo desde `AGENTS.md`.
+
+Patrón sano:
+- `AGENTS.md` mantiene la foto general del proyecto
+- `MULTIPLAYER.md` guarda decisiones de red, authority, smoke tests y hosting
+- otros documentos similares si aparece otro subsistema igual de denso
+
 ## Formato recomendado
 ```markdown
 # AGENTS.md
@@ -91,6 +107,7 @@ Sí hace falta dejar rastro de:
 - secretos o credenciales
 - copia de documentación pública
 - opiniones vagas sin impacto operativo
+- snapshots obsoletos del proyecto que ya no describen el código real
 
 ## Relación con memoria y skill
 Este `AGENTS.md` no sustituye la skill.
@@ -102,6 +119,11 @@ Cuando arranque un juego nuevo:
 - escribir stack y decisiones iniciales
 - escribir fase actual y exclusiones explícitas
 - ir dejando cambios relevantes y próximos pasos
+
+Y cuando el proyecto madure:
+- revisar si la fase actual sigue siendo cierta
+- quitar contradicciones con el código real
+- enlazar documentos especializados si ya existen
 
 Eso ahorra muchísimo contexto perdido entre sesiones.
 

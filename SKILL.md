@@ -162,6 +162,12 @@ Default sano para juegos casual / cooperativo / competitivo ligero: empezar por 
 
 ## Estado actual
 
+**v1.4**. Ajustes tras seguir iterando el mismo proyecto real hasta una fase más madura:
+
+- `project-agents-md.md`: reforzado que `AGENTS.md` debe **refrescarse cuando el proyecto cambia de fase** y que conviene abrir documentos satélite (`MULTIPLAYER.md`, etc.) cuando un subsistema gana roadmap propio. Evita que la memoria operativa se quede congelada en el V0.
+- `default-project-stack.md`: añadido patrón de evolución sana a **monorepo `client/` + `server/` + `shared/`** cuando multiplayer deja de ser hipotético, y nota sobre authoring/data-driven layout (`public/levels/` + definiciones explícitas) para no enterrar contenido jugable en constantes dispersas.
+- `multiplayer.md`: nuevas reglas concretas sobre **validar score/progreso contra estado que el servidor ya conoce** (no contra payloads de claim) y sobre **no bloquear rondas por persistencia externa**; persistencia de leaderboard en background + timeout como default sano.
+
 **v1.3**. Añadidos aprendizajes de un proyecto multijugador real (cliente Three.js puro + servidor Colyseus en monorepo):
 
 - `multiplayer.md`: nueva sección **Stack concreto recomendado: Colyseus** con cuándo elegirlo, cuándo no, y los **gotchas de la 0.17** que cuestan tiempo (`MapSchema` no iterable, `getStateCallbacks` reemplaza a `onAdd`/`onRemove` directos, hidratación tardía del estado, `useDefineForClassFields: false`, `@types/express` para Express 5). También: patrón de integración con conexión no bloqueante, `MultiplayerHandle` único como capa de aislamiento, identidad visual determinista server-side (color hue desde paleta fija), y smoke test multi-cliente headless.

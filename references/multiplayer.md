@@ -80,6 +80,18 @@ Coste:
 - reconciliación
 - latencia visible si no se suaviza bien
 
+Regla práctica importante:
+- las acciones de score / progreso / entrega deben validarse contra
+  **estado que el servidor ya conoce**, no contra payloads “de confianza”
+  enviados por el cliente en el momento del claim
+
+Ejemplo clásico:
+- bien: el cliente manda “quiero entregar ahora” y el servidor comprueba la
+  distancia al objetivo usando su última `position` conocida para ese jugador
+- mal: el cliente manda `{ x, z }` y el servidor valida contra esas coordenadas
+  recién recibidas, porque eso abre la puerta al exploit trivial de “marco el
+  goal sin haberme movido”
+
 ### Cliente autoritativo o peer-ish
 Solo lo recomendaría en:
 - prototipos
@@ -130,6 +142,12 @@ Según el género, puede convenir:
 Regla:
 - no mandar estado visual interno de Three.js
 - mandar estado jugable y derivar la presentación localmente
+
+Esto también aplica a eventos de gameplay:
+- si el cliente necesita mandar un claim, que sea una **intención** o una
+  petición pequeña
+- no usar el claim como vehículo para colar authority nueva que el servidor no
+  ha observado previamente
 
 Buenos campos típicos:
 - `tick`
@@ -269,6 +287,7 @@ Y mantener payloads pequeños y estables:
 - mezclar input local con estado remoto sin capas claras
 - replicar demasiada información visual en vez de estado jugable
 - intentar resolver cheating solo en cliente
+- bloquear el lifecycle de la partida por esperar persistencia externa (DB, API, leaderboard)
 
 ## Recomendación fuerte
 Para cualquier juego multijugador serio, crear explícitamente:
@@ -315,9 +334,20 @@ La separación **obligatoria** entre network state, game state, presentation y s
 - **`MultiplayerHandle` único**: la API que ve el resto del juego son ~6 métodos (`status`, `selfName`, `selfSessionId`, `sendPose`, `subscribeRemotePlayers`, `dispose`). Esto encapsula Colyseus completo y permite swap a otro transport sin tocar `main.ts`.
 - **Manager de remotos separado**: un módulo `remotePlayers.ts` se suscribe vía el handle, mantiene `Map<sessionId, RemoteAvatar>` con buffer de snapshots para interpolación (~100 ms behind), y reusa el patrón source/instance de `animation-systems.md` para clonar el modelo del personaje (skinned mesh + materiales tinte + jug propios).
 - **Identidad visual determinista**: el servidor asigna un `colorHue` al unirse desde una paleta fija (e.g. 8 valores HSL bien separados), no el cliente. Garantiza consistencia entre todos los clientes sin negociar.
+- **Persistencia desacoplada del round lifecycle**: si guardas leaderboard o resultados al final de ronda, el juego no debería quedarse esperando a la base de datos para pasar a scoreboard / siguiente ronda. Mejor: snapshot de resultados, transición inmediata, persistencia en background con timeout y warning si falla.
+
+### Persistencia al final de ronda: regla fuerte
+Si hay ranking persistente, analytics o guardado remoto:
+- el lifecycle jugable manda
+- la persistencia debe ser **bounded** (timeout) y preferiblemente fire-and-forget
+  desde el punto de vista del flujo de la partida
+
+Tradeoff sano:
+- peor caso: el leaderboard tarda un refresh más en reflejar la ronda recién terminada
+- mucho peor: toda la partida se queda congelada esperando una DB lenta
 
 ### Smoke test multi-cliente
-Antes de validar visualmente con dos pestañas, vale la pena un smoke headless con dos `Client`s reales que se observan mutuamente. Detecta regresiones de schema y broadcast en <3 s. Ejemplo en el repo de `lechera` (`server/scripts/smoke-multi.mjs`).
+Antes de validar visualmente con dos pestañas, vale la pena un smoke headless con dos `Client`s reales que se observan mutuamente. Detecta regresiones de schema y broadcast en <3 s. Merece la pena tener uno en cualquier proyecto multijugador serio aunque el render todavía vaya por detrás.
 
 ## Pendiente de ampliar
 - multiplayer con física compleja

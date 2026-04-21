@@ -95,10 +95,21 @@ Si multiplayer es core desde el concepto:
 - diseñarlo pronto, pero no casar el proyecto con una librería por reflejo
 - tratar soluciones como MavonEngine o similares como **candidatas a validar en spike**, no como dogma automático todavía
 
+Si multiplayer termina aterrizando de verdad:
+- valorar pronto un **monorepo** con `client/` + `server/` + `shared/`
+- mover a `shared/` solo lo que de verdad tenga que coincidir entre ambos lados
+  (constantes de gameplay, validación, wire shapes)
+- no forzar el monorepo el día 1 si el juego sigue siendo estrictamente local
+
 ## Assets y shell
 - `public/` para assets estáticos simples
 - loaders y registro coordinado de assets en `src/assets/`
 - no esconder lógica del juego dentro de componentes de UI
+
+Si el juego tiene niveles editables o authoring data:
+- considerar pronto una carpeta de datos explícita (`public/levels/`,
+  `src/game/levelDefinition.ts`, etc.)
+- no enterrar layout jugable crítico en constantes dispersas dentro del render
 
 ## Defaults de scope
 Al arrancar:
@@ -121,6 +132,10 @@ Para la mayoría de juegos nuevos:
 - TypeScript
 - Rapier solo si la física importa de verdad
 - singleplayer first salvo requisito claro de multiplayer
+
+Cuando el proyecto pase a multiplayer real o a herramientas internas:
+- cliente raíz + `server/` + `shared/` es una evolución sana del stack base
+- `AGENTS.md` debería reflejar ese salto de estructura en cuanto ocurra
 
 ## Referencias asociadas
 - `game-kickoff-planning.md`
