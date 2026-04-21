@@ -191,6 +191,12 @@ Default sano para juegos casual / cooperativo / competitivo ligero: empezar por 
 
 ## Estado actual
 
+**v1.9.1**. Fix de errata grave en el snippet de `InstancedMesh` por leaf:
+
+- `gltf-pipeline.md` (Caso 3 → **Migración de `clone()` a `InstancedMesh` por leaf**): el snippet original recomendaba `im.frustumCulled = false` para evitar que el batch desapareciera cuando su bounding sphere (derivado de una sola instancia en el origen) quedaba fuera del frustum. Es la respuesta equivocada: con el batch `frustumCulled = false` el renderer lo somete a cada render pass **siempre**, corriendo el vertex shader sobre todas las instancias incluso cuando la cámara no las ve. Escalado a cientos de árboles en un mundo abierto, eso tira el frame rate en iGPU / móvil sin que los draw calls lo delaten.
+- Sustituido por la combinación correcta: `frustumCulled = true` + `im.computeBoundingBox()` / `computeBoundingSphere()` tras rellenar matrices + **chunk espacial** (una `InstancedMesh` por celda) si las instancias cubren el mundo entero.
+- Añadida explicación explícita del anti-patrón `frustumCulled = false` y del hecho de que el eje de escalado dominante para instancing denso **no es draw calls, es vertex throughput**: cullear chunks es lo que mantiene ese eje bajo control.
+
 **v1.9**. Recogidos aprendizajes de una pasada de optimización sobre un juego single-player 3D ya en producción:
 
 - `world-generation.md`: nueva sección **Relieve de horizonte como silueta** para el caso "el gameplay es plano pero el horizonte se ve vacío". Receta reutilizable basada en **máscara radial · patrón angular · detalle fbm**, con tradeoffs frente a heightfield authored y aviso explícito de que es render-only (no tocar colliders / navmesh con esto).

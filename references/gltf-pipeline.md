@@ -128,10 +128,6 @@ function createInstancedMeshes(placements: ReadonlyArray<{ x: number; z: number;
     const im = new THREE.InstancedMesh(leaf.geometry, leaf.material, placements.length);
     im.castShadow = castShadow;
     im.receiveShadow = true;
-    // Con instancias esparcidas por todo el mundo, el frustum culling
-    // per-instance puede esconder instancias reales; suele merecer la pena
-    // dejarlo a cargo del bounding sphere global.
-    im.frustumCulled = false;
 
     for (let i = 0; i < placements.length; i++) {
       const p = placements[i]!;
@@ -140,6 +136,16 @@ function createInstancedMeshes(placements: ReadonlyArray<{ x: number; z: number;
       im.setMatrixAt(i, tmp);
     }
     im.instanceMatrix.needsUpdate = true;
+
+    // CRÍTICO. Por defecto, el bounding sphere de la InstancedMesh viene de
+    // la geometría de UNA instancia (centrada en el origen local). Con
+    // placements esparcidos por el mundo, ese sphere es diminuto comparado
+    // con el footprint real → Three culea el batch entero en cuanto la
+    // cámara no mira al centro. Recomputar bounds tras llenar matrices hace
+    // que Three vea el footprint real y pueda cullear el batch cuando toca.
+    im.computeBoundingBox();
+    im.computeBoundingSphere();
+
     group.add(im);
   }
   return group;
@@ -148,10 +154,12 @@ function createInstancedMeshes(placements: ReadonlyArray<{ x: number; z: number;
 
 Puntos a cuidar:
 - **Agrupar placements por variante** antes de llamar al instanced factory: si tu juego mezcla "árbol A" y "árbol B", son dos `InstancedMesh` distintos (no los fuerces a uno mismo aunque compartan escala).
+- **Chunk espacial si el footprint cubre el mundo**. Una única `InstancedMesh` con centenares de instancias repartidas por todo el nivel tiene un bounding sphere enorme: frustum culling deja de funcionar en la práctica porque el batch casi siempre intersecta el frustum, aunque solo una esquina contenga instancias visibles. Solución: trocear por celdas (p. ej. 24 m) y crear una `InstancedMesh` por celda ocupada, con sus propias matrices y sus propios bounds. Sigue siendo 1 draw call por chunk × leaf, y Three sí puede cullear chunks enteros cuando la cámara mira lejos.
+- **No caer en `im.frustumCulled = false`**. Es la salida fácil para que "no desaparezcan clusters" cuando el bounding sphere está mal calibrado, pero significa que el batch **se somete a cada render pass siempre**, incluso cuando la cámara le da la espalda. El vertex shader corre sobre todas las instancias en main pass y en shadow pass; con cientos de instancias el throughput de vértices se dispara y en iGPUs / móvil tiras el frame rate a la basura sin que los draw calls lo delaten. La combinación correcta es `frustumCulled = true` + bounds recomputados + chunking si hace falta.
 - **Conservar `instance()` para casos raros**: obstáculos interactivos, props que necesitan animación propia o swap de material; esos siguen con `clone(true)`. El instanced path es el default para "decoración densa".
 - **Los obstáculos de colisión que apuntaban a la instancia individual ahora deben apuntar al grupo instanced completo** (si los necesitas). Verifica dónde se usa ese `visual` (en muchos juegos solo para debug o para hacer un swap puntual); si el único lifecycle es "vive desde boot hasta fin del nivel", compartir la referencia es seguro.
-- **Draw calls**: pasas de `N × leafCount` a `leafCount` (una por submesh del GLB), no "a 1" salvo que el GLB tenga un único mesh.
-- **Sombras**: `InstancedMesh` casta sombra por instancia igual que un mesh normal; el shadow pass también se beneficia del colapso de draw calls.
+- **Draw calls**: pasas de `N × leafCount` a `leafCount × chunkCount` (una por submesh del GLB × celda). Eso sigue siendo un win masivo frente a `clone()` pero no te engañes: **el eje real a vigilar cuando escales mucho las instancias no son los draw calls, es el vertex throughput**. Cullear chunks es lo que mantiene ese throughput bajo control.
+- **Sombras**: `InstancedMesh` casta sombra por instancia igual que un mesh normal; el shadow pass también se beneficia del colapso de draw calls y del chunk-culling si el frustum de la shadow camera es pequeño.
 - Si los GLBs llevan `EXT_mesh_gpu_instancing` de origen, este paso en runtime sobra: resuelve ya el pipeline.
 
 ## Compresión
