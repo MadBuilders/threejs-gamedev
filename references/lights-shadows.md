@@ -83,6 +83,21 @@ Tradeoffs:
 - combina bien con `PCFShadowMap` (más barato) en vez de `PCFSoftShadowMap`; con el frustum ajustado no suele hacer falta el blur extra.
 - si bajas mucho `mapSize`, sube un poco `shadow.bias` negativo (`-0.0005` es un punto de partida sano) para evitar acne en el suelo.
 
+### `receiveShadow` también cuesta por fragmento
+
+Es fácil pensar solo en `castShadow` como la palanca cara (es la que dispara el shadow pass extra). Pero `receiveShadow = true` añade **una muestra de shadow map por cada fragmento del mesh** en el render principal — es un PCF lookup que, en fragmento denso, se nota.
+
+Dónde importa:
+- **foliage denso**: copas de árboles, hierba, hojas. Decenas de miles de fragmentos visibles por frame, y el canopy está *por encima* del jugador → recibir sombra ahí no aporta (casi) nada visualmente.
+- **superficies que nunca reciben una sombra realista**: cielos, fondos, caras internas de edificios a los que la luz principal no llega.
+
+Patrón sano:
+- `castShadow` por gameplay (proyectar sombra del jugador, enemigos, props interactivos).
+- `receiveShadow` solo si **realmente** va a caer una sombra de algo encima. No por defecto universal.
+- Para árboles scattered: `receiveShadow = false` es casi siempre la respuesta correcta. El suelo sí lo necesita; la copa no.
+
+Exponer el flag como opción en los factories de carga (`loadTreeModel({ receiveShadow: false })`) permite que árboles y props compartan loader pero diverjan en política de sombras: los props que se apoyan en el suelo sí quieren que la sombra del jugador caiga encima, los árboles esparcidos no.
+
 ## Helpers y debug
 Útiles cuando se trabaja con sombras:
 - `CameraHelper` sobre la shadow camera

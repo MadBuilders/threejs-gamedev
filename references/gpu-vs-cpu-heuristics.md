@@ -36,6 +36,26 @@ Sospechar más de GPU si mejora claramente al:
 - desactivar bloom, DOF u otros passes caros
 - bajar sombras o su resolución
 - reducir transparencias o materiales costosos
+- apagar una **categoría de decor concreta** (árboles, edificios, foliage) incluso cuando hay pocas instancias
+
+### "Pocos assets" no implica "barato"
+
+Trampa frecuente con assets de IA o escaneados: un nivel con **20 árboles** puede ir peor que otro con **200**, si esos 20 son mallas de 1–3M tris con `doubleSided`, PBR completo y `receiveShadow`. El instance count engaña.
+
+El coste real por asset en GPU es aproximadamente:
+
+```
+tris × instancias × fragments × doubleSided × PBR samples × shadow samples × worldScale²
+```
+
+Donde `worldScale²` importa porque un escalado ×2 cuadruplica los píxeles que el fragment shader tiene que procesar. Cualquier multiplicador de esos puestos "sin querer" mata el presupuesto.
+
+Síntomas que apuntan aquí:
+- desactivar una categoría decor completa (trees, buildings) con un flag gana 15–30 fps aunque la categoría solo tenga 20 instancias
+- `renderer.info.render.triangles` en decenas de millones con una escena "vacía"
+- el adaptive scaler baja resolución pero casi no cambia el frame time
+
+Arreglo: ir al GLB y bajar tris/`doubleSided`/textura, no al renderer. `InstancedMesh` **colapsa draw calls pero no baja coste por instancia**: si el mesh es obeso, el InstancedMesh también lo es.
 
 ### Señales de CPU-bound
 Sospechar más de CPU si mejora claramente al:

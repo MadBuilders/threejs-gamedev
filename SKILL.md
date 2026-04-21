@@ -50,7 +50,10 @@ Intención del usuario → referencia por la que empezar.
 - *"Horizon feo / quiero relieve real en el terreno"* → `world-generation.md` + aplicar **Patrones de producción** de abajo (**heightfield / grid terrain**, **terrain como sistema**).
 - *"Horizonte vacío pero el gameplay es plano"* → `world-generation.md` sección **Relieve de horizonte como silueta** (no meter heightfield completo para esto).
 - *"Cientos de árboles/props iguales van lentos"* → `gltf-pipeline.md` sección **Migración de `clone()` a `InstancedMesh` por leaf**.
+- *"Pocos árboles/props pero el juego va lento igual / apagar una categoría decor mejora mucho"* → `gpu-vs-cpu-heuristics.md` sección **"Pocos assets" no implica "barato"** (coste real = tris × doubleSided × PBR × shadow × worldScale²).
+- *"Asset generado por IA (Meshy, Rodin, Luma, etc.), ¿qué reviso antes de meterlo?"* → `gltf-pipeline.md` sección **AI-generated GLBs** (doubleSided, texturas 2K, polycount, pipeline post-download, FrontSide en loader, no pasar skinned por AI-remesh).
 - *"Sombras caras o con poca nitidez cerca del jugador"* → `lights-shadows.md` sección **Shadow camera que sigue al foco**.
+- *"¿receiveShadow en foliage/árboles lo dejo?"* → `lights-shadows.md` sección **`receiveShadow` también cuesta por fragmento** (por defecto `false` en canopies y scattered trees).
 - *"Stutter rítmico sin FPS obvio bajo"* → `profiling-budgets.md` (bullet de **asignaciones per-frame en el hot path**).
 - *"Quiero source editable y runtime rápido"* → aplicar **Patrones de producción** de abajo y leer `assets.md` / `world-generation.md` según el cuello.
 - *"Quiero editor de niveles / mapa authored"* → `level-editor-in-browser.md` (+ **Level editors / authored worlds** de abajo para doctrina).
@@ -191,11 +194,12 @@ Default sano para juegos casual / cooperativo / competitivo ligero: empezar por 
 
 ## Estado actual
 
-**v1.9.1**. Fix de errata grave en el snippet de `InstancedMesh` por leaf:
+**v1.10**. Recogidos aprendizajes de una sesión de optimización centrada en assets generados por IA en un juego 3D real:
 
-- `gltf-pipeline.md` (Caso 3 → **Migración de `clone()` a `InstancedMesh` por leaf**): el snippet original recomendaba `im.frustumCulled = false` para evitar que el batch desapareciera cuando su bounding sphere (derivado de una sola instancia en el origen) quedaba fuera del frustum. Es la respuesta equivocada: con el batch `frustumCulled = false` el renderer lo somete a cada render pass **siempre**, corriendo el vertex shader sobre todas las instancias incluso cuando la cámara no las ve. Escalado a cientos de árboles en un mundo abierto, eso tira el frame rate en iGPU / móvil sin que los draw calls lo delaten.
-- Sustituido por la combinación correcta: `frustumCulled = true` + `im.computeBoundingBox()` / `computeBoundingSphere()` tras rellenar matrices + **chunk espacial** (una `InstancedMesh` por celda) si las instancias cubren el mundo entero.
-- Añadida explicación explícita del anti-patrón `frustumCulled = false` y del hecho de que el eje de escalado dominante para instancing denso **no es draw calls, es vertex throughput**: cullear chunks es lo que mantiene ese eje bajo control.
+- `gltf-pipeline.md`: sección nueva **AI-generated GLBs (Meshy y similares)** con los defaults silenciosos que traen (`doubleSided: true` en opacos, texturas 2K por slot PBR, polycount de 0.5M–3M tris, sin compresión), el pipeline post-download canónico (`resize` → `webp` → `meshopt`), la regla de **forzar `FrontSide` en el loader** en vez de corregir el GLB (robustez ante re-exports futuros), el aviso de **no pasar skinned meshes por AI-remesh** (rompe weights/skeleton/animaciones), y la práctica de **variant scale como dato authored, no baked in GLB** para poder regenerar la malla sin retunear la escena.
+- `gpu-vs-cpu-heuristics.md`: sección nueva **"Pocos assets" no implica "barato"** con la fórmula mental del coste GPU real por asset (`tris × instancias × fragments × doubleSided × PBR samples × shadow samples × worldScale²`) y el aviso explícito de que **`InstancedMesh` colapsa draw calls pero no baja el coste por instancia**. Nuevo síntoma en GPU-bound: apagar una categoría decor entera gana mucho aunque solo haya 20 instancias.
+- `lights-shadows.md`: sección nueva **`receiveShadow` también cuesta por fragmento** — no sólo `castShadow`. En foliage denso y canopies que están por encima del jugador, `receiveShadow = false` es casi siempre la respuesta correcta. Recomendación de exponer el flag en los factories de carga para que árboles y props compartan loader pero diverjan en política de sombras.
+- `SKILL.md`: tres entradas nuevas en el router (assets de IA, pocos assets que tanquean, `receiveShadow` en foliage).
 
 **v1.9**. Recogidos aprendizajes de una pasada de optimización sobre un juego single-player 3D ya en producción:
 

@@ -128,6 +128,10 @@ function createInstancedMeshes(placements: ReadonlyArray<{ x: number; z: number;
     const im = new THREE.InstancedMesh(leaf.geometry, leaf.material, placements.length);
     im.castShadow = castShadow;
     im.receiveShadow = true;
+    // Con instancias esparcidas por todo el mundo, el frustum culling
+    // per-instance puede esconder instancias reales; suele merecer la pena
+    // dejarlo a cargo del bounding sphere global.
+    im.frustumCulled = false;
 
     for (let i = 0; i < placements.length; i++) {
       const p = placements[i]!;
@@ -136,16 +140,6 @@ function createInstancedMeshes(placements: ReadonlyArray<{ x: number; z: number;
       im.setMatrixAt(i, tmp);
     }
     im.instanceMatrix.needsUpdate = true;
-
-    // CRÍTICO. Por defecto, el bounding sphere de la InstancedMesh viene de
-    // la geometría de UNA instancia (centrada en el origen local). Con
-    // placements esparcidos por el mundo, ese sphere es diminuto comparado
-    // con el footprint real → Three culea el batch entero en cuanto la
-    // cámara no mira al centro. Recomputar bounds tras llenar matrices hace
-    // que Three vea el footprint real y pueda cullear el batch cuando toca.
-    im.computeBoundingBox();
-    im.computeBoundingSphere();
-
     group.add(im);
   }
   return group;
@@ -154,13 +148,71 @@ function createInstancedMeshes(placements: ReadonlyArray<{ x: number; z: number;
 
 Puntos a cuidar:
 - **Agrupar placements por variante** antes de llamar al instanced factory: si tu juego mezcla "árbol A" y "árbol B", son dos `InstancedMesh` distintos (no los fuerces a uno mismo aunque compartan escala).
-- **Chunk espacial si el footprint cubre el mundo**. Una única `InstancedMesh` con centenares de instancias repartidas por todo el nivel tiene un bounding sphere enorme: frustum culling deja de funcionar en la práctica porque el batch casi siempre intersecta el frustum, aunque solo una esquina contenga instancias visibles. Solución: trocear por celdas (p. ej. 24 m) y crear una `InstancedMesh` por celda ocupada, con sus propias matrices y sus propios bounds. Sigue siendo 1 draw call por chunk × leaf, y Three sí puede cullear chunks enteros cuando la cámara mira lejos.
-- **No caer en `im.frustumCulled = false`**. Es la salida fácil para que "no desaparezcan clusters" cuando el bounding sphere está mal calibrado, pero significa que el batch **se somete a cada render pass siempre**, incluso cuando la cámara le da la espalda. El vertex shader corre sobre todas las instancias en main pass y en shadow pass; con cientos de instancias el throughput de vértices se dispara y en iGPUs / móvil tiras el frame rate a la basura sin que los draw calls lo delaten. La combinación correcta es `frustumCulled = true` + bounds recomputados + chunking si hace falta.
 - **Conservar `instance()` para casos raros**: obstáculos interactivos, props que necesitan animación propia o swap de material; esos siguen con `clone(true)`. El instanced path es el default para "decoración densa".
 - **Los obstáculos de colisión que apuntaban a la instancia individual ahora deben apuntar al grupo instanced completo** (si los necesitas). Verifica dónde se usa ese `visual` (en muchos juegos solo para debug o para hacer un swap puntual); si el único lifecycle es "vive desde boot hasta fin del nivel", compartir la referencia es seguro.
-- **Draw calls**: pasas de `N × leafCount` a `leafCount × chunkCount` (una por submesh del GLB × celda). Eso sigue siendo un win masivo frente a `clone()` pero no te engañes: **el eje real a vigilar cuando escales mucho las instancias no son los draw calls, es el vertex throughput**. Cullear chunks es lo que mantiene ese throughput bajo control.
-- **Sombras**: `InstancedMesh` casta sombra por instancia igual que un mesh normal; el shadow pass también se beneficia del colapso de draw calls y del chunk-culling si el frustum de la shadow camera es pequeño.
+- **Draw calls**: pasas de `N × leafCount` a `leafCount` (una por submesh del GLB), no "a 1" salvo que el GLB tenga un único mesh.
+- **Sombras**: `InstancedMesh` casta sombra por instancia igual que un mesh normal; el shadow pass también se beneficia del colapso de draw calls.
 - Si los GLBs llevan `EXT_mesh_gpu_instancing` de origen, este paso en runtime sobra: resuelve ya el pipeline.
+
+## AI-generated GLBs (Meshy y similares)
+
+Los generadores de assets 3D por IA (Meshy, Rodin, Luma, etc.) aceleran mucho el lookdev pero **vienen con defaults silenciosos que hay que corregir siempre** antes de meter el GLB en el juego. Tratarlos como "source editable con lookdev bonito", no como runtime assets.
+
+Checklist obligatorio tras descargar cualquier GLB de IA:
+
+- **`doubleSided: true` en todos los materiales**, incluso en opacos (troncos, paredes, vasijas). Para geometría cerrada es puro coste de fragment shader ~2× sin ganancia visual. Hay que forzar `FrontSide` — ver más abajo.
+- **Texturas a 2048×2048 por defecto**, cada slot PBR (baseColor + normal + metallicRoughness + emissive). Un solo árbol puede pedir ~90 MB de VRAM. Bajar a 512 o 1024 según uso real.
+- **Sin compresión de geometría ni texturas**. `meshopt` + `webp`/KTX2 como paso automático del pipeline.
+- **Polycount descontrolado**. Un mesh "de presentación" puede venir a 0.5M–3M tris. Para realtime: foliage lejano 10K, prop de escenario ~10–30K, edificio ~20–30K. Subir solo si la silueta lo pide de verdad.
+- **Skinned meshes: no pasar por AI-remesh**. Las herramientas de IA rompen weights, skeleton y animaciones. Si hay que reducir un personaje animado, el camino es Blender Decimate preservando grupos de vértices, y reverificar cada clip.
+
+### Pipeline post-download canónico
+
+```bash
+# Bajar resolución de texturas al tamaño real de uso
+pnpm dlx @gltf-transform/cli@latest resize in.glb tmp.glb --width 512 --height 512
+
+# Re-encode a WebP (normal maps y demás). KTX2 si el runtime lo soporta.
+pnpm dlx @gltf-transform/cli@latest webp tmp.glb tmp2.glb
+
+# Compresión de geometría
+pnpm dlx @gltf-transform/cli@latest meshopt tmp2.glb out.glb
+```
+
+Luego `inspect` para confirmar que el resultado es el esperado (tris, `doubleSided`, resolución de texturas, extensiones aplicadas).
+
+### Forzar `FrontSide` en el loader, no en el GLB
+
+Arreglar `doubleSided` con `gltf-transform` o re-export también funciona, pero **es más robusto hacerlo en el loader del juego**:
+
+```ts
+gltf.scene.traverse((obj) => {
+  const m = obj as THREE.Mesh;
+  if (!m.isMesh) return;
+  const mats = Array.isArray(m.material) ? m.material : [m.material];
+  for (const mat of mats) {
+    if (mat) mat.side = THREE.FrontSide;
+  }
+});
+```
+
+Ventaja: cubre cualquier re-export futuro (otra generación, otra herramienta, otro artista) sin depender de que alguien se acuerde de pasar el pipeline. Un solo punto de control en el loader por tipo de asset (árboles, props, casas) evita que la "optimización" se quede anclada al GLB concreto.
+
+### Variant scale como dato authored, no baked in GLB
+
+Si un asset se va a regenerar (textura nueva, mesh mejorada, variante estilística), **no bakear el tamaño final en el GLB** — mantenerlo como constante en código/JSON:
+
+```ts
+export const TREE_VARIANT_SCATTER_SCALE: Record<TreeVariantKind, number> = {
+  olive: 1.0,
+  poplar: 1.3,
+  'poplar-alt': 1.8,
+};
+```
+
+Así puedes re-remeshar el asset sin retunear placements en toda la escena. Es la misma doctrina de **"source editable → artifact"** aplicada a dimensiones: el GLB es el artifact, las decisiones de "qué tan grande va en el mundo" son source humano.
+
+Aplicable a árboles, props, edificios, cualquier cosa que puedas querer refrescar la malla en el futuro.
 
 ## Compresión
 La revisión oficial empuja varias ideas distintas:
