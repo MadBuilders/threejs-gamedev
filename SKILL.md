@@ -46,6 +46,8 @@ Intención del usuario → referencia por la que empezar.
 - *"Minimapa o radar sin otro render pass"* → `ui-hud.md` (**Canvas 2D**), no `render-targets.md` salvo que necesites ver el mundo texturizado.
 - *"Input (teclado, touch, gamepad)"* → `input-controls.md`.
 - *"Necesito física"* → `physics.md`.
+- *"¿Cómo hago colisiones sin motor físico?"* → `physics.md` sección **Antes de meter un motor** (escalera raycast → AABB/cápsula a mano → BVH → motor).
+- *"¿Rapier mete overhead? / ¿lo meto ya?"* → `physics.md` secciones **Cuándo sí vale la pena el switch**, **Rendimiento** (coste concreto) y **Anti-patrones específicos de Rapier**.
 - *"Mundo grande / streaming / proceduralismo"* → `world-generation.md`.
 - *"Horizon feo / quiero relieve real en el terreno"* → `world-generation.md` + aplicar **Patrones de producción** de abajo (**heightfield / grid terrain**, **terrain como sistema**).
 - *"Horizonte vacío pero el gameplay es plano"* → `world-generation.md` sección **Relieve de horizonte como silueta** (no meter heightfield completo para esto).
@@ -193,6 +195,15 @@ Default sano para juegos casual / cooperativo / competitivo ligero: empezar por 
 - búsqueda semántica del foro oficial (`/discourse-ai/embeddings/semantic-search.json`) como ayuda puntual para problemas concretos
 
 ## Estado actual
+
+**v1.11**. Reforzada la doctrina de colisión/física a partir de preguntas frecuentes de kickoff ("¿cómo funciona la colisión en Three.js?", "¿Rapier mete overhead si lo meto?"):
+
+- `physics.md`: bloque nuevo al principio **Antes de meter un motor** con la afirmación explícita *"Three.js no tiene detección de colisiones"* y la **escalera de cuatro estrategias** (raycast puntual → bounding volumes manuales → BVH sobre mesh estático → motor físico). Da permiso explícito a quedarse en el escalón 2 (colisión a mano en XZ o AABB) para la mayoría de juegos casual/walking/multijugador ligero.
+- `physics.md`: sección nueva **El collider nunca es el asset visual** como regla dura. El GLB se renderiza, el collider lo declaras tú (radio, cápsula, AABB). Complementa al aviso de `gltf-pipeline.md` sobre GLBs de IA con `doubleSided: true` y 2–3M tris.
+- `physics.md`: sección nueva **Cuándo sí vale la pena el switch a motor físico** con checklist operativa (ruedas/suspensión, stacking, pendientes con contacto continuo, proyectiles físicos, joints/constraints, mecánicas emergentes). Reemplaza el genérico "cuándo usar física completa" con señales concretas. Cierra con el corolario *"Rapier cuando la interacción lo pide"*.
+- `physics.md`: ampliada la sección **Rendimiento** con el **coste concreto de Rapier** (bundle 1–1.5 MB compat, init async, step según tipo de cuerpo, fixed timestep obligatorio, sync sin asignaciones, queries cacheables) y **números mentales** orientativos (<1 ms con decenas de kinemáticos, 2–5 ms con 500+ dinámicos, 10–20 ms con trimesh del nivel entero).
+- `physics.md`: sección nueva **Anti-patrones específicos de Rapier** con los 8 tiros en el pie típicos (trimesh del mundo, dinámico por defecto, sleep roto, crear/destruir en hot path, delta variable al step, raycasts per-NPC, sync con asignaciones, collider = GLB).
+- `SKILL.md`: dos entradas nuevas en el router (*"¿Cómo hago colisiones sin motor físico?"* y *"¿Rapier mete overhead? / ¿lo meto ya?"*) para que estas preguntas caigan directamente en las secciones nuevas de `physics.md` en vez de en la entrada genérica *"Necesito física"*.
 
 **v1.10**. Recogidos aprendizajes de una sesión de optimización centrada en assets generados por IA en un juego 3D real:
 
