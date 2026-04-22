@@ -64,6 +64,27 @@ Diseñar pensando en:
 
 El manual también deja un detalle práctico que merece estar aquí: si el canvas necesita teclado, hay que pensar en foco y captura de input de forma explícita. No dar por hecho que el canvas ya recibe teclado solo porque está en pantalla.
 
+### Dos joysticks virtuales (pattern reusable)
+
+Para gameplay con dos ejes continuos (mover + otra cosa: apuntar, balancear, rotar torreta, equilibrio de un objeto) el esquema clásico de móvil son **dos joysticks de centro dinámico** en las esquinas inferiores. Gotchas concretos que ahorran tiempo:
+
+- **`setPointerCapture(e.pointerId)` por zona, no por el canvas**. Si el listener vive en el canvas o no capturas, iOS Safari rutea el `pointermove` del segundo dedo hacia quien tenga la captura más reciente → diagonal *move + segunda acción* se rompe. Cada zona guarda su propio `pointerId` y llama a `setPointerCapture` sobre sí misma. Es el requisito real para multi-touch estable.
+- **Centro dinámico > esquina fija**. La base del stick aparece donde aterriza el dedo dentro de la zona. Tolera pulgares que empiezan desde cualquier posición y no obliga al jugador a apuntar a un anchor concreto.
+- **Dead zone y clamp defaults**: radio máximo ~60 px, dead zone ~0.12 por eje (sin ella un pulgar apoyado inyecta un trickle de input continuo). Normalizar a `[-1, 1]` antes de entregar al gameplay.
+- **Touch como override sobre el mismo struct `axes`**, no un pipeline paralelo. El `update()` lee teclado por defecto y, sólo si el stick está `active`, sobreescribe el eje correspondiente:
+
+```text
+// pseudo update()
+axes.moveF = kbd(w) - kbd(s);                  // default
+if (touch.left.active) axes.moveF = touch.left.y;   // override
+```
+
+El gameplay consume un único struct y el código de desktop queda intacto sin `if (isTouch)` distribuidos.
+
+- **Hold-to-look y dos sticks son mutuamente excluyentes en móvil.** No "pintar" el `pointerdown` del canvas además de los sticks: hay que **quitarlo** cuando el input corre en modo touch, o un tercer dedo fuera de ambas zonas dispara free-look sin forma limpia de liberarlo. Regla general: cualquier captura global de pointer desaparece en touch.
+- **`touch-action: none` + `user-select: none` sobre el `canvas` (no sobre `body`)** para que iOS Safari no interprete el arrastre como selección de texto, pinch-zoom o scroll. En `body`/`html` basta con `-webkit-tap-highlight-color: transparent` por limpieza visual.
+- **Device class una sola vez al boot**: `matchMedia('(pointer: coarse)')` → `body.classList.add('is-touch')`. CSS (zonas visibles sólo en coarse) y JS (construir / saltar los sticks) keyean sobre la misma clase. Evita `matchMedia` distribuido por cada módulo y mantiene la decisión en un punto.
+
 ## Raycasting e interacción
 Si el juego requiere seleccionar o tocar objetos 3D:
 - centralizar `Raycaster`
@@ -152,7 +173,6 @@ controllers/
 
 ## Pendiente de ampliar
 - giroscopio y sensores
-- virtual joystick
 - input buffering
 - rebinding
 - accesibilidad y esquemas alternativos

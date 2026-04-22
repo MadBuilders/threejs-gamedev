@@ -45,6 +45,8 @@ Intención del usuario → referencia por la que empezar.
 - *"Mirar alrededor con el ratón sin que la cámara rompa el control"* → `cameras.md` (**seguimiento + offset**) + `input-controls.md` (**hold-to-look / pointer capture**).
 - *"Minimapa o radar sin otro render pass"* → `ui-hud.md` (**Canvas 2D**), no `render-targets.md` salvo que necesites ver el mundo texturizado.
 - *"Input (teclado, touch, gamepad)"* → `input-controls.md`.
+- *"Dos joysticks virtuales / multi-touch en móvil"* → `input-controls.md` sección **Dos joysticks virtuales** (gotcha clave: `setPointerCapture` **por zona**, no por canvas).
+- *"HUD en móvil / portrait lock / safe areas"* → `ui-hud.md` sección **HUD en móvil real** (CSS-only orientation lock, `100dvh`, CTA gemela para atajos de teclado).
 - *"Necesito física"* → `physics.md`.
 - *"¿Cómo hago colisiones sin motor físico?"* → `physics.md` sección **Antes de meter un motor** (escalera raycast → AABB/cápsula a mano → BVH → motor).
 - *"¿Rapier mete overhead? / ¿lo meto ya?"* → `physics.md` secciones **Cuándo sí vale la pena el switch**, **Rendimiento** (coste concreto) y **Anti-patrones específicos de Rapier**.
@@ -195,6 +197,12 @@ Default sano para juegos casual / cooperativo / competitivo ligero: empezar por 
 - búsqueda semántica del foro oficial (`/discourse-ai/embeddings/semantic-search.json`) como ayuda puntual para problemas concretos
 
 ## Estado actual
+
+**v1.12**. Recogidos aprendizajes de portar un juego Three.js singleplayer a móvil con esquema de dos joysticks virtuales:
+
+- `input-controls.md`: sección nueva **Dos joysticks virtuales (pattern reusable)**. Gotchas concretos que ahorran tiempo: **`setPointerCapture(e.pointerId)` por zona, no por el canvas** (sin eso iOS Safari rutea el `pointermove` del segundo dedo hacia quien tenga la captura más reciente y la diagonal se rompe), **centro dinámico** en la base del stick, dead zone ~0.12 + radio 60 px como defaults, **touch como override sobre el mismo struct `axes`** (no un pipeline paralelo: gameplay lee un único struct y el código desktop no necesita `if (isTouch)`), **hold-to-look y dos sticks son mutuamente excluyentes en móvil** (hay que *quitar* el `pointerdown` del canvas, no sólo no pintarlo), `touch-action: none` + `user-select: none` en el canvas pero no en `body`, y **device class una sola vez al boot** con `matchMedia('(pointer: coarse)')` → `body.is-touch`. Quitado `virtual joystick` de *Pendiente de ampliar*.
+- `ui-hud.md`: sección nueva **HUD en móvil real (landscape first)** con los patrones que no son gamedev-obvios pero sí mobile-obvios: `100dvh` en contenedores críticos por el colapso de la URL bar en iOS Safari, `env(safe-area-inset-*)` también en el padding exterior de CTAs (no sólo en `body`), **orientation lock como CSS-only** (explicitar que no se debe llamar al `ScreenOrientation API`: soporte desigual, exige fullscreen), gemela táctil obligatoria para cualquier atajo de teclado en game-over / paused, y la misma `body.is-touch` como switch compartido con el input system.
+- `SKILL.md`: dos entradas nuevas en el router (*"Dos joysticks virtuales / multi-touch en móvil"* y *"HUD en móvil / portrait lock / safe areas"*) para que caigan directo en las secciones nuevas.
 
 **v1.11**. Reforzada la doctrina de colisión/física a partir de preguntas frecuentes de kickoff ("¿cómo funciona la colisión en Three.js?", "¿Rapier mete overhead si lo meto?"):
 

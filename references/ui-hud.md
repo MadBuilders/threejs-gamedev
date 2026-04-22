@@ -69,6 +69,16 @@ Evitar:
 - Tener en cuenta safe areas en móvil (`env(safe-area-inset-*)`).
 - El HUD no debe depender del `renderScale` del renderer: eso solo afecta al canvas.
 
+## HUD en móvil real (landscape first)
+
+Cuando el juego es jugable en phone/tablet el HUD desktop no suele portar directamente. Patrones concretos que no son gamedev-obvios pero sí mobile-obvios:
+
+- **`100dvh`** en contenedores críticos (overlays, modals, paneles a pantalla completa). `100vh` en iOS Safari puede quedar corto cuando la URL bar está visible o largo cuando colapsa; `dvh` se recalcula con el viewport real y deja de arrastrar cortes al HUD.
+- **`env(safe-area-inset-*)` también en el padding exterior** de HUD y CTAs, no sólo en `body`. Botones en esquina necesitan respeto explícito al notch/home indicator; si no, quedan pisados o fuera del área tocable en iPhone.
+- **Orientation lock es CSS-only**. No llamar al `ScreenOrientation API`: soporte desigual entre navegadores y exige fullscreen en varios. Basta un overlay "Rotate to play" revelado por `@media (pointer: coarse) and (orientation: portrait)`, con `visibility: hidden` sobre `#hud` detrás. Coste cero y funciona en todas partes.
+- **Toda CTA dependiente de teclado necesita gemela táctil visible**. Si el desktop dice "Press R to restart", el HUD móvil necesita un botón `Play again` real rutado al mismo comando. Ocultar uno u otro con `body.is-touch` (o `@media (pointer: coarse)`) para que desktop y móvil no se solapen; nunca dejar al jugador mirando un atajo que su dispositivo no puede pulsar.
+- **Device class una sola vez al boot**: `matchMedia('(pointer: coarse)')` → clase `is-touch` en `<body>`. CSS (layout compacto, minimap más pequeño, paneles con `overflow-y: auto`, joysticks visibles) y JS (input system, UI wiring) comparten el mismo switch. Mismo patrón que documenta `input-controls.md` — una sola detección, compartida.
+
 ## HUD 3D diegético
 Cuando el HUD vive en el mundo:
 - Usar `Sprite` para marcadores que siempre miran a cámara.
