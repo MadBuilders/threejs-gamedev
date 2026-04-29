@@ -10,13 +10,14 @@ Work with pure Three.js. Do not mix in React or R3F unless the user explicitly a
 ## Workflow
 
 1. If the user wants to start a new game, settle kickoff, stack, and the first playable slice first.
-2. Identify the main problem.
-3. Read only the references needed (see *Context usage*).
-4. Prefer maintainable patterns over demo code.
-5. Treat the official docs/manual/examples/repo as the canonical base.
-6. Use DeepWiki for concrete questions about the official repo structure or implementation when helpful.
-7. Use semantic search in the official forum (Discourse AI) for edge cases, recurring pain points, or ecosystem-specific questions.
-8. Make performance, mobile, and complexity tradeoffs explicit when they matter.
+2. For a real project, create or update the game’s own `AGENTS.md` when the stack, phase, conventions, major systems, known issues, or next steps change. Use `references/project-agents-md.md` as the pattern.
+3. Identify the main problem.
+4. Read only the references needed (see *Context usage*).
+5. Prefer maintainable patterns over demo code.
+6. Treat the official docs/manual/examples/repo as the canonical base.
+7. Use DeepWiki for concrete questions about the official repo structure or implementation when helpful.
+8. Use semantic search in the official forum (Discourse AI) for edge cases, recurring pain points, or ecosystem-specific questions.
+9. Make performance, mobile, and complexity tradeoffs explicit when they matter.
 
 ## Context usage
 
