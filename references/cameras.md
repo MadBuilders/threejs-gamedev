@@ -1,135 +1,135 @@
 # Cameras
 
-## Objetivo
-Definir estrategias de cámara útiles para juegos Three.js: follow cameras, orbital, top-down, cinematic, collision-aware, sin acoplar la cámara al resto del juego más de lo necesario.
+## Objective
+Define useful camera strategies for Three.js games: follow cameras, orbital, top-down, cinematic, collision-aware, without coupling the camera to the rest of the game more than necessary.
 
-## Regla principal
-**La cámara es un sistema, no un hijo del jugador.**
-Debe consumir estado (posición, velocidad, intenciones del input) y producir una transform. No modifica gameplay ni vive pegada en el grafo del personaje.
+## Main rule
+**The camera is a system, not a child of the player.**
+It should consume state (position, velocity, input intentions) and produce a transform. It does not modify gameplay and does not live glued to the character graph.
 
-## Elegir tipo de cámara antes que código
-Pregunta de kickoff obligatoria (ver `game-kickoff-planning.md`): ¿primera persona, tercera, top-down, lateral, libre? Cada una implica tradeoffs distintos en input, colisiones, render y UI.
+## Choose the camera type before the code
+Mandatory kickoff question (see `game-kickoff-planning.md`): first-person, third-person, top-down, side-view, free? Each implies different tradeoffs in input, collisions, rendering, and UI.
 
-## Patrones principales
+## Main patterns
 
-### 1. Follow camera (3ª persona)
-- target offset en espacio del personaje (detrás y arriba).
-- interpolación suave (spring-damped o `damp()` por eje).
-- rotación controlada por input (ratón, stick derecho, touch).
-- mirar al punto de interés: típicamente `target + lookOffset`, no al pivote del personaje.
+### 1. Follow camera (third-person)
+- target offset in character space (behind and above).
+- smooth interpolation (spring-damped or `damp()` per axis).
+- rotation controlled by input (mouse, right stick, touch).
+- look at the point of interest: typically `target + lookOffset`, not the character pivot.
 
 ### 2. Orbital
-- para vehículos, puzzles, modos fotografía, editores.
-- basada en `OrbitControls` (addon) o implementación propia si el input es mixto.
-- limitar polar y distancia para no permitir ángulos rotos.
+- for vehicles, puzzles, photo modes, editors.
+- based on `OrbitControls` (addon) or a custom implementation if input is mixed.
+- limit polar angle and distance to avoid broken angles.
 
-### 3. Top-down / isométrica
-- cámara ortográfica o perspectiva con FOV bajo.
-- target sigue al jugador en plano horizontal con lag suave.
-- zoom como otro eje controlable.
-- cuidado con shadows: ortográfica necesita ajustar `shadow.camera` acorde.
+### 3. Top-down / isometric
+- orthographic camera or perspective camera with low FOV.
+- target follows the player on the horizontal plane with smooth lag.
+- zoom as another controllable axis.
+- watch shadows: orthographic cameras need `shadow.camera` adjusted accordingly.
 
 ### 4. First-person
-- cámara hija lógica del personaje pero no literalmente del mesh.
-- lookat controlado por input con clamp en pitch.
-- separar posición del cuerpo de la cabeza para permitir head bob y smoothing.
+- camera is a logical child of the character, but not literally of the mesh.
+- look controlled by input with pitch clamp.
+- separate body position from head position to allow head bob and smoothing.
 
 ### 5. Cinematic / scripted
-- timeline de keyframes con posición, target y FOV.
-- interpolación con easing.
-- en cinemáticas cortas, congelar input de gameplay; en largas, valorar skip.
+- keyframe timeline with position, target, and FOV.
+- interpolation with easing.
+- in short cinematics, freeze gameplay input; in longer ones, consider skip.
 
-## Damping y spring
-- Nunca atar la cámara directamente al personaje (`camera.position.copy(player.position)`).
-- Preferir interpolación por delta time:
-  - `damp(current, target, lambda, dt)` donde `lambda` controla la rigidez.
-- Distintos `lambda` para posición y rotación; la rotación suele ir más rápido.
-- No depender de `frameRate`: si se usa `lerp` con factor fijo, vincularlo a `dt`.
+## Damping and spring
+- Never bind the camera directly to the character (`camera.position.copy(player.position)`).
+- Prefer interpolation by delta time:
+  - `damp(current, target, lambda, dt)` where `lambda` controls stiffness.
+- Use different `lambda` values for position and rotation; rotation is usually faster.
+- Do not depend on `frameRate`: if using `lerp` with a fixed factor, tie it to `dt`.
 
-## Collision-aware (3ª persona)
-Cuando un muro se mete entre cámara y personaje:
-- raycast desde el target hacia la posición ideal.
-- si golpea, acortar distancia hasta el punto de impacto menos un margen.
-- suavizar el acortamiento para evitar snaps.
-- opcional: cross-fade del personaje a translúcido si la cámara queda muy cerca.
+## Collision-aware (third-person)
+When a wall gets between the camera and the character:
+- raycast from the target toward the ideal position.
+- if it hits, shorten the distance to the impact point minus a margin.
+- smooth the shortening to avoid snaps.
+- optional: cross-fade the character to translucent if the camera gets very close.
 
-## Shake y feedback
-- shake aditivo sobre la transform final, no sobre el target.
-- duración corta y decay exponencial.
-- distinguir shake de daño, de impacto, de explosión; no reutilizar el mismo perfil.
-- en móvil, reducir amplitud para no marear.
+## Shake and feedback
+- apply shake additively on the final transform, not on the target.
+- use short duration and exponential decay.
+- distinguish damage shake, impact shake, and explosion shake; do not reuse the same profile.
+- on mobile, reduce amplitude to avoid nausea.
 
 ## FOV
-- FOV como parámetro del juego, no constante perdida.
-- FOV dinámico útil para speed feedback (sprint, boost). Con cuidado, límites suaves.
-- En portrait vs landscape en móvil, reconsiderar FOV y framing (ver también `ui-hud.md` para safe areas).
+- FOV is a game parameter, not a lost constant.
+- Dynamic FOV is useful for speed feedback (sprint, boost). Use carefully, with soft limits.
+- In portrait vs landscape on mobile, reconsider FOV and framing (see also `ui-hud.md` for safe areas).
 
-## Aspect y resize
-- `aspect = width / height` y `updateProjectionMatrix()` en cada resize.
-- Para ortográficas, actualizar también `left/right/top/bottom`.
-- Evitar cambios de aspect por frame; centralizar en un `resize` único (ver `architecture.md`).
+## Aspect and resize
+- `aspect = width / height` and `updateProjectionMatrix()` on every resize.
+- For orthographic cameras, also update `left/right/top/bottom`.
+- Avoid aspect changes per frame; centralize them in a single `resize` path (see `architecture.md`).
 
-## Múltiples cámaras
-- una cámara principal de gameplay siempre.
-- cámaras secundarias para minimapa, portales, reflejos: ver `render-targets.md` y `render-target-families.md`.
-- cámara de debug (free-fly) oculta detrás de flag. Útil para verificar escena sin tocar gameplay.
+## Multiple cameras
+- always have one main gameplay camera.
+- secondary cameras for minimap, portals, reflections: see `render-targets.md` and `render-target-families.md`.
+- debug camera (free-fly) hidden behind a flag. Useful for inspecting the scene without touching gameplay.
 
-## Input de cámara
-- abstraer en un controlador con ejes lógicos (`aimX`, `aimY`, `zoom`).
-- mapear después teclado/ratón/gamepad/touch a esos ejes (ver `input-controls.md`).
-- sensibilidad y invert configurables por usuario y persistidos (ver `persistence-save.md`).
+## Camera input
+- abstract it into a controller with logical axes (`aimX`, `aimY`, `zoom`).
+- map keyboard/mouse/gamepad/touch to those axes afterward (see `input-controls.md`).
+- user-configurable and persisted sensitivity and invert settings (see `persistence-save.md`).
 
-## Seguimiento detrás + offset opcional (free-look sin acoplar gameplay)
+## Follow-behind + optional offset (free-look without coupling gameplay)
 
-Útil cuando **otra mecánica** (equilibrio, aim secundario, dirección de empuje…) debe usar un frame de referencia estable, pero quieres que la cámara **no sea fija**.
+Useful when **another mechanic** (balance, secondary aim, push direction, etc.) must use a stable reference frame, but you still want the camera **not to be fixed**.
 
-Patrón:
-1. **Yaw base de seguimiento** anclado a la orientación del personaje (p. ej. `π − facing` para quedar detrás en convención +Z/XZ habitual).
-2. **Offsets de yaw/pitch** opcionales que solo existen mientras el jugador mantiene un botón de *look-around* (o mientras arrastra).
-3. Al soltar, **decay exponencial** de los offsets hacia 0 (λ ~5 s⁻¹: vuelta en ~200–400 ms). La cámara vuelve sola detrás sin paso explícito por tecla.
+Pattern:
+1. **Base follow yaw** anchored to the character orientation (for example, `π − facing` to stay behind in the usual +Z/XZ convention).
+2. Optional **yaw/pitch offsets** that only exist while the player holds a *look-around* button (or while dragging).
+3. On release, **exponential decay** of the offsets toward 0 (λ ~5 s⁻¹: return in ~200–400 ms). The camera returns behind the character by itself without an explicit key step.
 
-Qué gana:
-- Movimiento y otras mecánicas que usan un frame fijo **no dependen del yaw de cámara**; el jugador no “rompe” controles mirando alrededor.
-- No hace falta pointer lock; el cursor puede seguir visible (ver `input-controls.md`, hold-to-look).
+What this gains:
+- Movement and other mechanics that use a fixed frame **do not depend on camera yaw**; the player does not “break” controls by looking around.
+- Pointer lock is not required; the cursor can stay visible (see `input-controls.md`, hold-to-look).
 
-Qué vigilar:
-- Si el movimiento sigue siendo camera-relative, los offsets rotan también el significado de “adelante”. Para evitarlo, o bien el movimiento es **world- o character-relative**, o la cámara solo **orbita visualmente** mientras el gameplay usa `facing` del personaje.
-- Orden de update: calcular **facing / velocidad del personaje antes** de posicionar la cámara si el follow yaw depende de `facing`, para no introducir frame de lag evitable.
+What to watch:
+- If movement remains camera-relative, the offsets also rotate the meaning of “forward”. To avoid this, either movement is **world- or character-relative**, or the camera only **orbits visually** while gameplay uses the character's `facing`.
+- Update order: calculate the character's **facing / velocity before** positioning the camera if follow yaw depends on `facing`, to avoid introducing an avoidable frame of lag.
 
-## Pause, cutscenes y takeover
-- estado claro: gameplay, cinematic, menu, photo.
-- en cinematic, input de gameplay silenciado; cámara consume timeline.
-- transiciones entre estados con blend corto, no corte duro, salvo efecto intencional.
+## Pause, cutscenes, and takeover
+- clear states: gameplay, cinematic, menu, photo.
+- in cinematic, gameplay input is muted; camera consumes the timeline.
+- transitions between states use a short blend, not a hard cut, unless that is the intended effect.
 
-## Rendimiento
-- Una cámara adicional activa es una render pass más si se usa RTT. Evaluar coste.
-- Shadows ortográficas mal ajustadas a la cámara top-down son el primer tirón en este género.
-- No usar `frustum.containsPoint` como herramienta de gameplay; es para culling.
+## Performance
+- One additional active camera is another render pass if RTT is used. Evaluate the cost.
+- Poorly adjusted orthographic shadows for a top-down camera are the first hitch in this genre.
+- Do not use `frustum.containsPoint` as a gameplay tool; it is for culling.
 
 ## Debug
-- helpers: `CameraHelper`, visualización de target, línea raycast de colisión.
-- overlay con FOV, posición, distancia al target, estado (gameplay/cinematic).
-- toggle free-fly para inspección.
+- helpers: `CameraHelper`, target visualization, collision raycast line.
+- overlay with FOV, position, distance to target, state (gameplay/cinematic).
+- free-fly toggle for inspection.
 
-## Anti-patrones
-- cámara como hijo del mesh del personaje
-- `camera.lookAt(player.position)` directo cada frame sin smoothing
-- shake aplicado al target en vez de a la transform final
-- FOV constante hardcoded en tres sitios distintos
-- `lerp` con factor fijo sin `dt`
-- no limitar pitch en primera persona (se da la vuelta hacia arriba)
-- collision-aware que teletransporta la cámara al detectar pared
-- misma cámara para gameplay y minimapa compartiendo transform
+## Anti-patterns
+- camera as a child of the character mesh
+- direct `camera.lookAt(player.position)` every frame without smoothing
+- shake applied to the target instead of to the final transform
+- hardcoded constant FOV in three different places
+- `lerp` with a fixed factor and no `dt`
+- not limiting pitch in first-person (the view flips upward)
+- collision-aware logic that teleports the camera when detecting a wall
+- same camera for gameplay and minimap sharing a transform
 
-## Recomendación fuerte
-Modelar desde el principio:
-- `CameraRig` con estado de cámara (`gameplay`, `cinematic`, `debug`).
-- target y transform final separados.
-- damping por dt y parámetros externos.
-- collision-aware opcional con raycast.
-- input mapeado a ejes lógicos.
+## Strong recommendation
+Model from the start:
+- `CameraRig` with camera state (`gameplay`, `cinematic`, `debug`).
+- separate target and final transform.
+- damping by dt and external parameters.
+- optional collision-aware raycast.
+- input mapped to logical axes.
 
-## Referencias asociadas
+## Related references
 - `architecture.md`
 - `character-locomotion.md`
 - `input-controls.md`

@@ -1,73 +1,73 @@
 # Default Content Sourcing
 
-## Objetivo
-Tener un set pequeño de fuentes de assets y audio para prototipos y primeras versiones, con una política más opinionada que “ya buscaremos algo”.
+## Goal
+Keep a small set of asset and audio sources for prototypes and first versions, with a more opinionated policy than “we’ll look for something later.”
 
-## Regla principal
-**Placeholder rápido primero, complejidad legal después.**
-No bloquear el juego por querer el asset perfecto demasiado pronto.
+## Main rule
+**Fast placeholder first, legal complexity later.**
+Do not block the game because you want the perfect asset too early.
 
-## Default por tipo de recurso
-### 3D placeholder / prototipo rápido
-- **Kenney** para packs simples y coherentes
-- **Poly Pizza** para low poly rápido
+## Default by resource type
+### 3D placeholder / quick prototype
+- **Kenney** for simple, coherent packs
+- **Poly Pizza** for quick low poly assets
 
-### Texturas y materiales
-- **ambientCG** como fuente bastante sana para materiales y superficies
+### Textures and materials
+- **ambientCG** as a fairly healthy source for materials and surfaces
 
-### Modelos 3D de producción ligera
-- **Sketchfab** solo con muchísimo cuidado de licencia y atribución
+### Lightweight production 3D models
+- **Sketchfab** only with extreme care around license and attribution
 
-### Audio provisional
-- **Pixabay** para música y SFX provisionales rápidos
-- **Freesound** como fuente secundaria, con cuidado extra por licencias y calidad desigual
+### Temporary audio
+- **Pixabay** for quick temporary music and SFX
+- **Freesound** as a secondary source, with extra care because licenses and quality vary a lot
 
-## Política sana de uso
-### Prototipo
-Priorizar:
-- velocidad
-- coherencia suficiente
-- licencias claras
+## Healthy usage policy
+### Prototype
+Prioritize:
+- speed
+- enough consistency
+- clear licenses
 
-### Producción ligera
-Priorizar:
-- consistencia visual
-- trazabilidad de licencias
-- reducción de mezcla caótica entre estilos
+### Lightweight production
+Prioritize:
+- visual consistency
+- license traceability
+- reducing chaotic style mixing
 
-## Qué evitar
-- mezclar veinte estilos visuales sin criterio
-- bajar assets sin registrar licencia o fuente
-- depender de Sketchfab sin revisar condiciones de uso concretas
-- bloquear el arranque del juego por buscar el asset definitivo
+## What to avoid
+- mixing twenty visual styles without criteria
+- downloading assets without recording license or source
+- depending on Sketchfab without reviewing concrete usage terms
+- blocking the game startup while searching for the final asset
 
-## Registro mínimo recomendado
-Guardar por proyecto:
-- fuente del asset
-- licencia o condición de uso
-- si es placeholder o candidato final
-- si requiere atribución
+## Recommended minimum registry
+Save per project:
+- asset source
+- license or usage condition
+- whether it is a placeholder or final candidate
+- whether it requires attribution
 
-Eso puede vivir en el `AGENTS.md` del proyecto o en un inventario corto asociado.
+This can live in the project `AGENTS.md` or in a short associated inventory.
 
 ## Audio
-Default sano:
-- placeholders rápidos primero
-- no invertir fuerte en música final hasta validar el loop del juego
-- mantener SFX claros aunque sean provisionales
+Healthy default:
+- quick placeholders first
+- do not invest heavily in final music until the game loop is validated
+- keep SFX clear even if they are temporary
 
-## Pipeline recomendado
-1. placeholder barato y legalmente claro
-2. validar gameplay
-3. sustituir solo lo que realmente merezca mejora
+## Recommended pipeline
+1. cheap, legally clear placeholder
+2. validate gameplay
+3. replace only what truly deserves improvement
 
-## Recomendación fuerte
-Si no hay una necesidad muy concreta todavía:
-- Kenney / Poly Pizza para prototipo visual
-- ambientCG para materiales
-- Pixabay para audio provisional
-- Sketchfab solo con control serio de licencia
+## Strong recommendation
+If there is no very specific need yet:
+- Kenney / Poly Pizza for visual prototyping
+- ambientCG for materials
+- Pixabay for temporary audio
+- Sketchfab only with serious license control
 
-## Referencias asociadas
+## Related references
 - `game-kickoff-planning.md`
 - `project-agents-md.md`

@@ -1,117 +1,117 @@
 # Anti-Cheat by Telemetry and Anomalies
 
-## Objetivo
-Añadir una capa sensata de detección de anomalías y validación de plausibilidad, sin vender humo tipo “anti-cheat perfecto” ni cargar el cliente con responsabilidades que no le tocan.
+## Goal
+Add a sensible layer of anomaly detection and plausibility validation, without hand-waving about “perfect anti-cheat” or putting responsibilities on the client that do not belong there.
 
-## Regla principal
-**Primero autoridad y validación, luego detección.**
-La telemetría no sustituye un servidor autoritativo. La complementa.
+## Main rule
+**First authority and validation, then detection.**
+Telemetry does not replace an authoritative server. It complements it.
 
-## Qué intenta resolver
-- detectar patrones imposibles o muy improbables
-- revisar abuso sin bloquear juego legítimo por ruido
-- evitar depender solo de reglas binarias simplonas
+## What it tries to solve
+- detect impossible or highly improbable patterns
+- review abuse without blocking legitimate play because of noise
+- avoid relying only on simplistic binary rules
 
-## Base mínima obligatoria
-Antes de hablar de anomalías, tener:
-- autoridad del servidor en vida, daño, cooldowns y validaciones críticas
-- límites plausibles de movimiento y cadencia
-- rechazo de mensajes imposibles
+## Mandatory minimum base
+Before talking about anomalies, have:
+- server authority over health, damage, cooldowns, and critical validations
+- plausible movement and cadence limits
+- rejection of impossible messages
 
-Si eso no existe, la telemetría llega demasiado tarde.
+If that does not exist, telemetry arrives too late.
 
-## Tipos de anomalía útiles
-### Movimiento
-- velocidad imposible
-- aceleración improbable repetida
-- teleports fuera de reglas
-- desajustes frecuentes entre input esperado y resultado observado
+## Useful anomaly types
+### Movement
+- impossible speed
+- repeated improbable acceleration
+- teleports outside the rules
+- frequent mismatches between expected input and observed result
 
-### Combate
-- cadencia superior a la permitida
-- precisión estadísticamente absurda mantenida
-- patrones de adquisición de target demasiado perfectos
-- disparos con origen/dirección incompatibles con postura o arma
+### Combat
+- cadence above the allowed rate
+- sustained statistically absurd accuracy
+- overly perfect target acquisition patterns
+- shots with origin/direction incompatible with posture or weapon
 
-### Economía/acciones
-- uso de habilidades sin recursos
-- secuencias imposibles por cooldown
-- comandos fuera de orden lógico o de tick razonable
+### Economy/actions
+- using abilities without resources
+- sequences impossible because of cooldowns
+- commands outside logical order or a reasonable tick range
 
-## Modelo sano
-Usar capas:
-1. **hard validation**: rechazar lo imposible
-2. **soft suspicion**: acumular señales
-3. **review or mitigation**: actuar si el patrón persiste
+## Healthy model
+Use layers:
+1. **hard validation**: reject the impossible
+2. **soft suspicion**: accumulate signals
+3. **review or mitigation**: act if the pattern persists
 
-## Scoring de sospecha
-Mejor que banear por un evento aislado.
+## Suspicion scoring
+Better than banning for one isolated event.
 
-Ejemplo conceptual:
-- cada anomalía suma un peso
-- hay decaimiento temporal
-- ciertos eventos críticos pesan mucho más
-- acciones finales requieren acumulación o evidencia muy fuerte
+Conceptual example:
+- each anomaly adds a weight
+- there is temporal decay
+- certain critical events weigh much more
+- final actions require accumulation or very strong evidence
 
-## Mitigaciones posibles
-No todo tiene que ser ban directo.
+## Possible mitigations
+Not everything has to be an immediate ban.
 
-Opciones:
-- ignorar el evento inválido
-- corregir posición/estado
-- reducir confianza en reportes del cliente
-- marcar la sesión para revisión
-- aplicar restricciones progresivas
+Options:
+- ignore the invalid event
+- correct position/state
+- reduce trust in client reports
+- flag the session for review
+- apply progressive restrictions
 
-## Qué loggear
-Guardar lo suficiente para investigar:
+## What to log
+Store enough to investigate:
 - `playerId`
-- tipo de anomalía
+- anomaly type
 - tick/timestamp
-- contexto del arma/acción
-- métricas resumidas
-- estado de sospecha acumulada
+- weapon/action context
+- summarized metrics
+- accumulated suspicion state
 
-Evitar:
-- logs gigantes de scene graph
-- datos visuales innecesarios
+Avoid:
+- huge scene graph logs
+- unnecessary visual data
 
 ## False positives
-Tema delicado de verdad.
+A genuinely delicate topic.
 
-Puede haber ruido por:
-- latencia alta
+Noise can come from:
+- high latency
 - jitter
-- pérdida de paquetes
-- bugs del propio juego
-- diferencias de frame pacing cliente/servidor
+- packet loss
+- bugs in the game itself
+- client/server frame pacing differences
 
-Regla:
-- no castigar fuerte sobre una sola señal dudosa
-- correlacionar eventos y contexto
+Rule:
+- do not punish harshly from one doubtful signal
+- correlate events and context
 
-## Qué sí puede hacer Three.js aquí
-Muy poco en autoridad, algo en observabilidad:
-- visualización debug de rayos, hitboxes o trayectorias
-- overlays internos para investigar casos raros
-- reproducción visual de eventos sospechosos si existe tooling interno
+## What Three.js can do here
+Very little for authority, some for observability:
+- debug visualization of rays, hitboxes, or trajectories
+- internal overlays to investigate odd cases
+- visual replay of suspicious events if internal tooling exists
 
-Pero la detección real vive fuera del render.
+But real detection lives outside rendering.
 
-## Anti-patrones
-- prometer “anti-cheat” solo con heurísticas cliente
-- banear por precisión alta sin contexto
-- confundir bug de netcode con trampa real
-- loggear tanto que luego nadie analiza nada
+## Anti-patterns
+- promising “anti-cheat” with only client heuristics
+- banning for high accuracy without context
+- confusing a netcode bug with a real cheat
+- logging so much that nobody analyzes it later
 
-## Recomendación fuerte
-Diseñar una capa de anomalías pequeña y accionable:
-- pocas señales buenas
-- scoring simple
-- logs útiles
-- mitigaciones graduales
+## Strong recommendation
+Design a small, actionable anomaly layer:
+- a few good signals
+- simple scoring
+- useful logs
+- gradual mitigations
 
-## Pendiente de ampliar
-- revisión asistida por replay
-- anomalías por input device
-- correlación entre squads/cuentas
+## To expand later
+- replay-assisted review
+- input device anomalies
+- correlation between squads/accounts

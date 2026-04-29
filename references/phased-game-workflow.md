@@ -1,133 +1,133 @@
 # Phased Game Workflow
 
-## Objetivo
-Evitar el error clásico de intentar hacer un juego entero de golpe, forzando una secuencia de fases donde primero se valida la mecánica y luego se añade complejidad.
+## Goal
+Avoid the classic mistake of trying to build an entire game at once by forcing a phase sequence where the mechanic is validated first and complexity is added later.
 
-## Regla principal
-**No construir arte, backend y multiplayer sobre una mecánica no validada.**
-Primero probar que el juego funciona. Luego que se siente bien. Luego hacerlo bonito. Luego hacerlo grande.
+## Main rule
+**Do not build art, backend, and multiplayer on top of an unvalidated mechanic.**
+First prove the game works. Then make it feel good. Then make it pretty. Then make it big.
 
-## Cuándo usar esto
-Usar esta referencia cuando el usuario quiera:
-- empezar un juego nuevo
-- planificar roadmap inicial
-- decidir en qué orden atacar sistemas
-- evitar scope explosion
+## When to use this
+Use this reference when the user wants to:
+- start a new game
+- plan the initial roadmap
+- decide the order for tackling systems
+- avoid scope explosion
 
-## Secuencia recomendada
-### Fase 1. Core loop y mecánica
-Objetivo:
-- validar la fantasía jugable básica
-- comprobar si el loop principal tiene gracia
+## Recommended sequence
+### Phase 1. Core loop and mechanic
+Goal:
+- validate the basic playable fantasy
+- check whether the main loop is actually fun
 
-Qué sí hacer:
-- movimiento básico
-- cámara mínima
-- colisión suficiente
-- una sola mecánica central
-- un objetivo o fail state simple
-- placeholders feos sin problema
+What to do:
+- basic movement
+- minimal camera
+- enough collision
+- one central mechanic
+- a simple objective or fail state
+- ugly placeholders are fine
 
-Qué no hacer todavía:
-- assets finales
-- UI compleja
-- progreso meta
+What not to do yet:
+- final assets
+- complex UI
+- meta progression
 - backend
-- multiplayer completo
+- full multiplayer
 
-Criterio de salida:
-- el usuario puede jugar 1 o 2 minutos y decir si la idea funciona o no
+Exit criterion:
+- the user can play for 1 or 2 minutes and say whether the idea works or not
 
-### Fase 2. Feel y estructura
-Objetivo:
-- hacer que el juego responda bien
-- limpiar arquitectura mínima para no seguir sobre barro
+### Phase 2. Feel and structure
+Goal:
+- make the game respond well
+- clean up the minimum architecture so you are not continuing on mud
 
-Qué sí hacer:
-- mejorar controles
-- mejorar cámara
-- ajustar timing, feedback y dificultad inicial
-- ordenar bootstrap, systems y carpetas
-- eliminar bugs que rompen la experiencia base
+What to do:
+- improve controls
+- improve camera
+- tune timing, feedback, and initial difficulty
+- organize bootstrap, systems, and folders
+- remove bugs that break the base experience
 
-Qué no hacer todavía:
-- polish audiovisual grande
-- expansión fuerte de contenido
+What not to do yet:
+- major audiovisual polish
+- heavy content expansion
 
-Criterio de salida:
-- el slice base ya no solo funciona, también empieza a sentirse bien
+Exit criterion:
+- the base slice does not only work; it also starts feeling good
 
-### Fase 3. Presentación y contenido
-Objetivo:
-- sustituir placeholders donde de verdad aporte
-- reforzar identidad visual y sonora
+### Phase 3. Presentation and content
+Goal:
+- replace placeholders where it truly helps
+- reinforce visual and sound identity
 
-Qué sí hacer:
-- assets 3D mejores
-- texturas y materiales
-- música y SFX
-- UI más clara
-- más variedad de contenido si la mecánica ya aguanta
+What to do:
+- better 3D assets
+- textures and materials
+- music and SFX
+- clearer UI
+- more content variety if the mechanic already holds up
 
-Regla:
-- mejorar primero lo que más cambia la percepción del loop, no lo cosmético secundario
+Rule:
+- improve first what most changes the perception of the loop, not secondary cosmetics
 
-Criterio de salida:
-- el juego ya comunica mejor su intención y deja de parecer solo un prototipo gris
+Exit criterion:
+- the game communicates its intent better and no longer feels like only a gray prototype
 
-### Fase 4. Sistemas avanzados
-Objetivo:
-- añadir complejidad solo después de validar el juego base
+### Phase 4. Advanced systems
+Goal:
+- add complexity only after validating the base game
 
-Puede incluir:
-- progreso persistente
+May include:
+- persistent progress
 - economy/meta loops
-- generación más seria
-- herramientas internas
-- settings más completos
+- more serious generation
+- internal tools
+- more complete settings
 
-### Fase 5. Multiplayer, si aplica
-Regla importante:
-- si multiplayer es accesorio, va claramente después del core loop validado
-- si multiplayer es central para la fantasía del juego, se diseña pronto, pero se implementa en un slice mínimo, no como sistema gigante desde el día 1
+### Phase 5. Multiplayer, if applicable
+Important rule:
+- if multiplayer is accessory, it clearly comes after the validated core loop
+- if multiplayer is central to the game fantasy, design it early, but implement it as a minimal slice, not as a giant system from day 1
 
-Slice sano de multiplayer:
-- conexión mínima
-- un solo escenario
-- una sola interacción relevante
-- validación de latencia, authority y sensación antes de escalar
+Healthy multiplayer slice:
+- minimal connection
+- one scenario
+- one relevant interaction
+- validate latency, authority, and feel before scaling
 
-## Cómo validarlo con el usuario
-Al final de cada fase, hacer una validación corta:
-- qué funciona
-- qué no funciona
-- qué duele más ahora
-- si merece pasar a la siguiente fase o seguir iterando la actual
+## How to validate with the user
+At the end of each phase, run a short validation:
+- what works
+- what does not work
+- what hurts most right now
+- whether it is worth moving to the next phase or iterating on the current one
 
-## Anti-patrones
-- hacer mecánica, arte, backend y multiplayer a la vez
-- pulir assets antes de comprobar si el loop engancha
-- meter red demasiado pronto para “ir adelantando”
-- añadir más contenido cuando el problema real era el feel
-- no declarar explícitamente qué queda fuera de la fase actual
+## Anti-patterns
+- doing mechanics, art, backend, and multiplayer at the same time
+- polishing assets before checking whether the loop hooks people
+- adding networking too early to “get ahead”
+- adding more content when the real problem is feel
+- not explicitly declaring what is outside the current phase
 
-## Regla operativa fuerte
-En cada proyecto nuevo:
-- declarar fase actual
-- declarar qué queda fuera de esa fase
-- no saltar de fase sin validación mínima
+## Strong operating rule
+In every new project:
+- declare the current phase
+- declare what is outside that phase
+- do not jump phases without minimal validation
 
-Esto encaja muy bien con `AGENTS.md` del proyecto.
+This fits very well with the project `AGENTS.md`.
 
-## Recomendación fuerte
-Si el usuario dice “quiero hacer un juego X”, responder con:
-1. kickoff breve
-2. stack por defecto
-3. fase actual = core loop
-4. primer slice jugable
-5. lista explícita de cosas que todavía no vamos a tocar
+## Strong recommendation
+If the user says “I want to make an X game,” answer with:
+1. short kickoff
+2. default stack
+3. current phase = core loop
+4. first playable slice
+5. explicit list of things we are not touching yet
 
-## Referencias asociadas
+## Related references
 - `game-kickoff-planning.md`
 - `default-project-stack.md`
 - `project-agents-md.md`

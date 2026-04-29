@@ -1,174 +1,174 @@
 # Frame Pacing and Stutter Control
 
-## Objetivo
-Reducir tirones visibles y frame pacing irregular en juegos Three.js, entendiendo que un buen FPS medio no garantiza una buena sensación de juego.
+## Goal
+Reduce visible hitches and irregular frame pacing in Three.js games, understanding that a good average FPS does not guarantee good game feel.
 
-## Regla principal
-**No medir solo media de FPS.**
-Hay que vigilar:
-- picos de frame time
-- stutter al cargar o activar assets
-- recompilación de shaders
-- trabajo masivo concentrado en un único frame
+## Main rule
+**Do not measure only average FPS.**
+Watch:
+- frame-time spikes
+- stutter when loading or activating assets
+- shader recompilation
+- mass work concentrated in one frame
 
-## Qué es lo que duele de verdad
-Problemas típicos de sensación:
-- entrar en una zona y notar un microparón
-- cambiar skin o personaje y que el frame se rompa
-- activar un pass o material y pegar un tirón
-- hacer spawn masivo de props o enemigos y sentir un golpe seco
+## What actually hurts
+Typical feel problems:
+- entering a zone and noticing a micro-freeze
+- changing skin or character and breaking the frame
+- enabling a pass or material and getting a hitch
+- spawning a mass of props or enemies and feeling a hard hit
 
-Eso suele venir de trabajo concentrado en mal momento, no solo de un rendimiento medio bajo.
+That usually comes from work concentrated at a bad time, not only from low average performance.
 
-## Tipos de stutter
+## Types of stutter
 ### Shader stutter
-- compilación o recompilación de shaders
-- cambios de materiales o flags que fuerzan nuevos programas
+- shader compilation or recompilation
+- material or flag changes that force new programs
 
 ### Asset activation stutter
 - parsing
-- descompresión
-- subida de recursos a GPU
-- primer uso de materiales o texturas
+- decompression
+- uploading resources to GPU
+- first use of materials or textures
 
 ### JS/update stutter
-- generación procedural grande
-- rebuild de geometrías
-- spawn/despawn masivo
-- demasiada lógica agrupada en un frame
+- large procedural generation
+- geometry rebuilds
+- mass spawn/despawn
+- too much logic grouped into one frame
 
 ### Postprocessing stutter
-- activar composer o passes caros en caliente
-- resize mal coordinado
-- crear render targets en mal momento
+- enabling composer or expensive passes live
+- poorly coordinated resize
+- creating render targets at a bad time
 
-## `compileAsync()` como patrón serio
-La example moderna de `webgl_loader_gltf` deja un patrón muy valioso:
-- usar `renderer.compileAsync()` antes de añadir un modelo importante puede evitar el tirón de compilación al primer frame visible
+## `compileAsync()` as a serious pattern
+The modern `webgl_loader_gltf` example leaves a very valuable pattern:
+- using `renderer.compileAsync()` before adding an important model can avoid the compilation hitch on the first visible frame
 
-Casos donde conviene pensar en ello:
-- cambios de personaje o skin
-- entrada a escena nueva
-- viewer o selector de modelos
-- assets grandes cargados bajo demanda
+Cases where it is worth considering:
+- character or skin changes
+- entering a new scene
+- model viewer or selector
+- large assets loaded on demand
 
-## Recompilación evitable
-`how-to-update-things` deja un aviso bastante claro:
-- ciertas propiedades de material no cambian gratis
-- algunas fuerzan recompilación y pueden inducir jerkiness
+## Avoidable recompilation
+`how-to-update-things` gives a fairly clear warning:
+- certain material properties do not change for free
+- some force recompilation and can induce jerkiness
 
-Sospechar especialmente de cambios que alteran:
-- presencia de texturas
+Be especially suspicious of changes that alter:
+- presence of textures
 - vertex colors
 - morphing
 - shadow map usage
 - alpha test
 - transparent
-- estructura de uniforms o variantes de shader
+- uniform structure or shader variants
 
-Regla:
-- no cambiar permutations de materiales alegremente en mitad de gameplay
-- preferir valores dummy o rutas preparadas si el cambio será frecuente
+Rule:
+- do not casually change material permutations in the middle of gameplay
+- prefer dummy values or prepared paths if the change will be frequent
 
-## Prewarm mental
-Pensar en “prewarm” o preparación anticipada de recursos.
+## Mental prewarm
+Think in terms of “prewarm” or early preparation of resources.
 
-Ejemplos:
-- compilar modelos o materiales antes de que entren en plano
-- cargar y preparar un enemigo antes del spawn visible
-- construir render targets o passes antes de una transición importante
-- precalcular variantes que sabes que vas a usar en breve
+Examples:
+- compile models or materials before they enter view
+- load and prepare an enemy before visible spawn
+- build render targets or passes before an important transition
+- precompute variants you know you will need soon
 
 ## Staggering
-No meter trabajo pesado de golpe si se puede repartir.
+Do not dump heavy work all at once if it can be spread out.
 
-Patrones útiles:
-- crear props en lotes
-- repartir spawn en varios frames
-- construir chunks por fases
-- escalonar inicialización de sistemas secundarios
-- no limpiar y reconstruir medio mundo en el mismo frame si hay alternativa
+Useful patterns:
+- create props in batches
+- spread spawn over several frames
+- build chunks by phases
+- stagger initialization of secondary systems
+- do not clear and rebuild half the world in the same frame if there is an alternative
 
 ## Asset activation
-Cargar un asset no termina cuando llega el archivo.
-A veces faltan aún:
+Loading an asset does not end when the file arrives.
+Sometimes it still needs:
 - parse
-- bind de texturas
-- compilación de materiales
-- activación de animaciones
-- ajuste de cámara o scene attachment
+- texture binding
+- material compilation
+- animation activation
+- camera adjustment or scene attachment
 
-Regla fuerte:
-- separar **load complete** de **asset ready to show smoothly**
+Strong rule:
+- separate **load complete** from **asset ready to show smoothly**
 
-## Frame time y picos
-Más útil que mirar solo FPS:
-- medir frame time medio
-- medir picos claros
-- revisar qué pasa en eventos concretos: spawn, load, resize, cambio de preset, entrada de escena
+## Frame time and spikes
+More useful than looking only at FPS:
+- measure average frame time
+- measure clear spikes
+- inspect what happens at specific events: spawn, load, resize, preset change, scene entry
 
-Si el juego va razonablemente bien pero “se siente mal”, casi siempre toca mirar esta capa.
+If the game runs reasonably well but “feels bad”, this layer is almost always where you need to look.
 
-## Delta y estabilidad
-Si el delta se dispara por una pausa, carga o tab switch:
-- no dejar que el gameplay explote por integrar un delta monstruoso
-- limitar deltas máximos en sistemas sensibles cuando tenga sentido
-- usar substeps en sistemas que lo necesiten
+## Delta and stability
+If delta blows up because of a pause, load, or tab switch:
+- do not let gameplay explode by integrating a monstrous delta
+- clamp maximum deltas in sensitive systems when it makes sense
+- use substeps in systems that need them
 
-Esto no arregla toda la causa del stutter, pero evita que el frame malo destruya la simulación.
+This does not fix the whole cause of stutter, but it prevents a bad frame from destroying the simulation.
 
-## Spawn, despawn y lifecycle
-Momentos peligrosos:
-- olas de enemigos
-- cambio de chunk
-- abrir inventario 3D o selector
-- cambiar calidad visual
-- destruir y recrear composer o materiales
+## Spawn, despawn, and lifecycle
+Dangerous moments:
+- enemy waves
+- chunk change
+- opening a 3D inventory or selector
+- changing visual quality
+- destroying and recreating composer or materials
 
-Recomendación:
-- ownership claro
-- create/attach/detach/dispose explícitos
-- evitar picos por destrucción y creación masiva sin planificación
+Recommendation:
+- clear ownership
+- explicit create/attach/detach/dispose
+- avoid spikes from unplanned mass destruction and creation
 
 ## Postprocessing
-Los passes también pueden introducir tirones, no solo coste continuo.
+Passes can introduce hitches too, not just continuous cost.
 
-Cuidado con:
-- activar bloom o cadenas nuevas en caliente
-- resize sin sincronizar renderer y composer
-- crear render targets grandes durante gameplay crítico
+Be careful with:
+- enabling bloom or new chains live
+- resize without synchronizing renderer and composer
+- creating large render targets during critical gameplay
 
-Los quality tiers ayudan bastante aquí si controlan explícitamente cuándo y cómo cambian passes, tamaños y targets.
+Quality tiers help a lot here if they explicitly control when and how passes, sizes, and targets change.
 
-## Debug útil
-Tener panel o logs que permitan correlacionar tirón con evento:
-- frame time actual y picos recientes
-- carga o activación de assets
-- cambios de calidad
-- número de programas o draw calls
-- momento de spawn/despawn importante
+## Useful debug
+Have a panel or logs that can correlate a hitch with an event:
+- current frame time and recent spikes
+- asset loading or activation
+- quality changes
+- number of programs or draw calls
+- important spawn/despawn moment
 
-## Anti-patrones
-- presumir de FPS medio e ignorar picos
-- cambiar flags de material en caliente sin pensar en recompilación
-- cargar y mostrar asset grande en el mismo instante crítico
-- rebuild masivo de geometría en frame jugable
-- activar postprocessing pesado sin warmup
-- no separar “cargado” de “listo para mostrarse suave”
+## Anti-patterns
+- bragging about average FPS while ignoring spikes
+- changing material flags live without thinking about recompilation
+- loading and showing a large asset at the same critical instant
+- massive geometry rebuild in a playable frame
+- enabling heavy postprocessing without warmup
+- not separating “loaded” from “ready to show smoothly”
 
-## Recomendación fuerte
-Crear una pequeña política de runtime que cubra:
+## Strong recommendation
+Create a small runtime policy covering:
 - preload
 - compile/warmup
-- activación visible
-- stagger de trabajo pesado
-- límites de delta en sistemas sensibles
-- medición de picos, no solo de medias
+- visible activation
+- staggering heavy work
+- delta limits in sensitive systems
+- spike measurement, not only average measurement
 
-Si además el proyecto usa quality scaling automático, esa política debería incluir histéresis, cooldown y cambios en momentos seguros. Ver `adaptive-quality-scaling.md`.
+If the project also uses automatic quality scaling, that policy should include hysteresis, cooldown, and changes at safe moments. See `adaptive-quality-scaling.md`.
 
-## Pendiente de ampliar
-- warmup por escena o encounter
-- técnicas de background preparation más concretas
-- quality scaler basado en picos de frame time
-- política de spawn budgets por frame
+## To expand later
+- warmup by scene or encounter
+- more concrete background-preparation techniques
+- quality scaler based on frame-time spikes
+- spawn budget policy per frame

@@ -1,202 +1,202 @@
 # Stress Scenes and Internal Benchmarks
 
-## Objetivo
-Crear escenas de estrés y benchmarks internos que sirvan para validar budgets, quality tiers, frame pacing y decisiones de arquitectura en un juego Three.js real.
+## Goal
+Create stress scenes and internal benchmarks that validate budgets, quality tiers, frame pacing, and architecture decisions in a real Three.js game.
 
-## Regla principal
-**No confiar solo en la escena bonita del prototipo.**
-Hace falta una batería pequeña de escenas que fuercen los cuellos típicos del proyecto.
+## Main rule
+**Do not trust only the pretty prototype scene.**
+You need a small battery of scenes that force the project’s typical bottlenecks.
 
-## Qué debe responder una escena de estrés
-- ¿qué pasa si sube la densidad de props?
-- ¿qué pasa si activo el tier alto?
-- ¿qué pasa si hay carga, spawn o cambio de zona?
-- ¿qué pasa con sombras, postprocessing y pixel ratio altos?
-- ¿qué pasa en móvil o hardware más flojo?
+## What a stress scene should answer
+- what happens if prop density rises?
+- what happens if I enable the high tier?
+- what happens if there is loading, spawn, or zone change?
+- what happens with high shadows, postprocessing, and pixel ratio?
+- what happens on mobile or weaker hardware?
 
-## Tipos de escenas de estrés útiles
+## Useful stress-scene types
 ### 1. Draw-call stress
-Sirve para validar:
-- instancing vs meshes sueltas
-- merge de geometrías
-- materiales por objeto
+Validates:
+- instancing vs loose meshes
+- geometry merging
+- materials per object
 
-Patrón de referencia:
+Reference pattern:
 - baseline `NAIVE`
-- variante `MERGED`
-- variante `INSTANCED`
+- variant `MERGED`
+- variant `INSTANCED`
 
-El example `webgl_instancing_performance` deja exactamente esta comparación, y merece convertirse en benchmark interno de referencia.
+The `webgl_instancing_performance` example shows exactly this comparison, and deserves to become an internal reference benchmark.
 
 ### 2. Scene graph / CPU stress
-Sirve para validar:
-- coste de updates por frame
-- demasiados nodos vivos
-- lógica por entidad
-- raycasts o systems que escalan mal
+Validates:
+- cost of updates per frame
+- too many live nodes
+- per-entity logic
+- raycasts or systems that scale badly
 
-Medir:
+Measure:
 - frame time
-- nodos vivos
-- frecuencia de updates
-- degradación al aumentar entidades
+- live nodes
+- update frequency
+- degradation as entities increase
 
 ### 3. Postprocessing stress
-Sirve para validar:
+Validates:
 - composer
 - passes
 - render targets
-- tiers de calidad
+- quality tiers
 
-Escalar cosas como:
+Scale things like:
 - bloom on/off
 - DOF on/off
-- resolución interna de passes
+- internal resolution of passes
 - pixel ratio
 
-Importa mucho porque el coste aquí puede cambiar brutalmente entre tiers.
+This matters a lot because cost here can change brutally between tiers.
 
-Cuando el proyecto usa mirrors, portals o minimaps, merece además una escena RTT dedicada por familia. Ver `render-target-families.md`.
+When the project uses mirrors, portals, or minimaps, it also deserves a dedicated RTT scene per family. See `render-target-families.md`.
 
 ### 4. Asset activation stress
-Sirve para validar:
-- carga bajo demanda
+Validates:
+- on-demand loading
 - `compileAsync()`
-- guards de async
-- stutter al cambiar modelo, skin o escena
+- async guards
+- stutter when changing model, skin, or scene
 
-Prueba útil:
-- alternar assets pesados o personajes
-- medir picos al activar
-- comparar con y sin warmup
+Useful test:
+- alternate heavy assets or characters
+- measure activation spikes
+- compare with and without warmup
 
 ### 5. Spawn/despawn stress
-Sirve para validar:
+Validates:
 - lifecycle
 - pooling vs create/dispose
-- presupuesto por frame
-- tirones por oleadas o chunks
+- budget per frame
+- stutter from waves or chunks
 
 ### 6. Character/gameplay stress
-Sirve para validar:
+Validates:
 - player controller
-- animación
-- físicas/queries
-- cámara
-- densidad de enemigos o interacciones
+- animation
+- physics/queries
+- camera
+- enemy or interaction density
 
-Importante porque un benchmark bonito pero vacío puede ocultar el coste real del juego.
+Important because a pretty but empty benchmark can hide the real cost of the game.
 
-## Qué no debe ser un benchmark interno
-- una demo irrelevante al juego real
-- una sola escena “hero shot”
-- una prueba sin métricas guardadas
-- una comparativa donde cambian diez cosas a la vez
+## What an internal benchmark should not be
+- a demo irrelevant to the real game
+- one single “hero shot” scene
+- a test with no saved metrics
+- a comparison where ten things change at once
 
-## Métricas mínimas
-Registrar al menos:
-- frame time medio
-- picos de frame time
+## Minimum metrics
+Record at least:
+- average frame time
+- frame-time spikes
 - draw calls
-- triángulos
+- triangles
 - geometries/textures/programs
-- tier activo
-- configuración relevante de sombras y post
+- active tier
+- relevant shadow and post configuration
 
-Y si aplica:
-- tiempo de build
-- tiempo de carga
-- tiempo de activación visible
+And if applicable:
+- build time
+- load time
+- visible activation time
 
-## Diseño de benchmarks sanos
-### Controlar variables
-Cambiar una cosa importante cada vez:
-- misma escena, distinto número de props
-- mismo contenido, distinto tier
-- mismo asset, con y sin warmup
+## Healthy benchmark design
+### Control variables
+Change one important thing at a time:
+- same scene, different prop count
+- same content, different tier
+- same asset, with and without warmup
 
-Si quieres separar CPU y GPU con algo de honestidad, conviene además tener benches donde cambie una palanca visual limpia y otros donde cambie una palanca lógica limpia.
+If you want to separate CPU and GPU with some honesty, it also helps to have benchmarks where a clean visual lever changes and others where a clean logic lever changes.
 
-### Repetibilidad
-- mismas semillas si hay aleatoriedad
-- mismas rutas de cámara si importa la vista
-- mismo orden de activación
-- mismas condiciones de calidad
+### Repeatability
+- same seeds if there is randomness
+- same camera paths if the view matters
+- same activation order
+- same quality conditions
 
-### Relevancia
-Cada benchmark debería parecerse a una amenaza real del juego:
-- mundo denso
-- combate con muchos actores
-- escena con post pesado
-- cambio de chunk
-- selector o inventario 3D
+### Relevance
+Each benchmark should resemble a real threat to the game:
+- dense world
+- combat with many actors
+- scene with heavy post
+- chunk change
+- 3D selector or inventory
 
-## Conjunto mínimo recomendado
-Para un proyecto medio, tener al menos:
+## Recommended minimum set
+For a medium project, have at least:
 1. **draw-call bench**
 2. **postprocessing/tier bench**
 3. **asset activation bench**
 4. **spawn or chunk bench**
 5. **real gameplay slice bench**
 
-## Integración con quality tiers
-Los benchmarks deberían poder correr por tier:
-- bajo
-- medio
-- alto
+## Integration with quality tiers
+Benchmarks should be runnable by tier:
+- low
+- medium
+- high
 
-Así se ve si el sistema de calidad realmente escala o si solo cambia dos sliders cosméticos.
+That shows whether the quality system really scales or only changes two cosmetic sliders.
 
-Si existe scaler adaptativo, también conviene probar:
-- cuánto tarda en reaccionar
-- si hace thrash
-- si el downgrade salva frame pacing o solo maquilla la media
+If an adaptive scaler exists, also test:
+- how long it takes to react
+- whether it thrashes
+- whether the downgrade saves frame pacing or only masks the average
 
-## Integración con stutter
-No mirar solo la media.
-Mirar:
-- picos al entrar
-- picos al cambiar tier
-- picos al activar assets
-- picos al recrear composer, sombras o materiales
+## Integration with stutter
+Do not look only at the average.
+Look at:
+- spikes on entry
+- spikes when changing tier
+- spikes when activating assets
+- spikes when recreating composer, shadows, or materials
 
-## Integración con CI o revisiones manuales
-No hace falta automatizar todo desde el día 1.
-Pero sí conviene:
-- tener escenas guardadas
-- poder abrirlas fácil
-- saber qué métricas mirar
-- comparar antes/después de cambios grandes
+## Integration with CI or manual reviews
+You do not need to automate everything from day 1.
+But you should:
+- have saved scenes
+- be able to open them easily
+- know which metrics to look at
+- compare before/after large changes
 
-Para convertir esto en runs más repetibles con warmup, ventana de medida y salida estructurada, ver `benchmark-reporting.md`.
+To turn this into more repeatable runs with warmup, measurement window, and structured output, see `benchmark-reporting.md`.
 
-## Resultado esperado
-Un benchmark bueno no dice “va rápido”.
-Dice algo como:
-- tier alto rompe en móvil por DOF + bloom
-- spawn de 200 props mete pico de 40ms
-- instancing reduce draw calls de forma brutal sin romper el caso
-- warmup evita el tirón al cambiar skin
+## Expected result
+A good benchmark does not say “it is fast”.
+It says something like:
+- high tier breaks on mobile because of DOF + bloom
+- spawning 200 props adds a 40ms spike
+- instancing reduces draw calls brutally without breaking the case
+- warmup avoids the hitch when changing skin
 
-Eso ya es información accionable de verdad.
+That is genuinely actionable information.
 
-Cuando esos resultados se guardan por run, conviene además compararlos con una capa de diff consistente. Ver `benchmark-diffs.md`.
+When those results are saved by run, it is also worth comparing them with a consistent diff layer. See `benchmark-diffs.md`.
 
-## Anti-patrones
-- optimizar sin escena de prueba estable
-- confundir benchmark sintético con experiencia real final
-- medir solo una vez
-- no guardar la configuración de la prueba
-- no cruzar métricas de render con eventos del juego
+## Anti-patterns
+- optimizing without a stable test scene
+- confusing a synthetic benchmark with the final real experience
+- measuring only once
+- not saving the test configuration
+- not cross-checking render metrics with game events
 
-## Recomendación fuerte
-Crear una pequeña carpeta o suite de `benchScenes` o equivalente que:
-- represente amenazas reales del proyecto
-- exponga toggles de calidad y densidad
-- muestre métricas básicas
-- sirva para comparar cambios grandes antes de darlos por buenos
+## Strong recommendation
+Create a small `benchScenes` folder or suite, or equivalent, that:
+- represents real project threats
+- exposes quality and density toggles
+- shows basic metrics
+- helps compare large changes before calling them good
 
-## Pendiente de ampliar
-- seeds reproducibles y rutas de cámara fijas
-- automatización mínima de captures de métricas
-- escenarios específicos por género
+## To expand later
+- reproducible seeds and fixed camera paths
+- minimum automation for metric captures
+- genre-specific scenarios

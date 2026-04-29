@@ -1,158 +1,158 @@
 # Mobile and Performance
 
-## Objetivo
-Construir juegos en Three.js que sigan siendo viables en web móvil y dispositivos modestos, evitando decisiones visuales que maten la experiencia demasiado pronto.
+## Goal
+Build Three.js games that remain viable on mobile web and modest devices, while avoiding visual decisions that kill the experience too early.
 
-## Regla principal
-Diseñar con un **presupuesto de rendimiento** desde el inicio.
+## Main rule
+Design with a **performance budget** from the start.
 
-No pensar en rendimiento solo cuando el juego ya va mal. Cada sistema nuevo debería pagar alquiler.
+Do not think about performance only once the game is already struggling. Every new system should pay rent.
 
-## Prioridad correcta
-En móvil, normalmente importan más estas cosas que el detalle bruto:
-- frame rate estable
-- tiempos de carga razonables
-- controles responsivos
-- buena legibilidad visual
-- batería y temperatura bajo control
+## Correct priority
+On mobile, these usually matter more than raw detail:
+- stable frame rate
+- reasonable load times
+- responsive controls
+- good visual readability
+- battery and temperature under control
 
-Para metodología de medición y budgets más explícitos, ver `profiling-budgets.md`.
+For a more explicit measurement and budget methodology, see `profiling-budgets.md`.
 
-## Principios base
+## Base principles
 
-### 1. Menos coste, mejor frame
-Preferir:
-- menos draw calls
-- menos luces caras
-- menos sombras dinámicas
-- menos transparencias problemáticas
-- menos geometría inútil
-- menos postprocessing por defecto
+### 1. Lower cost, better frame
+Prefer:
+- fewer draw calls
+- fewer expensive lights
+- fewer dynamic shadows
+- fewer problematic transparencies
+- less useless geometry
+- less default postprocessing
 
-### 2. Escalar por tiers
-Pensar en calidades o presets:
-- bajo
-- medio
-- alto
+### 2. Scale by tiers
+Think in qualities or presets:
+- low
+- medium
+- high
 
-Variables típicas para recortar:
+Typical variables to trim:
 - pixel ratio
-- sombras
-- distancia de dibujado
-- cantidad de props
-- efectos de post
-- resolución de texturas
+- shadows
+- draw distance
+- prop count
+- post effects
+- texture resolution
 
-Para una política más explícita de presets y coordinación entre renderer, composer y render targets, ver `quality-tiers.md`.
+For a more explicit preset policy and coordination between renderer, composer, and render targets, see `quality-tiers.md`.
 
-### 3. Medir antes de adivinar
-No optimizar a ciegas.
+### 3. Measure before guessing
+Do not optimize blind.
 
-Separar preguntas:
-- ¿el cuello está en GPU?
-- ¿el cuello está en CPU?
-- ¿el problema es carga inicial?
-- ¿el problema es demasiada lógica por frame?
+Separate the questions:
+- is the bottleneck in GPU?
+- is the bottleneck in CPU?
+- is the problem initial loading?
+- is the problem too much per-frame logic?
 
-## Defaults sanos para móvil
-- limitar `renderer.setPixelRatio()` a valores razonables
-- evitar sombras dinámicas complejas por defecto
-- usar pocas luces importantes
-- preferir fondos simples o skyboxes baratos antes que entornos carísimos
-- usar geometrías y materiales acordes al estilo real del juego
-- arrancar con menos efectos y subir solo si sobra margen
+## Healthy mobile defaults
+- cap `renderer.setPixelRatio()` to reasonable values
+- avoid complex dynamic shadows by default
+- use a few important lights
+- prefer simple backgrounds or cheap skyboxes over very expensive environments
+- use geometries and materials that match the game’s real style
+- start with fewer effects and raise quality only if there is margin
 
-En proyectos más serios, merece la pena ir un paso más allá y controlar explícitamente el tamaño del drawing buffer y el pixel budget por dispositivo, no solo un `setPixelRatio()` alegre.
+In more serious projects, it is worth going one step further and explicitly controlling drawing-buffer size and pixel budget per device, not just using `setPixelRatio()` casually.
 
 ## Draw calls
-Las draw calls suelen ser uno de los primeros techos.
+Draw calls are often one of the first ceilings.
 
-Reducirlas con:
-- `InstancedMesh` cuando haya muchos objetos similares
-- merge de geometrías si tiene sentido
-- menos materiales distintos
-- menos objetos decorativos inútiles
+Reduce them with:
+- `InstancedMesh` when there are many similar objects
+- geometry merging if it makes sense
+- fewer distinct materials
+- fewer useless decorative objects
 
-La revisión de manual y examples refuerza que `InstancedMesh` no es un truco raro, sino una pieza central cuando el mundo necesita muchos objetos similares.
+The manual and examples reinforce that `InstancedMesh` is not a weird trick, but a central tool when the world needs many similar objects.
 
-Tradeoff útil visto en examples:
-- `InstancedMesh` da una solución muy fuerte cuando prima cantidad y coste
-- merge de geometrías también reduce draw calls, pero sacrifica flexibilidad para updates individuales
-- muchas meshes sueltas deberían ser la excepción, no el default, en props repetidos
+Useful tradeoff seen in examples:
+- `InstancedMesh` is a very strong solution when quantity and cost dominate
+- geometry merging also reduces draw calls, but sacrifices flexibility for individual updates
+- many loose meshes should be the exception, not the default, for repeated props
 
-## Geometría y mallas
-- vigilar polycount real, no solo apariencia
-- evitar assets hiperdensos si luego van a salir pequeños en pantalla
-- revisar LOD o variantes simplificadas si el mundo crece
-- no asumir que un asset bonito de escritorio sirve igual en móvil
+## Geometry and meshes
+- watch real polycount, not just appearance
+- avoid hyper-dense assets if they will appear small on screen
+- review LOD or simplified variants if the world grows
+- do not assume a beautiful desktop asset works equally well on mobile
 
-Otra lección del manual de optimización: no usar el scene graph como estructura masiva de datos si lo que necesitas es representar miles de elementos. El coste no está solo en dibujar, también en mantener demasiados nodos vivos.
+Another lesson from the optimization manual: do not use the scene graph as a massive data structure if what you need is to represent thousands of elements. The cost is not only drawing; it is also maintaining too many live nodes.
 
-## Materiales y luces
-- empezar simple
-- justificar cada luz cara
-- usar `MeshStandardMaterial` o similares con cabeza, no por inercia
-- revisar si ciertos objetos pueden usar materiales más baratos
-- tratar sombras como lujo controlado, no como derecho universal
+## Materials and lights
+- start simple
+- justify every expensive light
+- use `MeshStandardMaterial` or similar thoughtfully, not by inertia
+- check whether some objects can use cheaper materials
+- treat shadows as a controlled luxury, not a universal right
 
-## Texturas
-- tamaños razonables
-- evitar 4K por postureo
-- reutilizar texturas cuando sea posible
-- comprimir si el pipeline lo permite
-- vigilar memoria total, no solo peso en disco
+## Textures
+- reasonable sizes
+- avoid 4K for posturing
+- reuse textures when possible
+- compress if the pipeline allows it
+- watch total memory, not just disk size
 
-## Transparencias y postprocessing
-Ambos pueden salir caros y dar guerra.
+## Transparencies and postprocessing
+Both can become expensive and troublesome.
 
-Usarlos con criterio:
-- transparencias solo cuando aporten algo real
-- postprocessing modular y desactivable
-- no encadenar efectos porque sí
+Use them deliberately:
+- transparencies only when they add something real
+- modular, toggleable postprocessing
+- do not chain effects just because you can
 
-## Update loop y CPU
-No todo problema de rendimiento está en render.
+## Update loop and CPU
+Not every performance problem is in rendering.
 
-Revisar:
-- cuántos objetos actualizan por frame
-- cuántos raycasts haces
-- cuánta lógica corre aunque nada cambie
-- cuántos listeners o sincronizaciones innecesarias existen
-- si hay sistemas que podrían ejecutarse con menor frecuencia
+Review:
+- how many objects update per frame
+- how many raycasts you do
+- how much logic runs even when nothing changes
+- how many unnecessary listeners or sync points exist
+- whether some systems could run at a lower frequency
 
-## Estrategias prácticas
-- budget visual desde el prototipo
-- presets de calidad
-- toggles para sombras, efectos y densidad de mundo
-- profiling periódico, no solo al final
-- pruebas en móvil real cuanto antes
+## Practical strategies
+- visual budget from the prototype
+- quality presets
+- toggles for shadows, effects, and world density
+- periodic profiling, not only at the end
+- real mobile-device tests as early as possible
 
-Patrón útil tomado del manual: en pantallas o vistas que no necesitan update constante, considerar render on demand. En un juego principal normalmente habrá loop continuo, pero menús 3D, configuradores o escenas pausadas no tienen por qué renderizar sin parar.
+Useful pattern from the manual: in screens or views that do not need constant updates, consider render on demand. A main game usually has a continuous loop, but 3D menus, configurators, or paused scenes do not need to render nonstop.
 
-## Checklist rápida cuando algo va mal
-- ¿pixel ratio demasiado alto?
-- ¿demasiadas draw calls?
-- ¿sombras excesivas?
-- ¿texturas demasiado grandes?
-- ¿postprocessing innecesario?
-- ¿demasiados objetos actualizando cada frame?
-- ¿raycasts o colisiones demasiado frecuentes?
-- ¿el problema aparece en carga, en gameplay o en escenas concretas?
+## Quick checklist when something goes wrong
+- pixel ratio too high?
+- too many draw calls?
+- excessive shadows?
+- textures too large?
+- unnecessary postprocessing?
+- too many objects updating every frame?
+- raycasts or collisions too frequent?
+- does the problem appear during loading, gameplay, or specific scenes?
 
-Y, muy importante, no asumir que todo problema móvil es GPU: separar visual vs lógica con `gpu-vs-cpu-heuristics.md`.
+And, very importantly, do not assume every mobile problem is GPU: separate visual vs logic with `gpu-vs-cpu-heuristics.md`.
 
-## Anti-patrones
-- diseñar para desktop potente y esperar milagros en móvil
-- activar sombras y efectos premium desde el día 1
-- meter assets generativos pesados sin poda
-- usar materiales caros en todo
-- intentar arreglar FPS solo bajando calidad visual sin mirar la CPU
-- no probar en dispositivos reales hasta el final
-- ignorar técnicas oficiales de instancing y seguir empujando miles de meshes sueltas
+## Anti-patterns
+- designing for powerful desktop and expecting miracles on mobile
+- enabling shadows and premium effects from day 1
+- adding heavy generative assets without pruning
+- using expensive materials everywhere
+- trying to fix FPS only by lowering visual quality without checking CPU
+- not testing on real devices until the end
+- ignoring official instancing techniques and continuing to push thousands of loose meshes
 
-## Pendiente de ampliar
-- presupuesto orientativo por tipo de juego
-- estrategias de LOD y chunking
-- límites prácticos para sombras
-- profiling con herramientas concretas
-- política de calidad adaptativa por dispositivo
+## To expand later
+- guideline budget by game type
+- LOD and chunking strategies
+- practical limits for shadows
+- profiling with concrete tools
+- adaptive quality policy by device

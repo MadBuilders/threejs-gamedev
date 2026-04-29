@@ -1,130 +1,130 @@
 # Lights and Shadows
 
-## Objetivo
-Tomar decisiones de iluminación y sombras en Three.js con mentalidad de juego web, no de demo aislada.
+## Goal
+Make lighting and shadow decisions in Three.js with a web-game mindset, not as an isolated demo.
 
-## Regla principal
-Las sombras son caras. Muy caras si se dejan crecer sin control.
+## Main rule
+Shadows are expensive. Very expensive if they are allowed to grow without control.
 
-El manual lo deja clarísimo: cada luz que genera sombras obliga a renderizar la escena extra desde el punto de vista de esa luz. Con varias luces, el coste se multiplica muy rápido.
+The manual makes this crystal clear: every light that generates shadows forces the scene to be rendered again from that light’s point of view. With several lights, the cost multiplies very quickly.
 
-## Default recomendado
-- empezar con iluminación simple
-- usar pocas luces importantes
-- si hace falta sombra dinámica, preferir **una directional light principal** antes que varias luces con sombra
-- tratar las sombras como presupuesto limitado, no como valor por defecto universal
+## Recommended default
+- start with simple lighting
+- use a few important lights
+- if dynamic shadow is needed, prefer **one main directional light** over several shadow-casting lights
+- treat shadows as a limited budget, not as a universal default
 
-## Estrategia de sombras por niveles
+## Shadow strategy by level
 
-### Nivel 0, sin sombras dinámicas
-Usar:
-- iluminación simple
-- AO o light hints en assets
-- contraste de materiales
-- composición visual del escenario
+### Level 0, no dynamic shadows
+Use:
+- simple lighting
+- AO or light hints in assets
+- material contrast
+- visual composition of the scene
 
-### Nivel 1, fake shadows
-Muy recomendables en muchos juegos estilizados o móviles.
+### Level 1, fake shadows
+Highly recommended in many stylized or mobile games.
 
-Patrón clásico:
-- plano o decal simple
-- textura de sombra suave en escala de grises
+Classic pattern:
+- simple plane or decal
+- soft grayscale shadow texture
 - `MeshBasicMaterial`
 - `transparent: true`
 - `depthWrite: false`
-- colocar ligeramente por encima del suelo para evitar z-fighting
+- place slightly above the ground to avoid z-fighting
 
-Esto es baratísimo y muchas veces da el pego de sobra.
+This is extremely cheap and often sells the effect well enough.
 
-### Nivel 2, shadow maps reales
-Usarlas cuando de verdad mejoran la lectura o la fantasía del juego.
+### Level 2, real shadow maps
+Use them when they truly improve game readability or fantasy.
 
-Reglas:
-- activar `renderer.shadowMap.enabled` solo cuando toca
-- marcar `castShadow` y `receiveShadow` con criterio objeto por objeto
-- ajustar la shadow camera de la luz, no dejarla absurda por defecto
-- medir el coste en escenas reales
+Rules:
+- enable `renderer.shadowMap.enabled` only when appropriate
+- set `castShadow` and `receiveShadow` deliberately, object by object
+- tune the light’s shadow camera; do not leave it absurdly broad by default
+- measure cost in real scenes
 
-## Luces
-No meter luces porque sí.
+## Lights
+Do not add lights just because.
 
-Preguntas útiles:
-- ¿qué aporta esta luz a la lectura del juego?
-- ¿podemos conseguir casi lo mismo con una luz menos?
-- ¿el estilo visual necesita realismo o claridad?
+Useful questions:
+- what does this light add to game readability?
+- can we achieve almost the same thing with one fewer light?
+- does the visual style need realism or clarity?
 
 ## Shadow camera
-El manual insiste en algo importante: si faltan sombras o salen raras, muchas veces el problema no es "Three.js" sino la región que cubre la shadow camera.
+The manual stresses something important: if shadows are missing or weird, the problem is often not “Three.js” but the region covered by the shadow camera.
 
-Regla práctica:
-- visualizarla con `CameraHelper`
-- ajustar top, bottom, left, right, near y far al área útil real
-- evitar cajas gigantes si la acción ocurre en una zona pequeña
+Practical rule:
+- visualize it with `CameraHelper`
+- tune top, bottom, left, right, near, and far to the real useful area
+- avoid giant boxes if the action happens in a small area
 
-### Shadow camera que sigue al foco
-Para un juego con una **zona jugable grande** y sombras que importan cerca del jugador, la tentación es agrandar el frustum de la shadow camera hasta cubrir el mapa entero. Eso sale caro dos veces: baja la resolución efectiva (cada texel del shadow map cubre más mundo) y obliga a subir `mapSize` para compensar.
+### Shadow camera that follows the focus
+For a game with a **large playable area** and shadows that matter near the player, the temptation is to enlarge the shadow camera frustum until it covers the entire map. That is expensive twice: it lowers effective resolution (each shadow-map texel covers more world) and forces you to raise `mapSize` to compensate.
 
-Patrón más barato: **mantener un frustum ajustado pequeño y moverlo con el jugador** (o con el foco de cámara).
+Cheaper pattern: **keep a small, tight frustum and move it with the player** (or camera focus).
 
-Receta:
-- En boot, guarda el offset original del sol como `SUN_OFFSET = sun.position.clone()`.
-- `scene.add(sun.target)`: la `DirectionalLight` apunta desde `position` hacia `target.position`, así que necesitas el target en escena para que la matriz se actualice.
-- Cada frame, tras mover al jugador:
+Recipe:
+- At boot, store the original sun offset as `SUN_OFFSET = sun.position.clone()`.
+- `scene.add(sun.target)`: the `DirectionalLight` points from `position` to `target.position`, so the target must be in the scene for the matrix to update.
+- Every frame, after moving the player:
   ```ts
   sun.position.set(player.x + SUN_OFFSET.x, SUN_OFFSET.y, player.z + SUN_OFFSET.z);
   sun.target.position.set(player.x, 0, player.z);
   sun.target.updateMatrixWorld(true);
   ```
-- Con el frustum parked sobre el jugador, puedes usar half-extents del orden de "lo que la cámara tercera persona ve cerca" (por ejemplo ~20-25 m) y `mapSize` más bajo (`512²` o `768²`) sin perder nitidez.
+- With the frustum parked over the player, you can use half-extents around “what the third-person camera sees nearby” (for example ~20–25 m) and a lower `mapSize` (`512²` or `768²`) without losing sharpness.
 
 Tradeoffs:
-- la dirección del sol sigue constante (solo se desplaza, no rota), así que la iluminación queda estable aunque el jugador avance.
-- sombras lejos del jugador desaparecen; para un juego single-player tercera persona suele ser lo que quieres. Si hay gameplay dependiente de sombras lejanas (sigilo, puzzles), este patrón no sirve.
-- combina bien con `PCFShadowMap` (más barato) en vez de `PCFSoftShadowMap`; con el frustum ajustado no suele hacer falta el blur extra.
-- si bajas mucho `mapSize`, sube un poco `shadow.bias` negativo (`-0.0005` es un punto de partida sano) para evitar acne en el suelo.
+- the sun direction stays constant (it only moves, not rotates), so lighting remains stable as the player advances.
+- shadows far from the player disappear; for a third-person single-player game, that is usually what you want. If gameplay depends on distant shadows (stealth, puzzles), this pattern does not fit.
+- it combines well with `PCFShadowMap` (cheaper) instead of `PCFSoftShadowMap`; with a tight frustum, the extra blur is usually unnecessary.
+- if you lower `mapSize` a lot, increase negative `shadow.bias` slightly (`-0.0005` is a healthy starting point) to avoid acne on the ground.
 
-### `receiveShadow` también cuesta por fragmento
+### `receiveShadow` also costs per fragment
 
-Es fácil pensar solo en `castShadow` como la palanca cara (es la que dispara el shadow pass extra). Pero `receiveShadow = true` añade **una muestra de shadow map por cada fragmento del mesh** en el render principal — es un PCF lookup que, en fragmento denso, se nota.
+It is easy to think only of `castShadow` as the expensive lever (it triggers the extra shadow pass). But `receiveShadow = true` adds **a shadow-map sample for every fragment of the mesh** in the main render — a PCF lookup that is noticeable when fragment density is high.
 
-Dónde importa:
-- **foliage denso**: copas de árboles, hierba, hojas. Decenas de miles de fragmentos visibles por frame, y el canopy está *por encima* del jugador → recibir sombra ahí no aporta (casi) nada visualmente.
-- **superficies que nunca reciben una sombra realista**: cielos, fondos, caras internas de edificios a los que la luz principal no llega.
+Where it matters:
+- **dense foliage**: tree crowns, grass, leaves. Tens of thousands of visible fragments per frame, and the canopy is *above* the player → receiving shadow there adds (almost) nothing visually.
+- **surfaces that never receive a realistic shadow**: skies, backgrounds, internal building faces the main light cannot reach.
 
-Patrón sano:
-- `castShadow` por gameplay (proyectar sombra del jugador, enemigos, props interactivos).
-- `receiveShadow` solo si **realmente** va a caer una sombra de algo encima. No por defecto universal.
-- Para árboles scattered: `receiveShadow = false` es casi siempre la respuesta correcta. El suelo sí lo necesita; la copa no.
+Healthy pattern:
+- `castShadow` for gameplay (projecting the player, enemies, interactive props).
+- `receiveShadow` only if **something will actually cast a shadow onto it**. Not as a universal default.
+- For scattered trees: `receiveShadow = false` is almost always correct. The ground needs it; the crown does not.
 
-Exponer el flag como opción en los factories de carga (`loadTreeModel({ receiveShadow: false })`) permite que árboles y props compartan loader pero diverjan en política de sombras: los props que se apoyan en el suelo sí quieren que la sombra del jugador caiga encima, los árboles esparcidos no.
+Expose the flag as an option in load factories (`loadTreeModel({ receiveShadow: false })`) so trees and props can share the loader while diverging in shadow policy: props resting on the ground do want the player’s shadow to fall on them; scattered trees do not.
 
-## Helpers y debug
-Útiles cuando se trabaja con sombras:
-- `CameraHelper` sobre la shadow camera
-- herramientas para ver shadow map si el caso se complica
-- toggles de HUD o debug para comparar con y sin sombras
+## Helpers and debug
+Useful when working with shadows:
+- `CameraHelper` on the shadow camera
+- tools to view the shadow map if the case gets complicated
+- HUD or debug toggles to compare with and without shadows
 
-## Anti-patrones
-- varias luces con sombra por defecto
-- `castShadow` y `receiveShadow` activado en todo
-- usar shadow maps complejos en móvil sin medir
-- no ajustar la shadow camera
-- perseguir sombras perfectas cuando el estilo del juego no lo necesita
+## Anti-patterns
+- several shadow-casting lights by default
+- `castShadow` and `receiveShadow` enabled on everything
+- complex shadow maps on mobile without measuring
+- not tuning the shadow camera
+- chasing perfect shadows when the game style does not need them
 
-## Recomendación fuerte
-Para muchos juegos web, la combinación ganadora es:
-- una luz principal bien elegida
-- fake shadows para secundarios
-- o directamente sombras muy selectivas solo donde ayudan de verdad
+## Strong recommendation
+For many web games, the winning combination is:
+- one well-chosen main light
+- fake shadows for secondary elements
+- or directly, very selective shadows only where they truly help
 
-## IBL con HDRI (image-based lighting)
-Técnica desproporcionadamente útil para escenas PBR: cargar un HDRI equirectangular, pasarlo por `PMREMGenerator` y asignarlo tanto a `scene.background` como a `scene.environment`. Con una sola llamada obtienes:
-- **skybox** detrás de todo (resuelve "el cielo se ve feo"),
-- **reflexión + diffuse ambient** coherentes para todos los materiales PBR, sin añadir luces extra.
+## IBL with HDRI (image-based lighting)
+Disproportionately useful technique for PBR scenes: load an equirectangular HDRI, pass it through `PMREMGenerator`, and assign it to both `scene.background` and `scene.environment`. With one call you get:
+- **skybox** behind everything (solves “the sky looks ugly”),
+- coherent **reflection + diffuse ambient** for all PBR materials, without adding extra lights.
 
-Receta mínima:
+Minimal recipe:
 ```ts
-// Three r168+ sustituyó RGBELoader por HDRLoader. API equivalente.
+// Three r168+ replaced RGBELoader with HDRLoader. Equivalent API.
 const hdr = await new HDRLoader().loadAsync(url);
 const pmrem = new THREE.PMREMGenerator(renderer);
 const envRT = pmrem.fromEquirectangular(hdr);
@@ -134,25 +134,25 @@ scene.background = envRT.texture;
 scene.environment = envRT.texture;
 ```
 
-Cuándo compensa:
-- cualquier escena outdoor con materiales PBR
-- quieres que personajes, props, metales se iluminen "bien" sin pelearte con 3-4 luces puntuales
-- la cámara ve cielo real y no quieres un fondo pintado
+When it pays off:
+- any outdoor scene with PBR materials
+- you want characters, props, and metals to light “well” without fighting 3–4 point lights
+- the camera sees real sky and you do not want a painted background
 
 Gotchas:
-- si ya tenías `HemisphereLight` o luces ambientales fuertes, **bájalas cuando metas env map**, o todo queda doblemente iluminado y se lava el contraste.
-- la `DirectionalLight` que representa el sol sigue siendo necesaria si quieres sombras (el env map por sí solo no las proyecta).
-- dirección del sol del HDRI ≈ dirección de tu `DirectionalLight`, o cantará.
-- Poly Haven (CC0) es el default razonable; 1K basta casi siempre para fondo, 2K si el cielo está muy en pantalla.
-- descomprimir un HDR a PMREM cuesta; hacerlo una vez en boot, no por frame.
-- disposer el `RenderTarget` de PMREM si la escena se destruye (lo que devuelve `fromEquirectangular` es un `WebGLRenderTarget`).
+- if you already had `HemisphereLight` or strong ambient lights, **lower them when you add an env map**, or everything becomes double-lit and contrast washes out.
+- the `DirectionalLight` representing the sun is still needed if you want shadows (the env map alone does not cast them).
+- the HDRI sun direction ≈ your `DirectionalLight` direction, or it will be obvious.
+- Poly Haven (CC0) is the reasonable default; 1K is almost always enough for the background, 2K if the sky is very present on screen.
+- decompressing an HDR to PMREM has a cost; do it once at boot, not per frame.
+- dispose the PMREM `RenderTarget` if the scene is destroyed (what `fromEquirectangular` returns is a `WebGLRenderTarget`).
 
-Anti-patrón: `new RGBELoader().load(...)` y asignarlo directamente a `scene.environment` sin PMREM. Aparenta funcionar pero las reflexiones salen con artefactos y la iluminación ambiental está mal prefiltrada.
+Anti-pattern: `new RGBELoader().load(...)` and assigning it directly to `scene.environment` without PMREM. It appears to work, but reflections get artifacts and ambient lighting is poorly prefiltered.
 
-`backgroundIntensity` (Three r155+) permite bajar el brillo del cielo visible sin tocar la intensidad del IBL sobre los materiales, útil cuando el HDRI es demasiado luminoso como fondo pero sí sirve como IBL.
+`backgroundIntensity` (Three r155+) lets you lower the visible sky brightness without touching IBL intensity on materials, useful when the HDRI is too bright as a background but works as IBL.
 
-## Pendiente de ampliar
-- tipos de `shadowMap`
-- comparación directional / spot / point en coste real
-- política de sombras por preset de calidad
-- técnicas híbridas con lightmaps o AO
+## To expand
+- `shadowMap` types
+- directional / spot / point comparison in real cost
+- shadow policy by quality preset
+- hybrid techniques with lightmaps or AO

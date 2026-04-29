@@ -1,83 +1,83 @@
 # Project AGENTS.md
 
-## Objetivo
-Usar un `AGENTS.md` dentro de cada juego como memoria operativa del proyecto, para registrar decisiones, cambios, convenciones y contexto que no conviene dejar solo en el chat.
+## Goal
+Use an `AGENTS.md` inside each game as operational memory for the project, recording decisions, changes, conventions, and context that should not live only in chat.
 
-## Regla principal
-**Si una decisión importa mañana, escríbela hoy.**
-No confiar en recordar por magia por qué se eligió una librería, qué carpeta manda o qué bug quedó pendiente.
+## Main rule
+**If a decision matters tomorrow, write it today.**
+Do not trust magical memory for why a library was chosen, which folder is authoritative, or which bug is still pending.
 
-Regla hermana:
-**si el proyecto cambió de fase, refrescar el `AGENTS.md`.**
-Un `AGENTS.md` útil no es una foto fija del kickoff para siempre. Si el juego
-ya tiene multiplayer, editor interno, audio, nuevo layout de carpetas o una
-fase distinta, la memoria operativa tiene que reflejarlo.
+Sibling rule:
+**if the project changed phase, refresh `AGENTS.md`.**
+A useful `AGENTS.md` is not a frozen kickoff snapshot forever. If the game
+now has multiplayer, an internal editor, audio, a new folder layout, or a
+different phase, the operational memory must reflect it.
 
-## Cuándo crearlo
-Crear `AGENTS.md` casi desde el principio cuando el juego pase de idea suelta a proyecto real.
+## When to create it
+Create `AGENTS.md` almost from the beginning once the game moves from a loose idea to a real project.
 
-## Qué debería contener
-### 1. Contexto del juego
-- nombre provisional
-- premisa en una frase
-- plataforma objetivo
-- singleplayer o multiplayer
+## What it should contain
+### 1. Game context
+- provisional name
+- premise in one sentence
+- target platform
+- singleplayer or multiplayer
 
-### 2. Stack elegido
-- Three.js puro
-- Vite/TS o JS
-- Rapier sí/no
-- otras librerías importantes
+### 2. Chosen stack
+- pure Three.js
+- Vite/TS or JS
+- Rapier yes/no
+- other important libraries
 
-### 3. Convenciones del proyecto
-- estructura de carpetas
+### 3. Project conventions
+- folder structure
 - naming
-- cómo se arrancan builds o tests si existen
-- cómo se organizan assets
+- how builds or tests are run, if they exist
+- how assets are organized
 
-### 4. Decisiones importantes
-Ejemplos:
-- por qué no se usa framework UI
-- por qué multiplayer se dejó fuera de v0
-- qué sistema de cámara manda
-- qué física está dentro y qué no
+### 4. Important decisions
+Examples:
+- why no UI framework is used
+- why multiplayer was left out of v0
+- which camera system is authoritative
+- what physics includes and what it does not
 
-### 4.5 Fase actual
-Muy útil dejar explícito:
-- fase actual del proyecto
-- qué sí entra ahora
-- qué queda fuera por decisión
+### 4.5 Current phase
+Very useful to make explicit:
+- current project phase
+- what is in scope now
+- what is intentionally out of scope
 
-Esto ayuda muchísimo a no intentar hacerlo todo de golpe.
+This helps enormously with not trying to do everything at once.
 
-### 5. Log breve de cambios
-No hace falta diario kilométrico.
-Sí hace falta dejar rastro de:
-- cambios importantes
-- nuevos sistemas añadidos
-- refactors serios
-- problemas conocidos
-- siguientes pasos claros
+### 5. Short change log
+It does not need to be a kilometer-long diary.
+It does need to leave a trace of:
+- important changes
+- new systems added
+- serious refactors
+- known issues
+- clear next steps
 
-### 6. Documentos satélite cuando el proyecto crece
-Cuando un subsistema deja de ser “una nota más” y pasa a tener roadmap propio
-(por ejemplo multiplayer, economía, herramientas internas o pipeline de
-contenido), crear un documento hermano y enlazarlo desde `AGENTS.md`.
+### 6. Satellite documents when the project grows
+When a subsystem stops being “one more note” and starts having its own roadmap
+(for example multiplayer, economy, internal tools, or content pipeline), create
+a sibling document and link it from `AGENTS.md`.
 
-Patrón sano:
-- `AGENTS.md` mantiene la foto general del proyecto
-- `MULTIPLAYER.md` guarda decisiones de red, authority, smoke tests y hosting
-- otros documentos similares si aparece otro subsistema igual de denso
+Healthy pattern:
+- `AGENTS.md` keeps the project-wide picture
+- `MULTIPLAYER.md` stores networking decisions, authority, smoke tests, and hosting
+- other similar documents if another subsystem becomes just as dense
 
-## Formato recomendado
+## Recommended format
 ```markdown
 # AGENTS.md
 
-## Juego
-- nombre:
-- premisa:
+## Game
+- name:
+- premise:
 - target:
-- modo:
+- mode:
 
 ## Stack
 - three.js:
@@ -86,48 +86,48 @@ Patrón sano:
 - physics:
 - multiplayer:
 
-## Convenciones
-- estructura:
+## Conventions
+- structure:
 - assets:
 - render loop:
 
-## Decisiones activas
+## Active decisions
 - ...
 
-## Cambios recientes
-- 2026-04-17: se creó bootstrap inicial y loop base
-- 2026-04-18: se añadió controlador de personaje
+## Recent changes
+- 2026-04-17: initial bootstrap and base loop created
+- 2026-04-18: character controller added
 
-## Próximos pasos
+## Next steps
 - ...
 ```
 
-## Qué no meter
-- logs eternos de cada tontería
-- secretos o credenciales
-- copia de documentación pública
-- opiniones vagas sin impacto operativo
-- snapshots obsoletos del proyecto que ya no describen el código real
+## What not to include
+- endless logs for every tiny thing
+- secrets or credentials
+- copies of public documentation
+- vague opinions without operational impact
+- obsolete project snapshots that no longer describe the real code
 
-## Relación con memoria y skill
-Este `AGENTS.md` no sustituye la skill.
-Sirve para aterrizar la skill en un juego concreto.
+## Relationship to memory and the skill
+This `AGENTS.md` does not replace the skill.
+It grounds the skill in a concrete game.
 
-## Recomendación fuerte
-Cuando arranque un juego nuevo:
-- crear `AGENTS.md`
-- escribir stack y decisiones iniciales
-- escribir fase actual y exclusiones explícitas
-- ir dejando cambios relevantes y próximos pasos
+## Strong recommendation
+When a new game starts:
+- create `AGENTS.md`
+- write the initial stack and decisions
+- write the current phase and explicit exclusions
+- keep recording relevant changes and next steps
 
-Y cuando el proyecto madure:
-- revisar si la fase actual sigue siendo cierta
-- quitar contradicciones con el código real
-- enlazar documentos especializados si ya existen
+And when the project matures:
+- review whether the current phase is still true
+- remove contradictions with the real code
+- link specialized documents if they already exist
 
-Eso ahorra muchísimo contexto perdido entre sesiones.
+That saves an enormous amount of lost context between sessions.
 
-## Referencias asociadas
+## Related references
 - `game-kickoff-planning.md`
 - `default-project-stack.md`
 - `default-content-sourcing.md`

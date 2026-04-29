@@ -1,119 +1,119 @@
 # Portal Recursion Control
 
-## Objetivo
-Mantener portals visualmente convincentes sin dejar que el coste o la complejidad exploten cuando un portal ve otro portal, o se ve a sí mismo indirectamente.
+## Goal
+Keep portals visually convincing without letting cost or complexity explode when one portal sees another portal, or sees itself indirectly.
 
-## Regla principal
-**No empezar con recursion infinita.**
-El default sano es portal no recursivo, o recursion muy limitada y explícita.
+## Main rule
+**Do not start with infinite recursion.**
+The healthy default is a non-recursive portal, or very limited and explicit recursion.
 
-## Qué hace difícil la recursion
-Cuando un portal A ve un portal B, la imagen de A puede requerir renderizar B, que a su vez puede requerir A otra vez.
+## What makes recursion difficult
+When portal A sees portal B, A’s image may require rendering B, which in turn may require A again.
 
-Eso complica:
-- número de pasadas
-- orden de render
-- estabilidad de cámara
+That complicates:
+- number of passes
+- render order
+- camera stability
 - clipping
-- coste de resolución acumulada
+- accumulated resolution cost
 
-## Default recomendado
-- profundidad máxima 0 o 1 al empezar
-- target propio por portal visible importante
-- resolución moderada por portal
-- apagar recursion en tiers bajos o móvil
+## Recommended default
+- maximum depth 0 or 1 at the start
+- own target per important visible portal
+- moderate resolution per portal
+- disable recursion in low tiers or mobile
 
-## Modelo mental útil
-Pensar cada nivel de recursion como otra vista derivada, no como “la misma escena otra vez sin coste”.
+## Useful mental model
+Think of each recursion level as another derived view, not as “the same scene again with no cost”.
 
-Si `depth=0`:
-- renderizas solo la vista del otro lado
+If `depth=0`:
+- you render only the view on the other side
 
-Si `depth=1`:
-- esa vista puede incluir una representación adicional del siguiente portal
+If `depth=1`:
+- that view can include an additional representation of the next portal
 
-Cada nivel suma coste y fragilidad.
+Each level adds cost and fragility.
 
-## Estrategias sanas
-### 1. Hard cap de profundidad
-La más importante.
+## Healthy strategies
+### 1. Hard depth cap
+The most important one.
 
-Ejemplo conceptual:
-- desktop alto: profundidad 1 o 2 muy medida
-- desktop medio: 1
-- móvil o tier bajo: 0
+Conceptual example:
+- high desktop: depth 1 or 2, carefully measured
+- medium desktop: 1
+- mobile or low tier: 0
 
-### 2. Resolución decreciente por nivel
-No hace falta que cada nivel recursivo tenga la misma resolución.
+### 2. Decreasing resolution by level
+Not every recursive level needs the same resolution.
 
-Patrón útil:
-- nivel principal: resolución base del portal
-- nivel siguiente: 0.5x o menos
-- niveles lejanos: quizá ni se renderizan
+Useful pattern:
+- main level: base portal resolution
+- next level: 0.5x or less
+- far levels: maybe not rendered at all
 
-### 3. Recorte de contenido
-Cada render recursivo debería intentar ver menos mundo, no más.
+### 3. Content clipping
+Each recursive render should try to see less world, not more.
 
-Palancas:
+Levers:
 - layers
 - proxies
-- distancia máxima
-- excluir detalles cosméticos
+- maximum distance
+- exclude cosmetic details
 
-### 4. Update policy agresiva
-No recalcular toda recursion siempre.
+### 4. Aggressive update policy
+Do not recompute all recursion every time.
 
-Opciones:
-- solo si el portal está visible y ocupa área suficiente
-- solo si la cámara o el portal cambiaron bastante
-- alternar updates entre portales secundarios
+Options:
+- only if the portal is visible and occupies enough area
+- only if the camera or portal changed enough
+- alternate updates between secondary portals
 
-## Cruce de portal vs vista de portal
-Importa separar:
-- ver un portal en pantalla
-- cruzar físicamente un portal
+## Portal crossing vs portal view
+It is important to separate:
+- seeing a portal on screen
+- physically crossing a portal
 
-Cruzar exige coherencia espacial, física y cámara.
-La recursion visual es otra capa y no debería complicar el cruce más de lo necesario.
+Crossing requires spatial, physics, and camera coherence.
+Visual recursion is another layer and should not complicate crossing more than necessary.
 
-## Riesgos típicos
-- shimmering o seams por matrices mal encadenadas
-- feedback accidental si un portal se usa en la pasada equivocada
-- coste explosivo con dos portales grandes enfrentados
-- confiar en una demo recursiva sin medir frame time real
+## Typical risks
+- shimmering or seams from incorrectly chained matrices
+- accidental feedback if a portal is used in the wrong pass
+- explosive cost with two large portals facing each other
+- trusting a recursive demo without measuring real frame time
 
-## Bench mínimo recomendable
-Medir:
-- un portal visible sin recursion
-- dos portales visibles
-- dos portales enfrentados
-- recursion depth 1 frente a 0
-- impacto de bajar resolución del target
+## Recommended minimum benchmark
+Measure:
+- one visible portal without recursion
+- two visible portals
+- two portals facing each other
+- recursion depth 1 versus 0
+- impact of lowering target resolution
 
-## Integración con quality tiers
-Exponer al menos:
+## Integration with quality tiers
+Expose at least:
 - `portalEnabled`
 - `portalResolutionScale`
 - `portalMaxRecursionDepth`
 - `portalUpdateRate`
 - `portalContentMask`
 
-Si el problema pasa por recortar mejor el área del portal o controlar overdraw del marco, ver `portal-masking-stencil-scissor.md`.
+If the problem is clipping the portal area better or controlling frame overdraw, see `portal-masking-stencil-scissor.md`.
 
-## Fallbacks honestos
-Si el presupuesto no da:
-- portal sin recursion
-- portal congelado o de update reducido
-- proxy más simple al fondo
-- apagar visual premium y mantener solo la mecánica
+## Honest fallbacks
+If the budget is not enough:
+- portal without recursion
+- frozen or reduced-update portal
+- simpler proxy in the background
+- disable premium visual and keep only the mechanic
 
-## Recomendación fuerte
-Portal premium sí, pero con techo claro:
-- cap de recursion
-- resolución por nivel
-- benchmarks específicos
-- kill switch por tier
+## Strong recommendation
+Premium portal, yes, but with a clear ceiling:
+- recursion cap
+- resolution by level
+- specific benchmarks
+- kill switch by tier
 
-## Pendiente de ampliar
-- cruce con física compleja
-- portals encadenados en mundos grandes
+## To expand later
+- crossing with complex physics
+- chained portals in large worlds

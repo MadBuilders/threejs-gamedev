@@ -1,31 +1,31 @@
 # UI and HUD
 
-## Objetivo
-Decidir cómo estructurar HUD, menús y overlays en un juego Three.js puro sin meter frameworks innecesarios ni esconder lógica de juego dentro de la capa de UI.
+## Objective
+Decide how to structure HUD, menus, and overlays in a pure Three.js game without adding unnecessary frameworks or hiding game logic inside the UI layer.
 
-## Regla principal
-**La UI refleja estado de juego, no lo dicta.**
-Gameplay publica eventos/estado. UI se suscribe y pinta. Nunca se llama lógica de gameplay desde un `onClick` del menú.
+## Main rule
+**UI reflects game state; it does not dictate it.**
+Gameplay publishes events/state. UI subscribes and renders. Never call gameplay logic directly from a menu `onClick`.
 
-## Decisión base: DOM vs canvas 3D
-Por defecto:
-- **DOM/CSS** sobre el canvas para HUD, menús, diálogos, opciones.
-- **Canvas 3D** (sprites, meshes con textura) solo para UI diegética (marcadores en el mundo, health bars sobre personajes, minimapa integrado).
+## Base decision: DOM vs 3D canvas
+By default:
+- **DOM/CSS** over the canvas for HUD, menus, dialogs, options.
+- **3D canvas** (sprites, textured meshes) only for diegetic UI (world markers, health bars over characters, integrated minimap).
 
-Razones:
-- DOM gana en accesibilidad, layout, texto y localización.
-- DOM cuesta poco y no compite por draw calls del juego.
-- Canvas 3D conviene cuando la UI es parte del mundo (HMD, cockpit, panel físico).
+Reasons:
+- DOM wins for accessibility, layout, text, and localization.
+- DOM is cheap and does not compete for the game's draw calls.
+- 3D canvas is appropriate when the UI is part of the world (HMD, cockpit, physical panel).
 
-Casos intermedios (HUD muy artístico con animaciones ricas): DOM con CSS/SVG o WebGL aparte, pero no meterlo en el render principal salvo necesidad.
+Intermediate cases (very artistic HUD with rich animations): DOM with CSS/SVG or separate WebGL, but do not put it in the main render unless necessary.
 
-## Stack mínimo
-- HTML plano en `index.html` para el shell (canvas + contenedor de overlays).
-- CSS para layout.
-- Sin framework de UI por defecto. Si el juego tiene muchas pantallas, considerar algo muy ligero (no montar React solo para menús).
-- Event bus o store simple del juego como fuente de verdad para la UI.
+## Minimum stack
+- Plain HTML in `index.html` for the shell (canvas + overlay container).
+- CSS for layout.
+- No UI framework by default. If the game has many screens, consider something very lightweight (do not mount React just for menus).
+- Event bus or simple game store as the source of truth for UI.
 
-## Estructura típica del shell
+## Typical shell structure
 
 ```html
 <div id="app">
@@ -36,114 +36,114 @@ Casos intermedios (HUD muy artístico con animaciones ricas): DOM con CSS/SVG o 
 </div>
 ```
 
-Capas:
-- `#game`: canvas de Three.js, fill-screen.
-- `#hud`: overlay siempre visible, `pointer-events: none` salvo en elementos interactivos.
-- `#menus`: pantallas modales (pausa, settings, game over).
-- `#toasts`: feedback efímero.
+Layers:
+- `#game`: full-screen Three.js canvas.
+- `#hud`: always-visible overlay, `pointer-events: none` except on interactive elements.
+- `#menus`: modal screens (pause, settings, game over).
+- `#toasts`: ephemeral feedback.
 
-## Pointer events y input
-- El canvas recibe input de gameplay.
-- HUD debe ser `pointer-events: none` por defecto para no robar clicks. Solo los botones concretos reactivan `pointer-events: auto`.
-- Si hay UI modal abierta, gameplay debe ignorar input mientras la UI lo consume. Idealmente el input system conoce un `inputContext` (gameplay, menu, dialog) y enruta.
+## Pointer events and input
+- The canvas receives gameplay input.
+- HUD should be `pointer-events: none` by default so it does not steal clicks. Only specific buttons reactivate `pointer-events: auto`.
+- If a modal UI is open, gameplay should ignore input while the UI consumes it. Ideally, the input system knows an `inputContext` (gameplay, menu, dialog) and routes accordingly.
 
-## Acoplamiento sano gameplay ↔ UI
-Patrón:
-1. Gameplay expone estado (`player.health`, `run.score`, `world.currentObjective`).
-2. Gameplay emite eventos de dominio (`onObjectiveReached`, `onRunFailed`, `onPause`).
-3. UI observa estado o se suscribe a eventos y pinta.
-4. UI nunca muta estado de gameplay directamente. Llama a *commands* bien definidos (`pause()`, `requestRestart()`, `setSettingsVolume()`).
+## Healthy gameplay ↔ UI coupling
+Pattern:
+1. Gameplay exposes state (`player.health`, `run.score`, `world.currentObjective`).
+2. Gameplay emits domain events (`onObjectiveReached`, `onRunFailed`, `onPause`).
+3. UI observes state or subscribes to events and renders.
+4. UI never mutates gameplay state directly. It calls well-defined *commands* (`pause()`, `requestRestart()`, `setSettingsVolume()`).
 
-Así se pueden cambiar HUDs sin tocar gameplay y testear gameplay sin UI.
+This allows HUDs to change without touching gameplay and gameplay to be tested without UI.
 
-## Data flow recomendado
-Para estado simple: un objeto `GameState` + callbacks.
-Para más juego: un pequeño store con suscripción (no hace falta Redux, basta un `Map<string, Set<Listener>>`).
+## Recommended data flow
+For simple state: a `GameState` object + callbacks.
+For more game: a small store with subscription (Redux is not needed; a `Map<string, Set<Listener>>` is enough).
 
-Evitar:
-- consultar `scene.getObjectByName(...)` desde la UI
-- que el HUD tenga su propia verdad sobre `playerHealth` distinta a la de gameplay
+Avoid:
+- querying `scene.getObjectByName(...)` from UI
+- letting the HUD have its own truth for `playerHealth` that differs from gameplay
 
-## Resize y pixel ratio
-- HUD escala con el viewport. Evitar tamaños absolutos en px para elementos críticos; usar `clamp()` o variables CSS derivadas del viewport.
-- Tener en cuenta safe areas en móvil (`env(safe-area-inset-*)`).
-- El HUD no debe depender del `renderScale` del renderer: eso solo afecta al canvas.
+## Resize and pixel ratio
+- HUD scales with the viewport. Avoid absolute px sizes for critical elements; use `clamp()` or CSS variables derived from the viewport.
+- Account for safe areas on mobile (`env(safe-area-inset-*)`).
+- HUD must not depend on the renderer's `renderScale`: that only affects the canvas.
 
-## HUD en móvil real (landscape first)
+## HUD on real mobile (landscape first)
 
-Cuando el juego es jugable en phone/tablet el HUD desktop no suele portar directamente. Patrones concretos que no son gamedev-obvios pero sí mobile-obvios:
+When the game is playable on phone/tablet, the desktop HUD usually does not port directly. Concrete patterns that are not gamedev-obvious but are mobile-obvious:
 
-- **`100dvh`** en contenedores críticos (overlays, modals, paneles a pantalla completa). `100vh` en iOS Safari puede quedar corto cuando la URL bar está visible o largo cuando colapsa; `dvh` se recalcula con el viewport real y deja de arrastrar cortes al HUD.
-- **`env(safe-area-inset-*)` también en el padding exterior** de HUD y CTAs, no sólo en `body`. Botones en esquina necesitan respeto explícito al notch/home indicator; si no, quedan pisados o fuera del área tocable en iPhone.
-- **Orientation lock es CSS-only**. No llamar al `ScreenOrientation API`: soporte desigual entre navegadores y exige fullscreen en varios. Basta un overlay "Rotate to play" revelado por `@media (pointer: coarse) and (orientation: portrait)`, con `visibility: hidden` sobre `#hud` detrás. Coste cero y funciona en todas partes.
-- **Toda CTA dependiente de teclado necesita gemela táctil visible**. Si el desktop dice "Press R to restart", el HUD móvil necesita un botón `Play again` real rutado al mismo comando. Ocultar uno u otro con `body.is-touch` (o `@media (pointer: coarse)`) para que desktop y móvil no se solapen; nunca dejar al jugador mirando un atajo que su dispositivo no puede pulsar.
-- **Device class una sola vez al boot**: `matchMedia('(pointer: coarse)')` → clase `is-touch` en `<body>`. CSS (layout compacto, minimap más pequeño, paneles con `overflow-y: auto`, joysticks visibles) y JS (input system, UI wiring) comparten el mismo switch. Mismo patrón que documenta `input-controls.md` — una sola detección, compartida.
+- **`100dvh`** on critical containers (overlays, modals, full-screen panels). `100vh` on iOS Safari can be too short when the URL bar is visible or too tall when it collapses; `dvh` recalculates against the real viewport and stops dragging cuts through the HUD.
+- **`env(safe-area-inset-*)` also on the outer padding** of HUD and CTAs, not only on `body`. Corner buttons need explicit respect for the notch/home indicator; otherwise they get covered or sit outside the touchable area on iPhone.
+- **Orientation lock is CSS-only**. Do not call the `ScreenOrientation API`: browser support is uneven and several browsers require fullscreen. An overlay "Rotate to play" revealed by `@media (pointer: coarse) and (orientation: portrait)`, with `visibility: hidden` on `#hud` behind it, is enough. Zero cost and works everywhere.
+- **Every keyboard-dependent CTA needs a visible touch twin**. If desktop says "Press R to restart", mobile HUD needs a real `Play again` button routed to the same command. Hide one or the other with `body.is-touch` (or `@media (pointer: coarse)`) so desktop and mobile do not overlap; never leave the player staring at a shortcut their device cannot press.
+- **Device class once at boot**: `matchMedia('(pointer: coarse)')` → `is-touch` class on `<body>`. CSS (compact layout, smaller minimap, panels with `overflow-y: auto`, visible joysticks) and JS (input system, UI wiring) share the same switch. Same pattern documented in `input-controls.md` — one detection, shared.
 
-## HUD 3D diegético
-Cuando el HUD vive en el mundo:
-- Usar `Sprite` para marcadores que siempre miran a cámara.
-- Health bars sobre personajes: plano texturizado con `depthTest` apropiado.
-- Evitar texto 3D real (coste de geometría) salvo que sea estilo. Preferir texturas de texto pre-renderizadas o atlas.
-- Para mucho texto dinámico, valorar `troika-three-text` (addon externo) con criterio.
+## Diegetic 3D HUD
+When HUD lives in the world:
+- Use `Sprite` for markers that always face the camera.
+- Health bars over characters: textured plane with appropriate `depthTest`.
+- Avoid real 3D text (geometry cost) unless it is the style. Prefer pre-rendered text textures or atlases.
+- For lots of dynamic text, consider `troika-three-text` (external addon) with judgment.
 
-## Menús y pantallas
-- Estado de menú como máquina simple: `boot → mainMenu → gameplay → paused → gameOver → mainMenu`.
-- Cada pantalla es un componente/nodo DOM que se muestra/oculta.
-- Transiciones cortas con CSS, sin bloquear el loop del juego.
-- Pausa real: el loop del juego sigue renderizando pero para el tiempo de simulación (`dt = 0`). Así el mundo queda quieto pero la escena sigue viva visualmente.
+## Menus and screens
+- Menu state as a simple machine: `boot → mainMenu → gameplay → paused → gameOver → mainMenu`.
+- Each screen is a DOM component/node that is shown/hidden.
+- Short CSS transitions, without blocking the game loop.
+- Real pause: the game loop keeps rendering but stops simulation time (`dt = 0`). The world stays still while the scene remains visually alive.
 
-## Accesibilidad y localización
-- Usar elementos semánticos (`button`, `dialog`, roles ARIA) en DOM.
-- Tamaños mínimos tocables en móvil (~44px).
-- Textos centralizados en un módulo de i18n aunque sea un `Record<string, string>` para empezar.
-- No hardcodear texto en plantillas sueltas.
+## Accessibility and localization
+- Use semantic elements (`button`, `dialog`, ARIA roles) in DOM.
+- Minimum touch sizes on mobile (~44px).
+- Centralize text in an i18n module, even if it is just a `Record<string, string>` to start.
+- Do not hardcode text across loose templates.
 
 ## Performance
-- DOM tranquilo no compite con el render. Animaciones CSS pesadas (sombras grandes, blurs) sí pueden costar, sobre todo en móvil.
-- Evitar reflows por frame (tocar `layout` en cada update). Batch de cambios o escritura en variables CSS.
-- Canvas 2D para HUDs muy dinámicos con muchos elementos puede ser más barato que DOM.
+- Calm DOM does not compete with rendering. Heavy CSS animations (large shadows, blurs) can cost, especially on mobile.
+- Avoid per-frame reflows (touching `layout` every update). Batch changes or write to CSS variables.
+- Canvas 2D for highly dynamic HUDs with many elements can be cheaper than DOM.
 
-## Minimapa / radar barato (Canvas 2D)
+## Cheap minimap / radar (Canvas 2D)
 
-Para **orientación** (goal, spawn, obstáculos) no hace falta un segundo render pass Three.js ni RTT de la escena.
+For **orientation** (goal, spawn, obstacles), you do not need a second Three.js render pass or RTT of the scene.
 
-Patrón:
-- Un `<canvas>` 2D en el overlay DOM (misma resolución lógica, `devicePixelRatio` en el backing store si quieres nitidez).
-- Cada frame: `clearRect`, dibujar puntos/rectángulos en **coordenadas de mundo → píxeles** con escala `metrosPorPixel = radioMetros / (tamañoCanvas/2)`.
-- **Radar player-up**: `ctx.translate(cx, cy); ctx.rotate(facing − π)` (o la convención que encaje con tu `forward = (sin f, cos f)`), dibujar goal/spawn/obstáculos **debajo** de esa rotación; el icono del jugador (triángulo) y una marca cardinal fija **encima**, sin rotar, para que “arriba = adelante del personaje”.
-- Goal fuera de rango: proyectar al borde del círculo (clamp por magnitud) y dibujar una **flecha apuntando radial hacia fuera** (rotada para que su apex coincida con la dirección al goal).
-- **Cull por distancia antes del píxel math**: cuando los obstáculos crecen (cientos de árboles/props en mundos abiertos), iterar la lista completa cada frame aunque la mayoría quede fuera del radar es desperdicio en CPU de canvas 2D. Early-out con `dx² + dz² > radio² · 2` (factor √2 para no recortar cajas cuyo centro está off-radar pero cuyo half-extent todavía entra en el disco) antes de calcular coordenadas de píxel o llamar a `fillRect`.
+Pattern:
+- A 2D `<canvas>` in the DOM overlay (same logical resolution, `devicePixelRatio` in the backing store if you want crispness).
+- Every frame: `clearRect`, draw points/rectangles in **world coordinates → pixels** with scale `metersPerPixel = radiusMeters / (canvasSize/2)`.
+- **Player-up radar**: `ctx.translate(cx, cy); ctx.rotate(facing − π)` (or whatever convention fits your `forward = (sin f, cos f)`), draw goal/spawn/obstacles **under** that rotation; the player icon (triangle) and a fixed cardinal mark **above**, without rotation, so “up = character forward”.
+- Goal out of range: project it to the circle edge (clamp by magnitude) and draw an **arrow pointing radially outward** (rotated so its apex matches the goal direction).
+- **Cull by distance before pixel math**: when obstacles grow (hundreds of trees/props in open worlds), iterating the full list every frame while most are off-radar wastes Canvas 2D CPU. Early-out with `dx² + dz² > radius² · 2` (√2 factor so boxes whose center is off-radar but whose half-extent still enters the disk are not clipped) before calculating pixel coordinates or calling `fillRect`.
 
-Ventaja frente a `WebGLRenderTarget` + cámara cenital: coste casi nulo (~docenas de primitivas 2D por frame), sin segundo frustum ni limpieza de depth. Ver también `render-target-families.md` cuando sí necesitas **la vista real** texturizada (mapa “fotográfico”, niebla de guerra, etc.).
+Advantage over `WebGLRenderTarget` + overhead camera: almost zero cost (~dozens of 2D primitives per frame), with no second frustum or depth clearing. See also `render-target-families.md` when you really need **the real view** textured ("photographic" map, fog of war, etc.).
 
 ## Debug UI
-Separada del HUD final, activable por tecla o query param:
-- FPS y frame time
+Separate from the final HUD, activatable by key or query param:
+- FPS and frame time
 - counters (`renderer.info`)
-- estado del jugador
-- toggles rápidos
+- player state
+- quick toggles
 
-Nunca dejar debug UI cargada en producción sin detrás de un flag.
+Never leave debug UI loaded in production without a flag.
 
-## Anti-patrones
-- montar React/Vue/Svelte para un HUD de 4 indicadores
-- UI que lee del scene graph en lugar de del estado del juego
-- `onClick` que hace gameplay directo (mover personaje, disparar)
-- HUD con z-index enfrentado al canvas resuelto a base de `!important`
-- texto 3D real para cada número del HUD
-- no distinguir pausa de juego de pausa visual
-- bloquear input global sin máquina de contextos
-- localización metida a mano en múltiples sitios
+## Anti-patterns
+- mounting React/Vue/Svelte for a HUD with 4 indicators
+- UI reading from the scene graph instead of game state
+- `onClick` doing direct gameplay (move character, shoot)
+- HUD with z-index fighting the canvas and solved with `!important`
+- real 3D text for every HUD number
+- not distinguishing game pause from visual pause
+- blocking global input without a context machine
+- localization hand-written in multiple places
 
-## Recomendación fuerte
-Desde el día 1:
-- shell HTML con capas `hud`, `menus`, `toasts`
-- `pointer-events: none` en HUD por defecto
-- store o event bus simple como fuente de verdad
-- máquina de estados de pantallas
-- textos por clave, aunque sea un único idioma al principio
+## Strong recommendation
+From day one:
+- HTML shell with `hud`, `menus`, `toasts` layers
+- `pointer-events: none` on HUD by default
+- simple store or event bus as the source of truth
+- screen state machine
+- texts by key, even if there is only one language at first
 
-## Referencias asociadas
+## Related references
 - `architecture.md`
 - `input-controls.md`
 - `audio-systems.md`

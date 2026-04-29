@@ -1,20 +1,20 @@
 # Level editor in-browser (Three.js)
 
-Patrones concretos para añadir un editor de niveles dentro de la misma app que el juego (sin engine externo, sin R3F). Validados en proyectos reales. Complementa el bloque **Level editors / authored worlds** del `SKILL.md`.
+Concrete patterns for adding a level editor inside the same app as the game (no external engine, no R3F). Validated in real projects. Complements the **Level editors / authored worlds** block in `SKILL.md`.
 
-## Cuándo aplica
+## When it applies
 
-- El juego tiene contenido authored (casas, árboles, billboards, waypoints, etc.) y ya vive en un JSON.
-- Quieres que los diseñadores (o tú mismo) puedan mover cosas sin abrir un IDE.
-- El proyecto tiene servidor de dev (Vite, Colyseus, Express, etc.) o puedes montar uno mínimo.
+- The game has authored content (houses, trees, billboards, waypoints, etc.) and already lives in JSON.
+- You want designers (or yourself) to be able to move things without opening an IDE.
+- The project has a dev server (Vite, Colyseus, Express, etc.) or you can set up a minimal one.
 
-Si el contenido todavía cabe en 30 líneas de constantes, espera. El editor es coste fijo; paga cuando el JSON empieza a doler al editar a mano.
+If the content still fits in 30 lines of constants, wait. The editor is fixed cost; it pays off when the JSON starts hurting to edit by hand.
 
-## Arquitectura base
+## Base architecture
 
-### Una app, dos boots
+### One app, two boots
 
-El editor debería **reutilizar el bootstrap del juego** (renderer, scene, camera, sky, loaders, PBR). Activación por URL:
+The editor should **reuse the game bootstrap** (renderer, scene, camera, sky, loaders, PBR). Activate by URL:
 
 ```ts
 // main.ts
@@ -23,37 +23,37 @@ if (params.get('editor') === '1') {
   await bootLevelEditor(canvas);
   return;
 }
-// ... boot del juego normal
+// ... normal game boot
 ```
 
-Ventaja: lo que ves en el editor **es** el juego, no una aproximación. Los materiales, sombras y modelos cargan igual. Cambios visuales se validan sin rebuildear.
+Advantage: what you see in the editor **is** the game, not an approximation. Materials, shadows, and models load the same way. Visual changes are validated without rebuilding.
 
-### Source único: JSON authored
+### Single source: authored JSON
 
-- `public/levels/<level>.json` (servido estático) = source of truth.
-- Cliente: `loadLevelDefinitionFromUrl(path)` con fallback a un `defaultLevelDefinition()` hardcodeado (útil para offline / archivo corrupto).
-- Schema en `levelDefinition.ts` con `normalizeLevelDefinition(value)`: normalizador defensivo que acepta JSON viejo, rellena defaults, acepta campos opcionales nuevos.
-- **Separación estricta**: el schema no importa `three`. Así server, scripts o shared pueden leer niveles sin arrastrar WebGL.
+- `public/levels/<level>.json` (served static) = source of truth.
+- Client: `loadLevelDefinitionFromUrl(path)` with fallback to a hardcoded `defaultLevelDefinition()` (useful for offline / corrupt file).
+- Schema in `levelDefinition.ts` with `normalizeLevelDefinition(value)`: defensive normalizer that accepts old JSON, fills defaults, accepts new optional fields.
+- **Strict separation**: the schema does not import `three`. That way server, scripts, or shared code can read levels without dragging in WebGL.
 
-### El juego **tiene que** consumir el JSON
+### The game **must** consume the JSON
 
-Bug clásico después de montar editor: el juego sigue haciendo `createLevel()` sin argumento y tira del default hardcodeado. Verifica siempre:
+Classic bug after adding an editor: the game still calls `createLevel()` with no argument and pulls from the hardcoded default. Always verify:
 
 ```ts
 const levelDef = await loadLevelDefinitionFromUrl(DEFAULT_LEVEL_PATH).catch(defaultLevelDefinition);
 const level = createLevel(levelDef);
 ```
 
-Sin ese `await`, el editor guarda cambios que nadie ve.
+Without that `await`, the editor saves changes nobody sees.
 
-## Save: de copy/paste a endpoint dev
+## Save: from copy/paste to dev endpoint
 
-Progresión sana del workflow de guardado:
+Healthy progression for the save workflow:
 
-1. **MVP**: botón "Copy JSON" + "Download". Funciona, pero cada save es 3 clicks + pegar + refrescar.
-2. **Deseable**: endpoint dev que escribe al disco directamente.
+1. **MVP**: "Copy JSON" + "Download" button. It works, but every save is 3 clicks + paste + refresh.
+2. **Desirable**: dev endpoint that writes directly to disk.
 
-### Endpoint dev-only en el server
+### Dev-only endpoint on the server
 
 ```ts
 // server/src/index.ts
@@ -69,16 +69,16 @@ app.post('/dev/level', express.json({ limit: '256kb' }), async (req, res) => {
 });
 ```
 
-Puntos no negociables:
+Non-negotiable points:
 
-- **Guard `NODE_ENV !== 'production'`** o no expongas el endpoint en builds prod. Escribir al disco desde un POST del navegador en producción es un agujero de seguridad.
-- **Resolver la ruta relativa al binario del server** (`fileURLToPath(import.meta.url)`), no al CWD. Si el dev server cambia de cwd el save se corrompe silenciosamente.
-- CORS permisivo solo en dev (`Access-Control-Allow-Origin: *`).
-- **Límite de body** (`256 kb` típico). Un JSON de nivel nunca debería superar eso; si lo hace, tienes otro problema.
+- **Guard `NODE_ENV !== 'production'`** or do not expose the endpoint in prod builds. Writing to disk from a browser POST in production is a security hole.
+- **Resolve the path relative to the server binary** (`fileURLToPath(import.meta.url)`), not CWD. If the dev server changes cwd, the save silently corrupts.
+- Permissive CORS only in dev (`Access-Control-Allow-Origin: *`).
+- **Body limit** (`256 kb` typical). A level JSON should never exceed that; if it does, you have another problem.
 
-### Cliente: resolver la base HTTP
+### Client: resolve the HTTP base
 
-No hardcodees `http://localhost:2567`. Reusa los params de URL que ya tenga el juego (p. ej. `?mp=`):
+Do not hardcode `http://localhost:2567`. Reuse the URL params the game already has (e.g. `?mp=`):
 
 ```ts
 function resolveServerHttpBase(): string {
@@ -89,21 +89,21 @@ function resolveServerHttpBase(): string {
 }
 ```
 
-### Draft autosave en localStorage (sin modal)
+### Draft autosave in localStorage (no modal)
 
-- Cada cambio persiste un draft en `localStorage['<app>/editor-draft/<level>']`.
-- Al abrir el editor, si el draft difiere del JSON servido, **se restaura en silencio**.
-- UI: un chip "• Unsaved changes" / "All changes saved" junto al botón Save. No modal preguntando "¿quieres restaurar?" — es ruido y además es lo que el usuario siempre elige.
-- Save limpia el draft.
-- Si alguien quiere tirar el draft: "Reset to default layout" (en Advanced) + Save.
+- Every change persists a draft in `localStorage['<app>/editor-draft/<level>']`.
+- When opening the editor, if the draft differs from the served JSON, **restore it silently**.
+- UI: a chip "• Unsaved changes" / "All changes saved" next to the Save button. No modal asking "do you want to restore?" — it is noise, and it is also what the user always chooses.
+- Save clears the draft.
+- If someone wants to discard the draft: "Reset to default layout" (in Advanced) + Save.
 
-## Transform gizmo para authoring top-down
+## Transform gizmo for top-down authoring
 
-### Problema: `TransformControls` solo tiene un modo
+### Problem: `TransformControls` has only one mode
 
-`translate`, `rotate` o `scale` — no los tres a la vez. El toggle "Move / Rotate" en la UI es torpe: el usuario siempre olvida cambiarlo.
+`translate`, `rotate`, or `scale` — not all three at once. The "Move / Rotate" toggle in the UI is clumsy: the user always forgets to change it.
 
-### Solución: dos `TransformControls` al mismo objeto
+### Solution: two `TransformControls` on the same object
 
 ```ts
 const move = new TransformControls(camera, renderer.domElement);
@@ -113,23 +113,23 @@ move.setTranslationSnap(0.5);
 
 const rotate = new TransformControls(camera, renderer.domElement);
 rotate.setMode('rotate');
-rotate.showX = false; rotate.showY = true; rotate.showZ = false; // solo yaw
-rotate.size = 1.35;                                              // ring por fuera de las flechas
+rotate.showX = false; rotate.showY = true; rotate.showZ = false; // yaw only
+rotate.size = 1.35;                                              // ring outside the arrows
 rotate.setRotationSnap(THREE.MathUtils.degToRad(15));
 
 scene.add(move.getHelper(), rotate.getHelper());
 ```
 
-Cuando el usuario selecciona algo:
+When the user selects something:
 
 ```ts
 move.attach(mesh);
 if (supportsRotation(selection)) rotate.attach(mesh); else rotate.detach();
 ```
 
-### Gating de `OrbitControls` con contador de drags
+### Gate `OrbitControls` with a drag counter
 
-Dos gizmos → dos eventos `dragging-changed`. Si usas un `boolean` se desincronizan. Usa un contador:
+Two gizmos → two `dragging-changed` events. If you use a `boolean`, they desync. Use a counter:
 
 ```ts
 let dragCount = 0;
@@ -142,47 +142,47 @@ move.addEventListener('dragging-changed', onDrag);
 rotate.addEventListener('dragging-changed', onDrag);
 ```
 
-### Snap + Shift para libre
+### Snap + Shift for free movement
 
-`setTranslationSnap` / `setRotationSnap` activan el snap. **`TransformControls` deshabilita el snap automáticamente mientras Shift está presionado** — no necesitas implementarlo. Menciónalo en el hint ("Hold Shift for free motion") porque si no nadie lo descubre.
+`setTranslationSnap` / `setRotationSnap` enable snapping. **`TransformControls` automatically disables snapping while Shift is held** — you do not need to implement it. Mention it in the hint ("Hold Shift for free motion") because otherwise nobody discovers it.
 
-Defaults razonables:
+Reasonable defaults:
 
-- **Rotación: 15°**. Cubre 0/45/90/135/180 gratis, más ángulos intermedios (30/60/75) para props que quedan feos en cardinal puro. 45° es demasiado rígido; 5° es ruido.
-- **Traslación: 0.5 m**. Rejilla visible en top-down sin pelear para alinear cosas.
+- **Rotation: 15°**. Covers 0/45/90/135/180 for free, plus intermediate angles (30/60/75) for props that look bad on pure cardinal directions. 45° is too rigid; 5° is noise.
+- **Translation: 0.5 m**. Visible grid in top-down without fighting to align things.
 
-### Botones de rotación como complemento, no sustituto
+### Rotation buttons as complement, not replacement
 
-El ring con snap funciona bien pero:
+The ring with snap works well, but:
 
-- No es descubrible si no lo ves.
-- Es fácil agarrar una flecha por error.
-- Para 90° exactos, click es más rápido que drag.
+- It is not discoverable if you do not see it.
+- It is easy to grab an arrow by mistake.
+- For exact 90°, click is faster than drag.
 
-Añade 4 botones en la tarjeta de selección con el mismo step que el snap:
+Add 4 buttons in the selection card with the same step as snap:
 
 ```
 [↺ 90°]  [−15°]  [+15°]  [90° ↻]
 ```
 
-Todos los que rotan llaman al mismo `(getYaw, setYaw) => { ... }`, no hardcodees por asset.
+Everything that rotates calls the same `(getYaw, setYaw) => { ... }`; do not hardcode by asset.
 
-Input numérico "type a value in degrees" → quitado tras feedback: la gente prefiere tocar mil veces un botón que teclear. Conservado **solo** el `<input type="number">` para valores discretos que no son ángulos (p.ej. "Tweet index" en billboards).
+Numeric input "type a value in degrees" → removed after feedback: people prefer pressing a button a thousand times over typing. Keep **only** the `<input type="number">` for discrete values that are not angles (e.g. "Tweet index" in billboards).
 
-## Disposal gotcha (la cajita amarilla fantasma)
+## Disposal gotcha (the ghost yellow box)
 
-Patrón roto:
+Broken pattern:
 
 ```ts
 function clearHelpers() {
-  disposeObjectTree(helpersGroup);   // libera GPU resources
-  scene.add(helpersGroup);           // re-engancha el Group
+  disposeObjectTree(helpersGroup);   // frees GPU resources
+  scene.add(helpersGroup);           // reattaches the Group
 }
 ```
 
-`disposeObjectTree` llama a `geometry.dispose()` y `material.dispose()` en cada hijo, y luego hace `helpersGroup.removeFromParent()`. Al re-añadirlo al scene, **los hijos siguen en `helpersGroup.children`**. Aparecen como cajas fantasma porque Three re-sube buffers al siguiente draw.
+`disposeObjectTree` calls `geometry.dispose()` and `material.dispose()` on each child, and then runs `helpersGroup.removeFromParent()`. When re-adding it to the scene, **the children are still in `helpersGroup.children`**. They appear as ghost boxes because Three re-uploads buffers on the next draw.
 
-Patrón correcto:
+Correct pattern:
 
 ```ts
 function clearHelpers() {
@@ -191,15 +191,15 @@ function clearHelpers() {
     const m = (child as THREE.Mesh).material;
     if (Array.isArray(m)) m.forEach(disposeMaterial); else if (m) disposeMaterial(m);
   }
-  helpersGroup.clear();  // <-- esto es lo que faltaba
+  helpersGroup.clear();  // <-- this is what was missing
 }
 ```
 
-Regla general: **liberar recursos GPU ≠ sacar objetos del grafo**. Son dos pasos.
+General rule: **freeing GPU resources ≠ removing objects from the graph**. They are two steps.
 
-## Catálogo de assets (extensibilidad)
+## Asset catalog (extensibility)
 
-El editor no debe saber los nombres concretos de los assets. Un catálogo central `{id, url, label}` por categoría:
+The editor should not know concrete asset names. Use a central catalog `{id, url, label}` by category:
 
 ```ts
 // game/treeModel.ts
@@ -218,43 +218,43 @@ export const ASSET_CATALOG = {
 };
 ```
 
-Añadir un asset nuevo = **3 pasos mecánicos**:
+Adding a new asset = **3 mechanical steps**:
 
-1. GLB en `public/models/`.
-2. Extender el union + array de `kinds` en `levelDefinition.ts`.
-3. Meter entrada en URL + label maps.
+1. GLB in `public/models/`.
+2. Extend the union + `kinds` array in `levelDefinition.ts`.
+3. Add entries to URL + label maps.
 
-El editor lee el catálogo → dropdown de "Type" se rellena solo. No tocar código de editor por asset nuevo.
+The editor reads the catalog → the "Type" dropdown fills itself. Do not touch editor code for each new asset.
 
-### Backward-compat del schema
+### Schema backward compatibility
 
-Cuando añades un campo como `variant` a casas:
+When you add a field like `variant` to houses:
 
-- **Opcional** en el type: `variant?: HouseVariantKind`.
-- Helper `resolveHouseVariant(slot, index)` que devuelve `slot.variant ?? HOUSE_VARIANT_KINDS[index % N]` (round-robin fallback).
-- El JSON viejo sigue cargando exactamente como antes. Cuando el usuario guarda, las casas que **tocó** quedan con variant explícita; el resto siguen con fallback hasta que las edite.
+- **Optional** in the type: `variant?: HouseVariantKind`.
+- Helper `resolveHouseVariant(slot, index)` that returns `slot.variant ?? HOUSE_VARIANT_KINDS[index % N]` (round-robin fallback).
+- Old JSON keeps loading exactly as before. When the user saves, houses they **touched** get an explicit variant; the rest keep the fallback until edited.
 
-## UI: cómo no hacer un Photoshop en miniatura
+## UI: how not to make a miniature Photoshop
 
-Anti-patrones frecuentes:
+Common anti-patterns:
 
-- Mezclar botones de "operación segura" (Save, Add, Delete) con "zona peligrosa" (Reset, Import raw JSON, Rebuild) en el mismo panel.
-- Dos selectores en horizontal al top (Mode + Transform). El segundo nunca lo tocas una vez lo entiendes.
-- Textarea con el JSON crudo ocupando media pantalla. Útil 1% del tiempo, ruido el 99%.
-- Estado "Preview building..." / "Preview ready" sin que nadie lo pida.
+- Mixing "safe operation" buttons (Save, Add, Delete) with the "danger zone" (Reset, Import raw JSON, Rebuild) in the same panel.
+- Two selectors horizontally at the top (Mode + Transform). You never touch the second once you understand it.
+- Textarea with raw JSON taking half the screen. Useful 1% of the time, noise 99% of the time.
+- "Preview building..." / "Preview ready" state that nobody asked for.
 
-Layout que sí funciona:
+Layout that actually works:
 
 ```
 Level Editor
 
 What to edit: [Houses ▼]
-  · hint corto de 1 línea sobre qué hace drag/ring
+  · short 1-line hint about what drag/ring does
 
 Selection
   · label (House #3)
-  · dropdown de variant / kind (si aplica)
-  · botones de rotación (si rotable)
+  · dropdown for variant / kind (if applicable)
+  · rotation buttons (if rotatable)
 
 [+ Add house]  [Delete]
 
@@ -262,28 +262,28 @@ Selection
 ● Unsaved changes              [Save to file]
 ─────
 
-▸ Advanced (plegado)
+▸ Advanced (collapsed)
   · World boundary radius
   · Auto-generate billboards
   · Download / Import JSON
   · Reset to default layout
 ```
 
-Trucos concretos:
+Concrete tricks:
 
-- **Label contextual del botón Add**: "+ Add house", "+ Add tree", etc. Cambia según el modo.
-- **Auto-select del item recién añadido**: se posiciona en (0,0); el usuario lo arrastra al sitio sin un click extra.
-- **Save deshabilitado si no hay cambios**, verde cuando sí. No hace falta mostrar un modal de confirmación.
-- **Reset pide `confirm()`**: es destructivo, merece fricción.
+- **Contextual Add button label**: "+ Add house", "+ Add tree", etc. Changes by mode.
+- **Auto-select the newly added item**: it is placed at (0,0); the user drags it into place without an extra click.
+- **Save disabled if there are no changes**, green when there are. No confirmation modal needed.
+- **Reset asks for `confirm()`**: it is destructive and deserves friction.
 
-## Qué no meter en el editor (todavía)
+## What not to put in the editor (yet)
 
-- **Undo/redo global**: requiere arquitectura de comandos. Empieza con `localStorage` draft como red de seguridad.
-- **Multiselect + operaciones en grupo**: útil en editores maduros, sobra en los primeros 20 niveles.
-- **Preview de día/noche, tiempo del mundo, física simulada**: empuja al usuario fuera del editor a probar el juego. Eso es lo sano.
+- **Global undo/redo**: requires command architecture. Start with a `localStorage` draft as a safety net.
+- **Multiselect + group operations**: useful in mature editors, unnecessary in the first 20 levels.
+- **Day/night preview, world time, simulated physics**: push the user out of the editor to test the game. That is healthy.
 
-## Cuándo añadir un bake
+## When to add a bake
 
-Si empiezas a tener LODs, instancing masivo o contenido procedural derivado (ribbon meshes, nav mesh, baked lighting), llega un punto en que el cliente necesita un artifact preprocesado, no el source authored directo.
+If you start having LODs, mass instancing, or derived procedural content (ribbon meshes, nav mesh, baked lighting), there comes a point where the client needs a preprocessed artifact, not the direct authored source.
 
-Regla: **el source authored sigue siendo la fuente de verdad**. El bake es un paso de build, versionado o no, pero siempre reconstruible desde el source. Si el juego se rompe cuando falta el bake, tienes el orden invertido.
+Rule: **the authored source remains the source of truth**. The bake is a build step, versioned or not, but always rebuildable from the source. If the game breaks when the bake is missing, your order is inverted.

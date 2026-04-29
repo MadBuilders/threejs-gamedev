@@ -1,130 +1,130 @@
 # Fog Mask Blending
 
-## Objetivo
-Representar niebla de guerra o visibilidad táctica con máscaras y blending legibles, baratos y coherentes con el estado de juego.
+## Goal
+Represent fog of war or tactical visibility with masks and blending that are readable, cheap, and coherent with game state.
 
-## Regla principal
-**La máscara expresa estado táctico, no decoración gratuita.**
-Elegir blending por claridad antes que por “efecto bonito”.
+## Main rule
+**The mask expresses tactical state, not free decoration.**
+Choose blending for clarity before choosing it for a “pretty effect”.
 
-## Qué intenta resolver
-- distinguir visible, explorado y desconocido
-- mezclar overlay de fog con mapa base sin perder legibilidad
-- evitar soluciones visuales caras o confusas
+## What it tries to solve
+- distinguish visible, explored, and unknown
+- blend fog overlay with base map without losing readability
+- avoid expensive or confusing visual solutions
 
-## Tres estados base
-Lo mínimo sano suele ser:
+## Three base states
+The healthy minimum is usually:
 - `visibleNow`
 - `explored`
 - `unseen`
 
-La máscara o combinación de máscaras debería dejar esta lectura clarísima.
+The mask or combination of masks should make this reading extremely clear.
 
-## Modelos útiles
-### 1. Máscara binaria simple
-- visible / no visible
+## Useful models
+### 1. Simple binary mask
+- visible / not visible
 
-Muy barata, pero limitada.
-Útil en prototipos o juegos sin memoria de exploración.
+Very cheap, but limited.
+Useful in prototypes or games without exploration memory.
 
 ### 2. Visible + explored
-La más útil en muchos juegos.
+The most useful model in many games.
 
-Patrón:
-- visible ahora: casi limpio
-- explorado pero no visible: atenuado
-- no visto: tapado
+Pattern:
+- currently visible: almost clean
+- explored but not visible: dimmed
+- unseen: covered
 
-### 3. Máscaras por equipo o capas
-Útil en multiplayer o juegos con múltiples reveladores.
+### 3. Masks by team or layers
+Useful in multiplayer or games with multiple revealers.
 
-## Opciones de blending
+## Blending options
 ### Multiplicative / darken-like
-Muy útil para oscurecer zonas no visibles.
+Very useful for darkening non-visible zones.
 
-Ventajas:
+Advantages:
 - simple
-- barato
-- lectura clara
+- cheap
+- clear reading
 
-Riesgo:
-- si oscurece demasiado, se pierde información útil del mapa base
+Risk:
+- if it darkens too much, useful information from the base map is lost
 
-### Alpha lerp clásico
-Mezcla una capa de niebla sobre el mapa base.
+### Classic alpha lerp
+Blends a fog layer over the base map.
 
-Ventajas:
-- control fino
-- fácil de ajustar por estado
+Advantages:
+- fine control
+- easy to tune by state
 
-Riesgo:
-- grisáceo o lavado si se hace sin criterio
+Risk:
+- gray or washed out if done without judgment
 
-### Color coding suave
-Añadir tinte distinto para explored frente a visible.
+### Soft color coding
+Add a distinct tint for explored versus visible.
 
-Ventaja:
-- lectura táctica rápida
+Advantage:
+- quick tactical reading
 
-Riesgo:
-- exceso de color y ruido visual
+Risk:
+- too much color and visual noise
 
-## Defaults sanos
-- explored más oscuro o desaturado, no negro total
-- unseen claramente oculto
-- visible con máxima lectura
-- transiciones suaves solo si no sacrifican claridad
+## Healthy defaults
+- explored darker or desaturated, not totally black
+- unseen clearly hidden
+- visible with maximum readability
+- smooth transitions only if they do not sacrifice clarity
 
-## Bordes y suavizado
-Opciones:
-- borde duro para juegos tácticos muy abstractos
-- feather suave si el estilo lo pide
-- blur moderado sobre máscara, no sobre todo el minimapa
+## Edges and smoothing
+Options:
+- hard edge for highly abstract tactical games
+- soft feather if the style calls for it
+- moderate blur on the mask, not on the whole minimap
 
-Regla:
-- el suavizado debe ayudar a leer, no a emborronar.
+Rule:
+- smoothing should help reading, not smear it.
 
-## Dónde aplicar la máscara
-### Opción A: en shader/material del overlay
-Buena cuando:
-- ya tienes pipeline simple de minimapa
-- quieres control visual continuo
+## Where to apply the mask
+### Option A: in the overlay shader/material
+Good when:
+- you already have a simple minimap pipeline
+- you want continuous visual control
 
-### Opción B: composición entre mapa base y textura de visibilidad
-Buena cuando:
-- separas claramente datos tácticos y render del mapa
-- quieres update independiente del estado de fog
+### Option B: composition between base map and visibility texture
+Good when:
+- you clearly separate tactical data and map rendering
+- you want updates independent from fog state
 
-## Multiplayer y equipos
-Si la fog es compartida por equipo:
-- agregar visibilidad de varios reveladores
-- serializar estado táctico de forma compacta
-- no depender de lo que un cliente dice haber visto como única verdad
+## Multiplayer and teams
+If fog is shared by team:
+- aggregate visibility from several revealers
+- serialize tactical state compactly
+- do not depend on what a client says it has seen as the only source of truth
 
 ## Performance
-La máscara debería ser más barata que rerenderizar el mundo.
+The mask should be cheaper than rerendering the world.
 
-Palancas buenas:
-- textura de visibilidad de baja resolución táctica
-- update por sector/tick
-- blur pequeño y localizado
-- composición simple
+Good levers:
+- low-resolution tactical visibility texture
+- update by sector/tick
+- small, localized blur
+- simple composition
 
-## Anti-patrones
-- confundir explored con visible actual
-- usar efectos bonitos que destruyen contraste
-- recalcular máscara global a 60 fps sin necesidad
-- aplicar blur pesado a toda la UI táctica
+## Anti-patterns
+- confusing explored with currently visible
+- using pretty effects that destroy contrast
+- recalculating a global mask at 60 fps unnecessarily
+- applying heavy blur to the entire tactical UI
 
-## Recomendación fuerte
-Empezar por una política visual clara:
-- unseen oculto
-- explored atenuado
-- visible limpio
+## Strong recommendation
+Start with a clear visual policy:
+- unseen hidden
+- explored dimmed
+- visible clean
 
-Luego elegir el blending más barato que mantenga esa lectura.
+Then choose the cheapest blending that preserves that reading.
 
-## Pendiente de ampliar
-- ejemplos concretos de shaders
-- texturas de visibilidad por chunks
-- blending para estilos muy diegéticos
+## To expand later
+- concrete shader examples
+- visibility textures by chunk
+- blending for highly diegetic styles

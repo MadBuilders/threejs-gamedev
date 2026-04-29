@@ -1,147 +1,147 @@
 # Server Rewind by Weapon
 
-## Objetivo
-Aplicar lag compensation o server rewind con criterio por arma y por acción, en vez de tratar todos los disparos como si necesitaran exactamente la misma validación temporal.
+## Goal
+Apply lag compensation or server rewind deliberately per weapon and per action, instead of treating every shot as if it needed exactly the same temporal validation.
 
-## Regla principal
-**No todas las armas merecen la misma ventana de rewind.**
-Un hitscan rápido, un shotgun, un proyectil lento o una melee no piden la misma reconstrucción del pasado.
+## Main rule
+**Not every weapon deserves the same rewind window.**
+A fast hitscan weapon, shotgun, slow projectile, or melee attack does not ask for the same reconstruction of the past.
 
-## Qué intenta resolver
-- validar hits de forma más justa
-- evitar ventanas absurdas que regalan disparos
-- reducir la sensación de morir detrás de cobertura
-- no usar una sola política de rewind para todo el arsenal
+## What it tries to solve
+- validate hits more fairly
+- avoid absurd windows that hand out free shots
+- reduce the feeling of dying behind cover
+- avoid using a single rewind policy for the whole arsenal
 
-## Modelo base
-Patrón típico:
-- el cliente manda intento de disparo con `tick`, origen, dirección y arma
-- el servidor consulta historial autoritativo reciente
-- reconstruye estado aproximado del momento relevante
-- valida según política de esa arma
+## Base model
+Typical pattern:
+- the client sends a fire attempt with `tick`, origin, direction, and weapon
+- the server queries recent authoritative history
+- it reconstructs the approximate state at the relevant moment
+- it validates according to that weapon's policy
 
-## Separar por familia de arma
-### 1. Hitscan preciso
-Ejemplos:
+## Separate by weapon family
+### 1. Precise hitscan
+Examples:
 - rifle
-- pistola precisa
+- accurate pistol
 - sniper
 
-Suele merecer:
-- rewind corto pero fiable
-- validación estricta de línea/rayo
-- límites fuertes de ventana máxima
+Usually deserves:
+- short but reliable rewind
+- strict line/ray validation
+- strong maximum-window limits
 
-Riesgo:
-- si la ventana es muy generosa, se siente injusto para quien ya estaba a cubierto
+Risk:
+- if the window is too generous, it feels unfair to the player who was already behind cover
 
-### 2. Shotgun o multi-pellet
-Suele requerir:
-- misma base de rewind que hitscan
-- validación de varios rayos o dispersión determinista/servidor
-- más cuidado con coste por número de impactos potenciales
+### 2. Shotgun or multi-pellet
+Usually requires:
+- the same rewind base as hitscan
+- validation of multiple rays or deterministic/server-side spread
+- more care with cost due to the number of potential hits
 
-Riesgo:
-- repetir toda la simulación pellet por pellet de forma cara y poco controlada
+Risk:
+- replaying the entire simulation pellet by pellet in an expensive and poorly controlled way
 
-### 3. Proyectiles lentos
-Ejemplos:
-- cohetes
-- flechas lentas
-- bolas de energía
+### 3. Slow projectiles
+Examples:
+- rockets
+- slow arrows
+- energy balls
 
-Muchas veces no necesitan rewind fuerte del impacto final.
-Lo importante suele ser:
-- validar spawn inicial
-- velocidad inicial plausible
-- simulación autoritativa del proyectil o corrección fuerte
+Often they do not need strong rewind for the final impact.
+What usually matters is:
+- validating the initial spawn
+- plausible initial velocity
+- authoritative projectile simulation or strong correction
 
 ### 4. Melee
-Suele pedir otra cosa:
-- ventana corta
-- validación espacial por volumen o arco
-- confirmación temporal coherente con animación o tick de ataque
+Usually needs something else:
+- short window
+- spatial validation by volume or arc
+- temporal confirmation consistent with the animation or attack tick
 
-### 5. AoE o explosivos
-Importa separar:
-- validación del punto de impacto/explosión
-- aplicación del daño por radio
+### 5. AoE or explosives
+Separate:
+- validation of the impact/explosion point
+- application of radial damage
 
-No todo es rewind de raycast.
+Not everything is raycast rewind.
 
-## Qué guardar en el historial
-Guardar solo lo necesario y con ventana pequeña.
+## What to store in history
+Store only what is necessary, with a small window.
 
-Normalmente:
-- transform autoritativa por tick o timestamp
-- posture relevante si afecta hitbox
-- estado vivo/muerto/activo
-- quizá hit volumes simplificados
+Usually:
+- authoritative transform by tick or timestamp
+- relevant posture if it affects the hitbox
+- alive/dead/active state
+- maybe simplified hit volumes
 
-Evitar:
-- reconstruir todo el scene graph
-- depender de estado visual del cliente
+Avoid:
+- reconstructing the whole scene graph
+- depending on the client's visual state
 
-## Ventana máxima
-Tener una ventana máxima clara por arma o familia.
+## Maximum window
+Have a clear maximum window per weapon or family.
 
-Ejemplo conceptual:
-- rifle preciso: más estricta
-- shotgun: estricta pero tolerante a dispersión
-- melee: muy corta
-- proyectil lento: mínima o centrada en spawn
+Conceptual example:
+- precise rifle: stricter
+- shotgun: strict but tolerant of spread
+- melee: very short
+- slow projectile: minimal or focused on spawn
 
 ## Fairness vs feel
-Tradeoff real:
-- ventana mayor ayuda a jugadores con latencia alta
-- ventana mayor también aumenta muertes “injustas” a ojos de la víctima
+Real tradeoff:
+- a larger window helps high-latency players
+- a larger window also increases deaths that feel “unfair” to the victim
 
-Regla:
-- ajustar por género, TTK y ritmo del juego
-- no copiar una ventana universal de otro juego
+Rule:
+- tune by genre, TTK, and game pace
+- do not copy a universal window from another game
 
-## Datos mínimos del disparo
-Mandar:
+## Minimum shot data
+Send:
 - `weaponId`
 - `tick`
-- origen o socket de salida si aplica
-- dirección o intención
-- quizá seed si la dispersión necesita reproducibilidad
+- origin or output socket if applicable
+- direction or intent
+- maybe a seed if spread needs reproducibility
 
-No mandar como verdad:
-- lista final de impactos válidos
-- daño definitivo
-- resolución ya cocinada por el cliente
+Do not send as truth:
+- final list of valid hits
+- definitive damage
+- resolution already precomputed by the client
 
-## Coste y presupuesto
-El rewind tiene coste de CPU y memoria.
+## Cost and budget
+Rewind has CPU and memory cost.
 
-Medir:
-- número de validaciones por segundo
-- coste por arma
-- tamaño del historial vivo
-- impacto en picos bajo combate intenso
+Measure:
+- number of validations per second
+- cost per weapon
+- size of live history
+- impact on spikes under intense combat
 
-## Defaults sanos
-- rewind corto y explícito
-- políticas por arma, no una sola global
-- servidor decide daño final
-- hitscan y melee más estrictos que armas difusas o lentas
+## Healthy defaults
+- short, explicit rewind
+- policies per weapon, not a single global policy
+- server decides final damage
+- hitscan and melee stricter than diffuse or slow weapons
 
-## Anti-patrones
-- una única ventana de rewind para todo el arsenal
-- usar rewind enorme para tapar netcode flojo
-- validar daño directamente desde cliente
-- reconstruir demasiado estado por disparo
+## Anti-patterns
+- a single rewind window for the entire arsenal
+- using huge rewind to hide weak netcode
+- validating damage directly from the client
+- reconstructing too much state per shot
 
-## Recomendación fuerte
-Crear tabla de políticas por arma o familia:
+## Strong recommendation
+Create a policy table by weapon or family:
 - `maxRewindMs`
 - `validationMode`
 - `spreadPolicy`
-- `allowPastCoverGrace` si aplica
+- `allowPastCoverGrace` if applicable
 
-## Pendiente de ampliar
-- hitboxes variables por postura
-- projectiles persistentes híbridos
-- server rewind con destrucción del entorno
+## To expand later
+- variable hitboxes by posture
+- hybrid persistent projectiles
+- server rewind with environment destruction

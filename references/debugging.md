@@ -1,103 +1,103 @@
 # Debugging
 
-## Objetivo
-Tener una estrategia de debugging práctica para juegos en Three.js que permita detectar rápido problemas de cámara, transforms, luces, sombras, materiales, assets y flujo general del frame.
+## Goal
+Have a practical debugging strategy for Three.js games that lets you quickly detect camera, transform, light, shadow, material, asset, and general frame-flow problems.
 
-## Regla principal
-Hacer visible el estado del juego y de la escena. Si algo falla y no se puede inspeccionar, el tiempo se va al carajo.
+## Main rule
+Make the game and scene state visible. If something fails and cannot be inspected, time goes to hell.
 
-## Helpers útiles
-Usar helpers visuales cuando aporten claridad:
+## Useful helpers
+Use visual helpers when they add clarity:
 - `AxesHelper`
 - `GridHelper`
 - `BoxHelper`
 - `Box3Helper`
 - `CameraHelper`
-- `SkeletonHelper` cuando haya personajes o rigs
-- helpers de luces cuando toque
-- gizmos o markers propios si el juego los necesita
+- `SkeletonHelper` when there are characters or rigs
+- light helpers when relevant
+- custom gizmos or markers if the game needs them
 
-## Qué conviene poder inspeccionar
-- posición, rotación y escala de objetos clave
-- jerarquía de nodos cargados desde assets
-- cámara activa y su target real
-- colliders o volúmenes aproximados
-- puntos de spawn
-- zonas de interacción
-- estado de animaciones importantes
-- acción base activa, pesos y capas additive si existen
-- tiempo, delta y orden de update
-- ownership de recursos si una escena carga y descarga assets
-- `renderer.info` cuando sospechas fuga o crecimiento raro
+## What should be inspectable
+- position, rotation, and scale of key objects
+- node hierarchy loaded from assets
+- active camera and its real target
+- colliders or approximate volumes
+- spawn points
+- interaction zones
+- state of important animations
+- active base action, weights, and additive layers if they exist
+- time, delta, and update order
+- resource ownership if a scene loads and unloads assets
+- `renderer.info` when you suspect a leak or odd growth
 
-## Checklist de problemas típicos
+## Checklist of common problems
 
-### No se ve nada
-- cámara mal colocada
-- near/far absurdos
-- objeto fuera de frame
-- escala rota
-- renderer no montado bien
-- canvas con tamaño incorrecto
-- luces insuficientes si el material lo necesita
-- material o textura mal configurados
+### Nothing is visible
+- camera badly placed
+- absurd near/far values
+- object outside the frame
+- broken scale
+- renderer not mounted correctly
+- canvas with incorrect size
+- insufficient lights if the material needs them
+- material or texture misconfigured
 
-### El modelo carga raro
-- eje u orientación incorrectos
-- pivot raro
-- escala inconsistente
-- materiales rotos
-- texturas no encontradas
-- jerarquía sucia o inesperada
+### The model loads oddly
+- incorrect axis or orientation
+- strange pivot
+- inconsistent scale
+- broken materials
+- missing textures
+- dirty or unexpected hierarchy
 
-### Las sombras van fatal
-- demasiadas sombras activas
-- shadow map caro para la escena real
-- cámara de sombra mal ajustada
-- objetos marcados sin criterio para cast/receive shadow
-- esperar sombras perfectas en móvil barato
+### Shadows are terrible
+- too many active shadows
+- expensive shadow map for the real scene
+- shadow camera poorly adjusted
+- objects marked for cast/receive shadow without discipline
+- expecting perfect shadows on cheap mobile devices
 
-### El rendimiento cae
-- draw calls altas
-- demasiadas luces caras
-- geometrías o texturas excesivas
-- postprocessing innecesario
-- demasiados objetos actualizando cada frame
-- raycasts o cálculos repartidos sin control
+### Performance drops
+- high draw calls
+- too many expensive lights
+- excessive geometries or textures
+- unnecessary postprocessing
+- too many objects updating every frame
+- uncontrolled raycasts or calculations scattered across systems
 
-## Estrategias útiles
-- introducir toggles de debug desde el principio
-- poder activar y desactivar helpers rápido
-- añadir panel de debug si el proyecto crece
-- tener panel de rendimiento mínimo con frame time/FPS, `renderer.info` y tier de calidad
-- registrar warnings útiles al cargar assets
-- aislar sistemas para probar si el problema está en input, update o render
-- distinguir si el fallo viene del scene graph, del asset pipeline o del lifecycle de recursos
+## Useful strategies
+- introduce debug toggles from the beginning
+- be able to enable and disable helpers quickly
+- add a debug panel if the project grows
+- have a minimum performance panel with frame time/FPS, `renderer.info`, and quality tier
+- log useful warnings when loading assets
+- isolate systems to test whether the problem is in input, update, or render
+- distinguish whether the failure comes from the scene graph, asset pipeline, or resource lifecycle
 
-## Debug visual mínimo recomendado
-- mostrar axes o grid en prototipos
-- poder dibujar bounds de entidades importantes
-- resaltar objeto seleccionado o interactivo
-- visualizar puntos de control, triggers y spawns
-- visualizar hit points, normales o markers de raycast cuando haya interacción 3D
+## Recommended minimum visual debug
+- show axes or grid in prototypes
+- be able to draw bounds for important entities
+- highlight selected or interactive objects
+- visualize control points, triggers, and spawns
+- visualize hit points, normals, or raycast markers when there is 3D interaction
 
-## Reglas sanas
-- no depurar solo mirando el código
-- no dejar helpers permanentes en producción por accidente
-- no asumir que el problema está en Three.js antes de revisar cámara, escala y estado
-- depurar primero lo básico y barato
-- revisar también foco de input, resize y liberación de recursos cuando el problema parece "aleatorio"
+## Healthy rules
+- do not debug only by reading code
+- do not accidentally leave permanent helpers in production
+- do not assume the problem is in Three.js before checking camera, scale, and state
+- debug the basic and cheap things first
+- also check input focus, resize, and resource release when the problem feels “random”
 
-## Anti-patrones
-- veinte `console.log` sin estructura
-- helpers repartidos por el código sin control
-- mezclar debug tools con lógica de gameplay final
-- no tener ninguna forma de inspeccionar scene graph o asset hierarchy
-- optimizar a ciegas sin identificar el cuello de botella
+## Anti-patterns
+- twenty unstructured `console.log`s
+- helpers scattered through the code without control
+- mixing debug tools with final gameplay logic
+- no way to inspect the scene graph or asset hierarchy
+- optimizing blindly without identifying the bottleneck
 
-## Pendiente de ampliar
-- stats y métricas por frame
-- herramientas de inspección de materiales
-- debugging de animaciones y mixers
-- debugging de loaders y streaming
-- checklist específica para móvil
+## To expand later
+- stats and per-frame metrics
+- material inspection tools
+- animation and mixer debugging
+- loader and streaming debugging
+- mobile-specific checklist

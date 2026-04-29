@@ -1,125 +1,125 @@
 # AI and Navigation
 
-## Objetivo
-Dar una base sana para pathfinding, navegación y behavior simple en juegos Three.js, sin saltar directamente a soluciones industriales cuando el juego no las pide.
+## Objective
+Provide a healthy foundation for pathfinding, navigation, and simple behavior in Three.js games, without jumping straight to industrial solutions when the game does not need them.
 
-## Regla principal
-**Antes de meter un motor de navegación, demostrar que el movimiento “tonto” no basta.**
-Muchos juegos se solucionan con steering + raycast + waypoints, sin nav mesh.
+## Main rule
+**Before adding a navigation engine, prove that “dumb” movement is not enough.**
+Many games can be solved with steering + raycast + waypoints, without a nav mesh.
 
-## Tres niveles de navegación
-Escala de menor a mayor coste/complejidad:
+## Three navigation levels
+Scale from lower to higher cost/complexity:
 
-### Nivel 0 — Movimiento directo + steering
-- ir hacia un target con aceleración limitada.
-- separación básica entre agentes.
-- evitación de obstáculos por raycast adelante/lados.
-- suficiente para escenarios abiertos con pocos obstáculos y pocos agentes.
+### Level 0 — Direct movement + steering
+- move toward a target with limited acceleration.
+- basic separation between agents.
+- obstacle avoidance with raycasts forward/sides.
+- enough for open scenarios with few obstacles and few agents.
 
-### Nivel 1 — Grafo de waypoints
-- nodos manualmente colocados o generados, con aristas visibles.
-- A* sobre el grafo.
-- suficiente para niveles con rutas limitadas (patrullas, rondas, puntos clave).
-- barato, controlable, debuggable a ojo.
+### Level 1 — Waypoint graph
+- manually placed or generated nodes, with visible edges.
+- A* over the graph.
+- enough for levels with limited routes (patrols, rounds, key points).
+- cheap, controllable, easy to debug visually.
 
-### Nivel 2 — Nav mesh
-- superficie transitable generada desde la geometría del nivel.
-- A* sobre polígonos, string-pulling para caminos naturales.
-- necesario para mundos abiertos o niveles con mucha irregularidad.
-- stack típico en web: `recast-navigation` (port de Recast/Detour) u opciones similares. Son addons externos: marcar como tal.
+### Level 2 — Nav mesh
+- walkable surface generated from level geometry.
+- A* over polygons, string-pulling for natural paths.
+- necessary for open worlds or levels with lots of irregularity.
+- typical web stack: `recast-navigation` (Recast/Detour port) or similar options. They are external addons: mark them as such.
 
-## Elegir nivel
-Preguntas:
-- ¿cuántos agentes simultáneos? (>10–20 empieza a pedir algo más que raycast)
-- ¿geometría compleja o mundo simple?
-- ¿niveles estáticos o dinámicos?
-- ¿caminos finos (puentes, pasillos estrechos) o amplios?
-- ¿se reciclan niveles o cada partida es distinta?
+## Choosing a level
+Questions:
+- how many simultaneous agents? (>10–20 starts asking for more than raycast)
+- complex geometry or simple world?
+- static or dynamic levels?
+- tight paths (bridges, narrow corridors) or wide spaces?
+- are levels reused or different every run?
 
-Responder antes de elegir motor.
+Answer before choosing an engine.
 
-## Integración con físicas
-La navegación no es física:
-- el pathfinder decide *a dónde* ir.
-- la física decide *cómo* se mueve el cuerpo en el mundo real (colisiones, gravedad).
-- un agente combina: pathfinder → waypoints → locomotion/controller → físicas.
+## Integration with physics
+Navigation is not physics:
+- the pathfinder decides *where* to go.
+- physics decides *how* the body moves in the real world (collisions, gravity).
+- an agent combines: pathfinder → waypoints → locomotion/controller → physics.
 
-No meter la lógica de pathfinding dentro de un rigid body.
+Do not put pathfinding logic inside a rigid body.
 
-## Actualización de caminos
-- recalcular path solo cuando cambie el objetivo o el mundo, no cada frame.
-- re-path on-demand si el agente queda bloqueado N frames.
-- si hay muchos agentes, distribuir re-paths a lo largo de varios frames (tick budget).
+## Path updates
+- recalculate the path only when the target or world changes, not every frame.
+- re-path on demand if the agent stays blocked for N frames.
+- if there are many agents, distribute re-paths across several frames (tick budget).
 
-## Steering y follow-path
-- el path es una lista de puntos, no un rail.
-- usar un look-ahead: el agente apunta a un punto a cierta distancia del path, no al siguiente waypoint estricto.
-- string-pulling para suavizar caminos sobre nav mesh.
-- tolerancia de llegada (`arriveRadius`) en cada waypoint.
+## Steering and follow-path
+- the path is a list of points, not a rail.
+- use look-ahead: the agent aims at a point some distance along the path, not strictly at the next waypoint.
+- use string-pulling to smooth paths over a nav mesh.
+- arrival tolerance (`arriveRadius`) on every waypoint.
 
-## Agentes locales y separación
-Con varios agentes:
-- separación básica por distancia entre pares (con un grid espacial para no ser O(n²)).
-- priorizar: agente con menos avance cede.
-- nunca empujar con físicas salvo que forme parte del diseño.
+## Local agents and separation
+With several agents:
+- basic distance-based separation between pairs (with a spatial grid to avoid O(n²)).
+- prioritization: the agent with less progress yields.
+- never push with physics unless it is part of the design.
 
-## Behavior simple
-Antes de behavior trees o utility AI:
-- una máquina de estados finitos (FSM) por enemigo: `idle`, `patrol`, `chase`, `attack`, `flee`.
-- transiciones por condiciones (distancia, visibilidad, salud).
-- suficiente para prototipos y muchos juegos pequeños.
+## Simple behavior
+Before behavior trees or utility AI:
+- one finite state machine (FSM) per enemy: `idle`, `patrol`, `chase`, `attack`, `flee`.
+- transitions by conditions (distance, visibility, health).
+- enough for prototypes and many small games.
 
-Si el comportamiento crece:
-- behavior tree (addon externo o implementación propia sencilla).
-- utility AI si hay muchas acciones con prioridades cambiantes.
+If behavior grows:
+- behavior tree (external addon or simple custom implementation).
+- utility AI if there are many actions with changing priorities.
 
-En ningún caso empezar por behavior tree “porque suena profesional”.
+Never start with a behavior tree “because it sounds professional”.
 
-## Percepción
-- vista: raycast desde el agente al target; cono de FOV con `dot` de direcciones.
-- oído: eventos emitidos por acciones del jugador con un radio; agentes suscritos filtran por distancia y obstáculos.
-- memoria corta: el agente recuerda la última posición conocida durante X segundos.
+## Perception
+- sight: raycast from agent to target; FOV cone with direction `dot`.
+- hearing: events emitted by player actions with a radius; subscribed agents filter by distance and obstacles.
+- short memory: the agent remembers the last known position for X seconds.
 
-Modelar percepción explícita evita enemigos que lo saben todo siempre.
+Explicit perception modeling avoids enemies that always know everything.
 
-## Distribución de cómputo
-- no correr IA de todos los agentes cada frame. Tick staggered: un subconjunto por frame.
-- escalar por distancia/importancia: agentes lejos piensan menos y se mueven con menos fidelidad.
-- si hay muchos, usar LOD de IA: lejos, solo patrulla; cerca, toda la FSM.
+## Compute distribution
+- do not run AI for every agent every frame. Tick staggered: a subset each frame.
+- scale by distance/importance: distant agents think less and move with lower fidelity.
+- if there are many, use AI LOD: far away, patrol only; nearby, full FSM.
 
 ## Debug
-- visualizar path con líneas.
-- dibujar cono de visión y radio de audición.
-- color del agente según estado.
-- overlay con coste de IA por frame.
+- visualize paths with lines.
+- draw vision cone and hearing radius.
+- color the agent by state.
+- overlay AI cost per frame.
 
-## Mundo dinámico
-- obstáculos que aparecen/desaparecen invalidan caminos.
-- con nav mesh: soporte de tiles o parches dinámicos (la mayoría de libs lo exponen).
-- con waypoints: marcar aristas temporalmente bloqueadas.
+## Dynamic world
+- obstacles that appear/disappear invalidate paths.
+- with nav mesh: support for tiles or dynamic patches (most libs expose this).
+- with waypoints: mark edges temporarily blocked.
 
 ## Mobile
-- nav meshes grandes comen memoria y CPU: limitar área.
-- menos agentes activos, más LOD agresivo.
-- evitar re-paths masivos al mismo tiempo.
+- large nav meshes consume memory and CPU: limit the area.
+- fewer active agents, more aggressive LOD.
+- avoid massive re-paths at the same time.
 
-## Anti-patrones
-- meter Recast/Detour port para 5 enemigos en un plano
-- A* cada frame “por si acaso”
-- decidir behavior con ifs desperdigados por entidades
-- físicas resolviendo navegación (“empujo al agente hasta que llega”)
-- enemigos que ven a través de muros porque no hay raycast de visibilidad
-- un único tick de IA monstruoso con todos los agentes cada frame
-- nav mesh regenerado en runtime sin necesidad
+## Anti-patterns
+- adding a Recast/Detour port for 5 enemies on a plane
+- running A* every frame “just in case”
+- deciding behavior with ifs scattered through entities
+- physics solving navigation (“I push the agent until it arrives”)
+- enemies seeing through walls because there is no visibility raycast
+- one monster AI tick with every agent every frame
+- nav mesh regenerated at runtime without need
 
-## Recomendación fuerte
-Flujo sano por defecto:
-1. empezar con steering + raycast.
-2. si falla, añadir waypoints + A*.
-3. si el mundo lo pide, entonces sí nav mesh.
-4. FSM como behavior por defecto; behavior tree solo cuando el número de estados lo justifique.
+## Strong recommendation
+Healthy default flow:
+1. start with steering + raycast.
+2. if that fails, add waypoints + A*.
+3. if the world requires it, then use a nav mesh.
+4. FSM as default behavior; behavior tree only when the number of states justifies it.
 
-## Referencias asociadas
+## Related references
 - `character-locomotion.md`
 - `physics.md`
 - `world-generation.md`

@@ -1,210 +1,210 @@
 # Adaptive Quality Scaling
 
-## Objetivo
-Ajustar la calidad visual en runtime de forma estable y controlada, para proteger frame time y evitar que el juego se vuelva un festival de tirones o cambios erráticos.
+## Goal
+Adjust visual quality at runtime in a stable, controlled way to protect frame time and prevent the game from turning into a festival of stutter or erratic changes.
 
-## Regla principal
-**La calidad adaptativa no debe reaccionar a un frame malo aislado.**
-Debe responder a tendencias, picos sostenidos y contexto real.
+## Main rule
+**Adaptive quality must not react to one isolated bad frame.**
+It must respond to trends, sustained spikes, and real context.
 
-## Qué intenta resolver
-- GPU sobrecargada en ciertos dispositivos
-- escenas que cambian mucho de coste
-- picos por postprocessing, sombras o resolución interna
-- necesidad de mantener una sensación estable sin obligar al jugador a abrir opciones
+## What it tries to solve
+- GPU overloaded on certain devices
+- scenes whose cost changes a lot
+- spikes from postprocessing, shadows, or internal resolution
+- need to preserve a stable feel without forcing the player to open options
 
-## Qué no intenta resolver
-- lógica CPU desastrosa
-- lifecycle roto
-- stutter por compilación o activación de assets
-- benchmarks mal diseñados
+## What it does not try to solve
+- disastrous CPU logic
+- broken lifecycle
+- stutter from compilation or asset activation
+- badly designed benchmarks
 
-Si el problema real es CPU, shaders recompilando o spawn masivo mal repartido, bajar resolución puede maquillar pero no curar.
+If the real problem is CPU, recompiling shaders, or poorly distributed mass spawn, lowering resolution can hide it but not cure it.
 
-Para una capa previa de diagnóstico práctico antes de decidir qué palanca tocar, ver `gpu-vs-cpu-heuristics.md`.
+For a prior layer of practical diagnosis before deciding which lever to touch, see `gpu-vs-cpu-heuristics.md`.
 
-## Base sana: presets manuales primero
-Antes de adaptar nada automáticamente, hace falta tener tiers manuales coherentes:
-- bajo
-- medio
-- alto
+## Healthy base: manual presets first
+Before adapting anything automatically, you need coherent manual tiers:
+- low
+- medium
+- high
 
-La calidad adaptativa debería moverse entre presets buenos o modificar un subconjunto muy controlado de variables.
+Adaptive quality should move between good presets or modify a very controlled subset of variables.
 
-## Mejor palancas para adaptación automática
-### 1. Resolución interna
-Suele ser la palanca más limpia cuando el cuello es GPU.
+## Best levers for automatic adaptation
+### 1. Internal resolution
+Usually the cleanest lever when the bottleneck is GPU.
 
-Patrón fuerte derivado del manual `responsive`:
-- calcular tamaño real del drawing buffer de forma explícita
-- evitar magia opaca cuando importa saber la resolución real
-- poder limitar máximo de píxeles internos
+Strong pattern derived from the `responsive` manual:
+- compute the real drawing-buffer size explicitly
+- avoid opaque magic when the real resolution matters
+- be able to cap the maximum internal pixel count
 
-Esto favorece una variable como:
-- `renderScale` entre 0.6 y 1.0, por ejemplo
+This favors a variable such as:
+- `renderScale` between 0.6 and 1.0, for example
 
-## 2. Resolución de ciertos efectos
-Muy buena segunda palanca:
-- bloom a media resolución
-- blur reducido
-- targets auxiliares más pequeños
+## 2. Resolution of certain effects
+Very good second lever:
+- half-resolution bloom
+- reduced blur
+- smaller auxiliary targets
 
-Lo mismo aplica a minimapas, monitores y otros RTT no críticos: a menudo compensa más bajar su tamaño o frecuencia que degradar antes la imagen principal. Ver `render-targets.md`.
+The same applies to minimaps, monitors, and other non-critical RTTs: it is often better to lower their size or frequency than to degrade the main image first. See `render-targets.md`.
 
-## 3. Postprocessing premium
-Buena palanca, pero con más riesgo de tirón:
+## 3. Premium postprocessing
+Good lever, but with higher stutter risk:
 - DOF off
-- bloom más barato
-- desactivar chains premium
+- cheaper bloom
+- disable premium chains
 
-## 4. Sombras
-Útil pero más delicado visualmente:
-- bajar resolución de shadow map
-- reducir distancia
-- limitar luces con sombra
+## 4. Shadows
+Useful, but visually more delicate:
+- lower shadow map resolution
+- reduce distance
+- limit shadow-casting lights
 
-## 5. Densidad secundaria
-Solo para sistemas no críticos:
-- partículas
-- props decorativos
-- vegetación secundaria
+## 5. Secondary density
+Only for non-critical systems:
+- particles
+- decorative props
+- secondary vegetation
 
-## Palancas que conviene tocar menos
-- cambios bruscos en materiales que recompilen shaders
-- destrucción y recreación frecuente de composer completo
-- alternancia agresiva de features visibles cada pocos segundos
-- cambios que afecten legibilidad o gameplay principal
+## Levers to touch less often
+- abrupt material changes that recompile shaders
+- frequent destruction and recreation of the full composer
+- aggressive toggling of visible features every few seconds
+- changes that affect readability or main gameplay
 
-## Señal de entrada correcta
-No usar solo FPS instantáneo.
-Usar mejor:
-- frame time suavizado
-- percentiles o ventana reciente
-- picos repetidos
-- contexto del sistema
+## Correct input signal
+Do not use only instantaneous FPS.
+Use better signals:
+- smoothed frame time
+- percentiles or recent window
+- repeated spikes
+- system context
 
-Patrón razonable:
-- mantener media móvil o EMA de frame time
-- llevar contador de frames malos consecutivos
-- detectar picos largos, no solo accidentes aislados
+Reasonable pattern:
+- maintain moving average or EMA of frame time
+- keep a counter of consecutive bad frames
+- detect long spikes, not just isolated accidents
 
-## Histeresis o te comes el infierno
-Sin histéresis, el scaler sube y baja como un borracho.
+## Hysteresis or you eat hell
+Without hysteresis, the scaler moves up and down like a drunk.
 
-Regla:
-- bajar relativamente rápido cuando hay degradación sostenida
-- subir lentamente solo si sobra margen durante bastante tiempo
+Rule:
+- downgrade relatively quickly when degradation is sustained
+- upgrade slowly only if there is comfortable margin for long enough
 
-Ejemplo conceptual:
-- bajar si el frame time supera el objetivo durante N frames o X ms acumulados
-- subir solo tras varios segundos de estabilidad cómoda
+Conceptual example:
+- downgrade if frame time exceeds the target for N frames or X accumulated ms
+- upgrade only after several seconds of comfortable stability
 
 ## Cooldown
-Tras aplicar un cambio, esperar.
+After applying a change, wait.
 
-Si no hay cooldown:
-- no sabes qué cambio ayudó
-- encadenas resizes
-- generas más stutter del que intentabas evitar
+Without cooldown:
+- you do not know which change helped
+- you chain resizes
+- you create more stutter than you were trying to avoid
 
-## Separar niveles de intervención
-### Nivel 1, ajuste fino
-- bajar `renderScale`
-- reducir resolución interna de efectos
+## Separate intervention levels
+### Level 1, fine adjustment
+- lower `renderScale`
+- reduce internal resolution of effects
 
-### Nivel 2, recorte moderado
-- bloom más barato
-- sombras más pequeñas
+### Level 2, moderate trimming
+- cheaper bloom
+- smaller shadows
 
-### Nivel 3, cambio de tier
-- pasar de alto a medio
-- pasar de medio a bajo
+### Level 3, tier change
+- move from high to medium
+- move from medium to low
 
-Esto evita apagar medio juego por una caída breve.
+This avoids turning off half the game because of a brief drop.
 
-## Recomendación fuerte sobre resolución
-Preferir una política explícita de tamaño de drawing buffer frente a depender ciegamente de `renderer.setPixelRatio()`.
+## Strong recommendation on resolution
+Prefer an explicit drawing-buffer sizing policy over depending blindly on `renderer.setPixelRatio()`.
 
-Razón fuerte del manual `responsive`:
-- saber realmente el tamaño del buffer importa mucho en postprocessing, shaders, screenshots, picking y render targets
-- además conviene poder capar píxeles máximos
+Strong reason from the `responsive` manual:
+- knowing the actual buffer size matters a lot in postprocessing, shaders, screenshots, picking, and render targets
+- it is also useful to cap maximum pixels
 
-## Escalado por pixel budget
-Patrón muy defendible:
-- definir un máximo de píxeles internos por tier o dispositivo
-- si el tamaño real excede ese presupuesto, aplicar `renderScale`
+## Scaling by pixel budget
+Very defensible pattern:
+- define a maximum internal pixel count by tier or device
+- if the real size exceeds that budget, apply `renderScale`
 
-Eso es especialmente valioso en móviles y pantallas HD-DPI altas.
+This is especially valuable on mobile and high-DPI displays.
 
-## Cambios en momentos seguros
-No aplicar cambios grandes en cualquier frame porque sí.
+## Changes at safe moments
+Do not apply large changes in any random frame just because.
 
-Mejor momentos:
-- pausa
-- menú
-- transición
+Better moments:
+- pause
+- menu
+- transition
 - fade
-- tras un encounter
-- cuando el jugador no está en una maniobra crítica
+- after an encounter
+- when the player is not in a critical maneuver
 
-Si el cambio ocurre en gameplay vivo, que sea pequeño y de baja visibilidad.
+If the change happens during live gameplay, keep it small and low-visibility.
 
-## Integración con frame pacing
-Un scaler adaptativo bueno protege la regularidad, no solo la media.
+## Integration with frame pacing
+A good adaptive scaler protects regularity, not just the average.
 
-Por eso conviene vigilar:
-- picos recientes
+That is why you should watch:
+- recent spikes
 - resize cost
-- recreación de targets
-- cambios de quality manager
+- target recreation
+- quality manager changes
 
-Si el remedio mete tirones al aplicar cambios, hay que rediseñar la transición.
+If the remedy causes stutter when applying changes, redesign the transition.
 
-## Integración con quality tiers
-Patrón sano:
-- `qualityManager` define presets coherentes
-- `adaptiveScaler` decide si conviene moverse dentro de un margen o bajar de tier
+## Integration with quality tiers
+Healthy pattern:
+- `qualityManager` defines coherent presets
+- `adaptiveScaler` decides whether to move within a margin or drop tier
 
-Separar responsabilidades ayuda mucho.
+Separating responsibilities helps a lot.
 
-## Integración con benches
-No validar adaptive quality en una sola escena agradable.
-Probarlo en:
+## Integration with benchmarks
+Do not validate adaptive quality in one pleasant scene.
+Test it in:
 - postprocessing stress
 - asset activation stress
-- gameplay slice bench
-- spawn/chunk bench
+- gameplay slice benchmark
+- spawn/chunk benchmark
 
-Así se ve si:
-- estabiliza de verdad
-- reacciona demasiado tarde
-- cambia demasiado a menudo
-- rompe claridad visual
+This shows whether it:
+- truly stabilizes
+- reacts too late
+- changes too often
+- breaks visual clarity
 
-## Debug recomendado
-Exponer al menos:
-- tier actual
+## Recommended debug
+Expose at least:
+- current tier
 - `renderScale`
-- frame time suavizado
-- últimos picos importantes
-- cooldown restante
-- motivo del último downgrade/upgrade
+- smoothed frame time
+- recent important spikes
+- remaining cooldown
+- reason for the last downgrade/upgrade
 
-## Anti-patrones
-- usar FPS instantáneo como única señal
-- bajar calidad por un único pico aislado
-- subir y bajar sin histéresis
-- tocar demasiadas variables a la vez
-- usar adaptive quality para tapar CPU o lifecycle rotos
-- aplicar cambios grandes de postprocessing en medio de gameplay sensible
+## Anti-patterns
+- using instantaneous FPS as the only signal
+- lowering quality because of one isolated spike
+- moving up and down without hysteresis
+- touching too many variables at once
+- using adaptive quality to hide broken CPU or lifecycle
+- applying large postprocessing changes in the middle of sensitive gameplay
 
-## Recomendación fuerte
-Crear dos capas separadas:
-- `qualityManager` para presets y cambios coordinados
-- `adaptiveScaler` para observación, histéresis, cooldown y decisiones
+## Strong recommendation
+Create two separate layers:
+- `qualityManager` for presets and coordinated changes
+- `adaptiveScaler` for observation, hysteresis, cooldown, and decisions
 
-## Pendiente de ampliar
-- heurísticas concretas por género
-- separación explícita entre GPU-bound y CPU-bound
-- políticas de upscale/downgrade con percentiles
-- integración con telemetría y reporting
+## To expand later
+- concrete heuristics by genre
+- explicit separation between GPU-bound and CPU-bound
+- upscale/downgrade policies with percentiles
+- integration with telemetry and reporting

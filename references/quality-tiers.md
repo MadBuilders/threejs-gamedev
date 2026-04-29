@@ -1,165 +1,165 @@
 # Quality Tiers
 
-## Objetivo
-Diseñar presets de calidad reales para juegos Three.js, especialmente cuando hay postprocessing, render targets y costes que cambian mucho según dispositivo.
+## Goal
+Design real quality presets for Three.js games, especially when there is postprocessing, render targets, and costs that vary heavily by device.
 
-## Regla principal
-**La calidad debe ser escalable por sistema, no solo por un interruptor global.**
+## Main rule
+**Quality must be scalable by system, not just by one global switch.**
 
-Pensar en tiers como una política coordinada sobre:
-- resolución efectiva
-- sombras
+Think of tiers as a coordinated policy over:
+- effective resolution
+- shadows
 - passes
 - render targets
-- distancia de dibujado
-- densidad de mundo
-- variantes de assets si aplica
+- draw distance
+- world density
+- asset variants if applicable
 
-## Default recomendado
-Tener al menos:
-- bajo
-- medio
-- alto
+## Recommended default
+Have at least:
+- low
+- medium
+- high
 
-Si el proyecto es serio o va a móvil, esto deja de ser lujo bastante rápido.
+If the project is serious or targets mobile, this stops being a luxury pretty quickly.
 
-## Qué suele escalar mejor
-### Resolución
-- `renderer.setPixelRatio()` con límites razonables
-- resolución interna de ciertos efectos
-- tamaño de composer y render targets auxiliares
+## What usually scales best
+### Resolution
+- `renderer.setPixelRatio()` with reasonable limits
+- internal resolution of certain effects
+- composer size and auxiliary render targets
 
 ### Postprocessing
-- activar o desactivar passes
-- bajar calidad de bloom
-- reducir resolución de blur
-- desactivar DOF en tiers modestos
+- enable or disable passes
+- lower bloom quality
+- reduce blur resolution
+- disable DOF on modest tiers
 
-### Sombras
+### Shadows
 - on/off
-- resolución de shadow map
-- número de luces con sombra
-- distancia útil de sombras
+- shadow map resolution
+- number of shadow-casting lights
+- useful shadow distance
 
-### Mundo
-- densidad de props
-- distancia de dibujado
-- cantidad de partículas
-- frecuencia de ciertos sistemas secundarios
+### World
+- prop density
+- draw distance
+- particle count
+- frequency of certain secondary systems
 
 ## Render targets
-El manual de postprocessing deja una idea clave:
-- `EffectComposer` ya usa render targets internos
-- algunos passes crean más targets o buffers propios
+The postprocessing manual leaves a key idea:
+- `EffectComposer` already uses internal render targets
+- some passes create more targets or their own buffers
 
-Eso significa que el tier no debería pensar solo en “activar bloom”, sino en:
-- cuántos targets existen
-- a qué resolución viven
-- si merece la pena que todos estén a resolución completa
+That means the tier should not think only in terms of “enable bloom”, but in terms of:
+- how many targets exist
+- what resolution they live at
+- whether all of them deserve full resolution
 
-## Resolución reducida por efecto
-Patrón muy sano:
-- no todos los efectos necesitan full resolution
+## Reduced resolution by effect
+Very healthy pattern:
+- not every effect needs full resolution
 
-Especialmente:
+Especially:
 - bloom
 - blur
-- algunos passes de glow o combinaciones similares
+- some glow passes or similar combinations
 
-Regla:
-- si un efecto tolera media o menor resolución sin romper imagen, usarlo como vía preferente de ahorro
+Rule:
+- if an effect tolerates half or lower resolution without breaking the image, use it as a preferred savings path
 
-## Passes recomendables vs peligrosos
-### Más defendibles
-- un bloom moderado y medido
-- color grading o ajustes simples
-- output/tone mapping bien controlado
+## Recommended vs dangerous passes
+### More defensible
+- moderate, measured bloom
+- color grading or simple adjustments
+- well-controlled output/tone mapping
 
-### Más peligrosos
-- depth of field en gameplay principal
-- cadenas largas de blur
-- múltiples passes costosos a resolución alta
-- efectos que degradan claridad en pantallas pequeñas
+### More dangerous
+- depth of field in main gameplay
+- long blur chains
+- multiple costly passes at high resolution
+- effects that degrade clarity on small screens
 
-La example de DOF es útil como referencia técnica, pero también como recordatorio de que algo vistoso puede ser bastante caro y no siempre merece vivir en el loop jugable.
+The DOF example is useful as a technical reference, but also as a reminder that something flashy can be quite expensive and does not always deserve to live in the playable loop.
 
-## Tiering por postprocessing
-Ejemplo de política razonable:
+## Tiering by postprocessing
+Example of a reasonable policy:
 
-### Bajo
-- sin DOF
-- sin bloom o bloom mínimo
-- output pass esencial
-- resolución interna recortada
+### Low
+- no DOF
+- no bloom or minimal bloom
+- essential output pass
+- trimmed internal resolution
 
-### Medio
-- bloom moderado
-- color grading ligero
-- sin efectos muy caros persistentes
+### Medium
+- moderate bloom
+- light color grading
+- no very expensive persistent effects
 
-### Alto
-- passes completos justificables
-- bloom más cuidado
-- algún efecto premium si de verdad aporta
+### High
+- justifiable full passes
+- more polished bloom
+- a premium effect if it truly adds value
 
-## Activación en runtime
-Cambiar tier en caliente puede introducir tirones si:
-- creas composer o render targets nuevos en momento crítico
-- recompilas materiales
-- redimensionas buffers grandes sin planificación
+## Runtime activation
+Changing tier live can introduce stutter if:
+- you create a new composer or render targets at a critical moment
+- you recompile materials
+- you resize large buffers without planning
 
-Regla:
-- preparar cambios importantes fuera de momentos sensibles
-- si el cambio es fuerte, tratarlo como transición de sistema, no como toggle trivial
+Rule:
+- prepare important changes outside sensitive moments
+- if the change is strong, treat it as a system transition, not a trivial toggle
 
-## Presets coherentes
-No hacer tiers absurdos donde:
-- bajas sombras pero dejas DOF caro
-- bajas pixel ratio pero mantienes todo el post premium
-- ahorras GPU pero sigues con spawn y updates sin control
+## Coherent presets
+Do not create absurd tiers where:
+- you lower shadows but leave expensive DOF on
+- you lower pixel ratio but keep all premium post
+- you save GPU but still have uncontrolled spawn and updates
 
-Los tiers deben tener coherencia interna.
+Tiers must have internal coherence.
 
-## Quality scaler manual primero
-Antes de pensar en auto-scaling complejo:
-- definir presets manuales buenos
-- saber qué apaga y qué mantiene cada tier
-- medir escenas reales
+## Manual quality scaler first
+Before thinking about complex auto-scaling:
+- define good manual presets
+- know what each tier turns off and keeps
+- measure real scenes
 
-Después ya se puede pensar en adaptación automática si compensa.
+Only then should you consider automatic adaptation if it is worth it.
 
-La mejor forma de validar si un tier está bien diseñado es correrlo en escenas de estrés repetibles, no fiarse de una sola escena agradable.
+The best way to validate whether a tier is well designed is to run it in repeatable stress scenes, not trust one pleasant scene.
 
-Para la capa automática que decide cuándo bajar o subir calidad sin thrash, ver `adaptive-quality-scaling.md`.
+For the automatic layer that decides when to lower or raise quality without thrash, see `adaptive-quality-scaling.md`.
 
-## Qué documentar por tier
-- pixel ratio máximo
-- post passes activos
-- tamaño de render targets especiales
-- sombras y su resolución
-- distancia de dibujado
-- densidad de props/partículas
-- notas visuales y tradeoffs
+## What to document per tier
+- maximum pixel ratio
+- active post passes
+- size of special render targets
+- shadows and their resolution
+- draw distance
+- prop/particle density
+- visual notes and tradeoffs
 
-Aquí merece entrar también la frecuencia de update de targets no críticos como minimapas, monitores o cámaras remotas. Ver `render-targets.md`.
+This should also include the update frequency of non-critical targets such as minimaps, monitors, or remote cameras. See `render-targets.md`.
 
-Si el proyecto usa mirrors, portals o minimaps, conviene tratarlos como familias distintas dentro del tier. Ver `render-target-families.md`.
+If the project uses mirrors, portals, or minimaps, treat them as distinct families inside the tier. See `render-target-families.md`.
 
-## Anti-patrones
-- un único botón de “low/high” sin saber qué hace
-- tratar todos los efectos como igual de caros
-- mantener render targets grandes por defecto en móvil
-- activar DOF o chains premium en gameplay por postureo
-- cambiar tier sin medir picos de resize y reconfiguración
+## Anti-patterns
+- one “low/high” button without knowing what it does
+- treating all effects as equally expensive
+- keeping large render targets by default on mobile
+- enabling DOF or premium chains in gameplay for posturing
+- changing tier without measuring resize and reconfiguration spikes
 
-## Recomendación fuerte
-Crear un `qualityManager` o equivalente que:
-- conozca el tier actual
-- aplique cambios coordinados
-- pueda afectar renderer, composer, sombras y densidad de mundo
-- exponga debug claro
+## Strong recommendation
+Create a `qualityManager` or equivalent that:
+- knows the current tier
+- applies coordinated changes
+- can affect renderer, composer, shadows, and world density
+- exposes clear debug
 
-## Pendiente de ampliar
-- adaptive quality basado en picos de frame time
-- presets concretos por género
-- relación con render targets personalizados fuera de postprocessing
+## To expand later
+- adaptive quality based on frame-time spikes
+- concrete presets by genre
+- relationship with custom render targets outside postprocessing

@@ -1,77 +1,77 @@
 # Input and Controls
 
-## Objetivo
-Diseñar una capa de input robusta para juegos en Three.js puro sin acoplar el gameplay directamente a eventos del navegador.
+## Objective
+Design a robust input layer for pure Three.js games without coupling gameplay directly to browser events.
 
-## Regla principal
-Crear una **input abstraction layer**.
+## Main rule
+Create an **input abstraction layer**.
 
-El gameplay no debería depender de `keydown`, `pointermove`, `touchstart` o `gamepad` directamente. Debería depender de acciones o estados de input más estables.
+Gameplay should not depend directly on `keydown`, `pointermove`, `touchstart`, or `gamepad`. It should depend on more stable input actions or states.
 
-## Separación recomendada
+## Recommended separation
 
-1. **captura cruda**
-   - teclado
-   - ratón
+1. **raw capture**
+   - keyboard
+   - mouse
    - touch
    - gamepad
-   - sensores si más adelante hacen falta
+   - sensors if needed later
 
-2. **normalización**
-   - convertir eventos a estados o acciones comunes
-   - ejemplo: `moveLeft`, `jump`, `interact`, `tiltX`
+2. **normalization**
+   - convert events into common states or actions
+   - example: `moveLeft`, `jump`, `interact`, `tiltX`
 
-3. **consumo por sistemas**
+3. **consumption by systems**
    - player controller
    - camera controller
    - UI controller
    - debug tools
 
-## Principio útil
-Pensar el input como una API interna del juego, no como una colección de listeners sueltos.
+## Useful principle
+Think of input as an internal game API, not as a collection of loose listeners.
 
-## Patrones recomendados
+## Recommended patterns
 
-### Estados continuos
-Para movimiento y cámara, preferir estados continuos:
+### Continuous states
+For movement and camera control, prefer continuous states:
 - `moveX`
 - `moveY`
 - `lookX`
 - `lookY`
 - `tilt`
 
-### Acciones discretas
-Para eventos puntuales:
+### Discrete actions
+For one-off events:
 - `jumpPressed`
 - `interactPressed`
 - `pausePressed`
 
-### Mapping configurable
-Dejar espacio para remapear fuentes:
-- teclado en escritorio
-- touch en móvil
-- gamepad si aplica
+### Configurable mapping
+Leave room to remap sources:
+- keyboard on desktop
+- touch on mobile
+- gamepad if applicable
 
-## Touch y móvil
-No asumir que el control móvil es una traducción literal del teclado.
+## Touch and mobile
+Do not assume mobile controls are a literal translation of keyboard controls.
 
-Diseñar pensando en:
-- zonas táctiles claras
-- feedback visual
-- tolerancia a dedos grandes
-- menos precisión fina que en ratón
-- evitar depender de hover
+Design with:
+- clear touch zones
+- visual feedback
+- tolerance for large fingers
+- less fine precision than with a mouse
+- avoiding any dependency on hover
 
-El manual también deja un detalle práctico que merece estar aquí: si el canvas necesita teclado, hay que pensar en foco y captura de input de forma explícita. No dar por hecho que el canvas ya recibe teclado solo porque está en pantalla.
+The manual also leaves a practical detail that belongs here: if the canvas needs keyboard input, think explicitly about focus and input capture. Do not assume the canvas receives keyboard input just because it is on screen.
 
-### Dos joysticks virtuales (pattern reusable)
+### Two virtual joysticks (reusable pattern)
 
-Para gameplay con dos ejes continuos (mover + otra cosa: apuntar, balancear, rotar torreta, equilibrio de un objeto) el esquema clásico de móvil son **dos joysticks de centro dinámico** en las esquinas inferiores. Gotchas concretos que ahorran tiempo:
+For gameplay with two continuous axes (movement + something else: aiming, balancing, turret rotation, object balance), the classic mobile scheme is **two dynamic-center joysticks** in the lower corners. Concrete gotchas that save time:
 
-- **`setPointerCapture(e.pointerId)` por zona, no por el canvas**. Si el listener vive en el canvas o no capturas, iOS Safari rutea el `pointermove` del segundo dedo hacia quien tenga la captura más reciente → diagonal *move + segunda acción* se rompe. Cada zona guarda su propio `pointerId` y llama a `setPointerCapture` sobre sí misma. Es el requisito real para multi-touch estable.
-- **Centro dinámico > esquina fija**. La base del stick aparece donde aterriza el dedo dentro de la zona. Tolera pulgares que empiezan desde cualquier posición y no obliga al jugador a apuntar a un anchor concreto.
-- **Dead zone y clamp defaults**: radio máximo ~60 px, dead zone ~0.12 por eje (sin ella un pulgar apoyado inyecta un trickle de input continuo). Normalizar a `[-1, 1]` antes de entregar al gameplay.
-- **Touch como override sobre el mismo struct `axes`**, no un pipeline paralelo. El `update()` lee teclado por defecto y, sólo si el stick está `active`, sobreescribe el eje correspondiente:
+- **`setPointerCapture(e.pointerId)` per zone, not on the canvas**. If the listener lives on the canvas or you do not capture, iOS Safari routes the second finger's `pointermove` to whichever element got the most recent capture → diagonal *movement + second action* breaks. Each zone stores its own `pointerId` and calls `setPointerCapture` on itself. This is the real requirement for stable multi-touch.
+- **Dynamic center > fixed corner**. The stick base appears where the finger lands inside the zone. It tolerates thumbs starting from any position and does not force the player to aim at a specific anchor.
+- **Dead zone and clamp defaults**: maximum radius ~60 px, dead zone ~0.12 per axis (without it, a resting thumb injects a trickle of continuous input). Normalize to `[-1, 1]` before handing values to gameplay.
+- **Touch as an override on the same `axes` struct**, not a parallel pipeline. `update()` reads keyboard by default and, only if the stick is `active`, overwrites the corresponding axis:
 
 ```text
 // pseudo update()
@@ -79,71 +79,71 @@ axes.moveF = kbd(w) - kbd(s);                  // default
 if (touch.left.active) axes.moveF = touch.left.y;   // override
 ```
 
-El gameplay consume un único struct y el código de desktop queda intacto sin `if (isTouch)` distribuidos.
+Gameplay consumes a single struct, and the desktop code stays intact without scattered `if (isTouch)` checks.
 
-- **Hold-to-look y dos sticks son mutuamente excluyentes en móvil.** No "pintar" el `pointerdown` del canvas además de los sticks: hay que **quitarlo** cuando el input corre en modo touch, o un tercer dedo fuera de ambas zonas dispara free-look sin forma limpia de liberarlo. Regla general: cualquier captura global de pointer desaparece en touch.
-- **`touch-action: none` + `user-select: none` sobre el `canvas` (no sobre `body`)** para que iOS Safari no interprete el arrastre como selección de texto, pinch-zoom o scroll. En `body`/`html` basta con `-webkit-tap-highlight-color: transparent` por limpieza visual.
-- **Device class una sola vez al boot**: `matchMedia('(pointer: coarse)')` → `body.classList.add('is-touch')`. CSS (zonas visibles sólo en coarse) y JS (construir / saltar los sticks) keyean sobre la misma clase. Evita `matchMedia` distribuido por cada módulo y mantiene la decisión en un punto.
+- **Hold-to-look and two sticks are mutually exclusive on mobile.** Do not also "paint" the canvas `pointerdown` on top of the sticks: remove it when input runs in touch mode, or a third finger outside both zones triggers free-look with no clean way to release it. General rule: any global pointer capture disappears in touch.
+- **`touch-action: none` + `user-select: none` on the `canvas` (not on `body`)** so iOS Safari does not interpret dragging as text selection, pinch-zoom, or scroll. On `body`/`html`, `-webkit-tap-highlight-color: transparent` is enough for visual polish.
+- **Device class once at boot**: `matchMedia('(pointer: coarse)')` → `body.classList.add('is-touch')`. CSS (zones visible only on coarse pointers) and JS (constructing / skipping the sticks) key off the same class. This avoids `matchMedia` scattered through every module and keeps the decision in one place.
 
-## Raycasting e interacción
-Si el juego requiere seleccionar o tocar objetos 3D:
-- centralizar `Raycaster`
-- separar picking de gameplay
-- no repartir raycasts por veinte sistemas distintos
-- convertir resultados del raycast en eventos de juego manejables
+## Raycasting and interaction
+If the game needs to select or touch 3D objects:
+- centralize `Raycaster`
+- separate picking from gameplay
+- do not spread raycasts across twenty different systems
+- convert raycast results into manageable game events
 
-Patrón sano:
-- convertir pointer o touch a coordenadas normalizadas una sola vez
-- resolver picking en un sistema dedicado
-- emitir resultados interpretables por gameplay, UI o debug
+Healthy pattern:
+- convert pointer or touch to normalized coordinates once
+- resolve picking in a dedicated system
+- emit results that gameplay, UI, or debug systems can interpret
 
-Detalle importante sacado de examples reales:
-- si el canvas no ocupa toda la ventana, normalizar pointer contra `renderer.domElement.clientWidth/clientHeight` o contra el rect real del canvas, no contra `window.innerWidth/innerHeight` por inercia
-- si el caso de uso está acotado, raycastear contra objetivos concretos en vez de contra toda la escena
+Important detail from real examples:
+- if the canvas does not fill the window, normalize the pointer against `renderer.domElement.clientWidth/clientHeight` or against the canvas's real rect, not reflexively against `window.innerWidth/innerHeight`
+- if the use case is bounded, raycast against specific targets instead of the whole scene
 
-## Cámara y controles
-Distinguir claramente:
-- controles de cámara para debug o edición
-- controles de cámara de gameplay
-- controles del player
+## Camera and controls
+Clearly distinguish:
+- debug or editing camera controls
+- gameplay camera controls
+- player controls
 
-No mezclar `OrbitControls` de prototipo con cámara final de juego sin marcar la diferencia.
+Do not mix prototype `OrbitControls` with the final game camera without marking the difference.
 
-Los examples oficiales son útiles aquí, pero dejan una lección clara: muchas demos usan controles para enseñar una técnica, no para representar un esquema final de juego. Copiar el ejemplo completo sin separar esa intención suele ensuciar la arquitectura.
+The official examples are useful here, but they leave a clear lesson: many demos use controls to teach a technique, not to represent a final game control scheme. Copying the whole example without separating that intention usually dirties the architecture.
 
-Si usas pointer lock en escritorio, tratar su ciclo de vida como parte del diseño:
+If you use pointer lock on desktop, treat its lifecycle as part of the design:
 - lock
 - unlock
-- foco
-- overlay o instrucciones
+- focus
+- overlay or instructions
 
-No asumir que pointer lock es solo una línea de código sin implicaciones de UX.
+Do not assume pointer lock is just one line of code with no UX implications.
 
-### Hold-to-look sin pointer lock (ratón visible)
+### Hold-to-look without pointer lock (visible mouse)
 
-Cuando quieres **mirar alrededor** a ratón pero:
-- el juego no exige aim fino continuo, y
-- prefieres **no** ocultar el cursor ni exigir click-to-play permanente,
+When you want to **look around** with the mouse but:
+- the game does not require continuous fine aiming, and
+- you prefer **not** to hide the cursor or require permanent click-to-play,
 
-alternativa sana: **mantener pulsado** un botón (suelen ser `pointerdown` en el canvas con `setPointerCapture` para seguir recibiendo `pointermove` aunque el cursor salga un poco fuera).
+a healthy alternative is to **hold down** a button (usually `pointerdown` on the canvas with `setPointerCapture` so you keep receiving `pointermove` even if the cursor drifts slightly outside).
 
-Reglas prácticas:
-- Acumular `movementX/Y` solo mientras el botón está abajo.
-- `pointerup`/`pointercancel` en `window` y en el canvas, más `blur`: soltar el botón aunque pierdas foco.
-- Si la cámara aplica **offset que decae al soltar**, no necesitas “reset vista” extra para la mayoría de jugadores.
+Practical rules:
+- Accumulate `movementX/Y` only while the button is down.
+- Listen for `pointerup`/`pointercancel` on `window` and on the canvas, plus `blur`: release the button even if focus is lost.
+- If the camera applies an **offset that decays on release**, most players do not need an extra “reset view” action.
 
-Esto se combina bien con cámaras **follow + offset decay** (ver `cameras.md`).
+This pairs well with **follow + offset decay** cameras (see `cameras.md`).
 
 ## Gamepad
-Diseñar para soportarlo si el tipo de juego lo agradece, pero sin forzarlo desde el día 1.
+Design for gamepad support if the game type benefits from it, but do not force it from day one.
 
-Reglas útiles:
-- leer estado por frame
-- aplicar deadzones
-- normalizar ejes
-- no asumir distribución idéntica entre mandos
+Useful rules:
+- read state every frame
+- apply dead zones
+- normalize axes
+- do not assume identical layouts across controllers
 
-## Estructura sugerida
+## Suggested structure
 
 ```text
 systems/
@@ -155,25 +155,25 @@ controllers/
   cameraController.js
 ```
 
-## Anti-patrones
-- gameplay conectado directo a listeners del DOM
-- duplicar lógica para teclado y touch en vez de normalizar
-- meter raycasting dentro de cada entidad interactiva
-- usar controles de debug como si fueran controles de producción
-- no distinguir entre input continuo y acción puntual
-- asumir que foco, pointer lock o teclado ya están resueltos sin diseñarlos
+## Anti-patterns
+- gameplay connected directly to DOM listeners
+- duplicating logic for keyboard and touch instead of normalizing
+- putting raycasting inside every interactive entity
+- using debug controls as if they were production controls
+- failing to distinguish continuous input from one-off actions
+- assuming focus, pointer lock, or keyboard input are already solved without designing them
 
-## Checklist al diseñar controles
-- ¿funciona en escritorio?
-- ¿funciona en móvil?
-- ¿la cámara compite con el control principal?
-- ¿el input está desacoplado del DOM?
-- ¿los nombres de acciones son claros?
-- ¿es fácil cambiar el esquema más adelante?
+## Control design checklist
+- does it work on desktop?
+- does it work on mobile?
+- does the camera compete with the primary control?
+- is input decoupled from the DOM?
+- are action names clear?
+- is it easy to change the scheme later?
 
-## Pendiente de ampliar
-- giroscopio y sensores
+## To expand later
+- gyroscope and sensors
 - input buffering
 - rebinding
-- accesibilidad y esquemas alternativos
-- patrones de control para third-person, runner y equilibrio
+- accessibility and alternative schemes
+- control patterns for third-person, runner, and balance games

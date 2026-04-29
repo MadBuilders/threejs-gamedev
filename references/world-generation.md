@@ -1,143 +1,143 @@
 # World Generation
 
-## Objetivo
-Construir mundos grandes o proceduralmente ricos en Three.js sin caer en el error clásico de representar cada pieza como un mesh suelto o de intentar tenerlo todo vivo a la vez.
+## Objective
+Build large or procedurally rich worlds in Three.js without falling into the classic mistake of representing every piece as a loose mesh or trying to keep everything alive at once.
 
-## Regla principal
-Separar **datos del mundo** de **representación renderizable**.
+## Main rule
+Separate **world data** from **renderable representation**.
 
-El mundo no es la escena. La escena es solo una vista temporal y optimizada de una parte del mundo.
+The world is not the scene. The scene is only a temporary, optimized view of part of the world.
 
-## Principio base
-Pensar en capas:
-1. **datos** del mundo
-2. **generación** o carga
-3. **meshing / representación**
-4. **streaming y descarte**
-5. **gameplay sobre el mundo**
+## Base principle
+Think in layers:
+1. world **data**
+2. **generation** or loading
+3. **meshing / representation**
+4. **streaming and disposal**
+5. **gameplay over the world**
 
-## Lección fuerte del manual
-Si hay muchísimos elementos:
-- no crear un mesh por pieza por defecto
-- no abusar del scene graph como estructura de datos
-- usar geometría combinada, instancing o meshing específico según el caso
+## Strong lesson from the manual
+If there are many elements:
+- do not create one mesh per piece by default
+- do not abuse the scene graph as a data structure
+- use combined geometry, instancing, or case-specific meshing
 
 ## Chunking
-Para mundos grandes, usar chunks o celdas.
+For large worlds, use chunks or cells.
 
-Razones:
-- limitar memoria activa
-- reconstruir solo zonas afectadas
-- facilitar streaming y descarte
-- evitar pensar en el mundo entero a la vez
+Reasons:
+- limit active memory
+- rebuild only affected zones
+- make streaming and disposal easier
+- avoid thinking about the whole world at once
 
-Regla práctica:
-- definir un tamaño de chunk razonable
-- mantener separado el identificador lógico del chunk y su representación visual
-- poder regenerar la malla de un chunk sin reescribir el mundo entero
+Practical rule:
+- define a reasonable chunk size
+- keep the logical chunk identifier separate from its visual representation
+- be able to regenerate one chunk mesh without rewriting the whole world
 
 ## Voxel worlds
-El manual de voxel geometry deja una regla muy clara:
-- no basta con fusionar cubos a lo bruto
-- hay que generar solo las caras visibles
+The voxel geometry manual leaves a very clear rule:
+- simply merging cubes naively is not enough
+- generate only visible faces
 
-Patrones clave:
-- almacenar datos del voxel world por celdas
-- consultar vecinos para decidir si una cara existe
-- generar geometría propia en vez de instanciar un cubo por voxel
-- no reservar memoria enorme para espacio vacío si se puede evitar
+Key patterns:
+- store voxel world data by cells
+- query neighbors to decide whether a face exists
+- generate custom geometry instead of instancing one cube per voxel
+- avoid reserving huge memory for empty space when possible
 
-## Heightmaps y superficies
-Para terrenos tipo mapa de alturas:
-- un mesh de superficie puede ser suficiente
-- raycasting contra el terreno es útil para placement, navegación o debug
-- helpers visuales de impacto ayudan mucho a entender qué pasa
+## Heightmaps and surfaces
+For heightmap-style terrain:
+- a surface mesh can be enough
+- raycasting against the terrain is useful for placement, navigation, or debug
+- visual impact helpers help a lot with understanding what is happening
 
-## Relieve de horizonte como silueta
-Problema frecuente: la zona jugable es plana (o casi), pero el horizonte se ve vacío y el cielo muere contra el suelo. Meter un heightfield authored completo es overkill; lo que quieres es **silueta decorativa** alrededor de la zona jugable, no terreno navegable.
+## Horizon relief as silhouette
+Frequent problem: the playable area is flat (or almost), but the horizon looks empty and the sky dies against the ground. Adding a fully authored heightfield is overkill; what you want is **decorative silhouette** around the playable area, not navigable terrain.
 
-Patrones fallidos habituales:
-- **Parches cardinales**: cuatro bumps rectangulares en N/S/E/O. Se nota que son cuatro objetos distintos, el resto del horizonte queda plano y cuando el jugador gira la cámara rompe la ilusión.
-- **Parches radiales simples**: una función `height(r) = bump(r)` produce un anillo perfectamente simétrico tipo donut, también legible como artificial.
+Common failed patterns:
+- **Cardinal patches**: four rectangular bumps at N/S/E/W. It is obvious they are four separate objects, the rest of the horizon stays flat, and when the player turns the camera the illusion breaks.
+- **Simple radial patches**: a `height(r) = bump(r)` function produces a perfectly symmetric donut-like ring, also readable as artificial.
 
-Patrón reutilizable para silueta continua:
-1. **Máscara radial**: sobre un plano grande concéntrico con la zona jugable, `heightMask(r)` vale 0 dentro del radio de juego, sube hasta una cresta en `r ≈ rPlay + offset`, y vuelve a bajar antes del borde del plano para no levantar la piel visible del mundo.
-2. **Modulación angular** (low-freq): un término `peaks(θ)` con 2-4 picos por vuelta rompe la simetría del aro y genera valles entre picos, que es lo que hace que el ojo lo lea como sierra y no como donut.
-3. **Detalle de ruido** (high-freq): `fbm(x, z)` o similar añade silueta irregular sin dominar la forma.
-4. **Altura final**: `h(x,z) = radialMask(r) · peaks(θ) · detail(x,z)`, clamped a ≥ 0.
+Reusable pattern for continuous silhouette:
+1. **Radial mask**: over a large plane concentric with the playable area, `heightMask(r)` is 0 inside the gameplay radius, rises to a crest at `r ≈ rPlay + offset`, and falls again before the plane edge so it does not lift the visible skin of the world.
+2. **Angular modulation** (low-freq): a `peaks(θ)` term with 2-4 peaks per revolution breaks the symmetry of the ring and creates valleys between peaks, which makes the eye read it as a mountain range instead of a donut.
+3. **Noise detail** (high-freq): `fbm(x, z)` or similar adds irregular silhouette without dominating the shape.
+4. **Final height**: `h(x,z) = radialMask(r) · peaks(θ) · detail(x,z)`, clamped to ≥ 0.
 
-Reglas:
-- Separar los tres ingredientes (máscara radial, patrón angular, detalle) hace el resultado fácil de tunear; mezclarlo todo en una sola función de ruido termina en magic numbers.
-- La cresta debería caer en una banda donde **ningún sistema gameplay pise el terreno** (collider plano dentro de `rPlay`, sombras y navegación asumen Y=0). Es render-only.
-- Funciona igual con un plano `PlaneGeometry` subdividido y escribiendo Z en los vértices, que con un heightfield authored; elegir según cuánto control se quiera.
-- Si **el terreno es parte del gameplay** (colisiones, altura del jugador, navmesh), este patrón no aplica: usa heightfield authored / bake real. Este es un patrón para mundos planos que solo necesitan fondo.
+Rules:
+- Separating the three ingredients (radial mask, angular pattern, detail) makes the result easy to tune; mixing everything into one noise function ends in magic numbers.
+- The crest should fall in a band where **no gameplay system steps on the terrain** (flat collider inside `rPlay`, shadows and navigation assume Y=0). It is render-only.
+- It works the same with a subdivided `PlaneGeometry` writing Z into vertices, or with an authored heightfield; choose based on how much control you want.
+- If **the terrain is part of gameplay** (collisions, player height, navmesh), this pattern does not apply: use an authored heightfield / real bake. This is a pattern for flat worlds that only need background.
 
-Cuándo es suficiente:
-- juegos top-down / tercera persona con zona jugable cerrada
-- el horizonte está lejos y pequeño en pantalla
-- no hay cámara libre que permita al jugador verlo desde arriba
+When it is enough:
+- top-down / third-person games with a closed playable area
+- the horizon is far away and small on screen
+- there is no free camera that lets the player see it from above
 
-Cuándo escalar a heightfield authored:
-- la cámara puede ver el relieve desde ángulos que destapan la forma geométrica
-- hay mecánicas que dependen de la altura (trepar, rodar, agua)
-- el autor quiere control artístico específico ("aquí una cadena, allí un cañón")
+When to escalate to authored heightfield:
+- the camera can see the relief from angles that expose its geometry
+- mechanics depend on height (climbing, rolling, water)
+- the author wants specific art direction ("a ridge here, a canyon there")
 
-## Geometría combinada vs instancing
-### Combinar geometría
-Buena opción cuando:
-- hay muchísimos elementos estáticos
-- no hace falta tocar piezas individuales con frecuencia
-- queremos reducir draw calls al máximo
+## Combined geometry vs instancing
+### Combine geometry
+Good option when:
+- there are many static elements
+- individual pieces do not need to change often
+- you want to reduce draw calls as much as possible
 
 ### Instancing
-Buena opción cuando:
-- hay muchos elementos similares
-- sí queremos cierto grado de cambio por instancia
-- necesitamos actualizar transforms o colores sin rehacer toda la malla
+Good option when:
+- there are many similar elements
+- you do want some per-instance change
+- you need to update transforms or colors without rebuilding the whole mesh
 
-### Meshes sueltas
-Dejarlo para:
-- objetos realmente especiales
-- entidades interactivas importantes
-- cantidades pequeñas
+### Loose meshes
+Keep them for:
+- truly special objects
+- important interactive entities
+- small quantities
 
-## Helpers de posicionamiento
-El manual enseña un patrón fino: usar unos pocos `Object3D` helpers temporales para calcular posiciones complejas en vez de inundar el scene graph con nodos persistentes.
+## Positioning helpers
+The manual teaches a fine pattern: use a few temporary `Object3D` helpers to calculate complex positions instead of flooding the scene graph with persistent nodes.
 
-Regla:
-- usar helpers para calcular
-- no convertirlos en estructura permanente si no hace falta
+Rule:
+- use helpers for calculation
+- do not turn them into a permanent structure if not needed
 
 ## Streaming
-Un mundo grande debería asumir que:
-- chunks entran
-- chunks salen
-- recursos se liberan
-- la escena visible cambia
+A large world should assume that:
+- chunks enter
+- chunks leave
+- resources are released
+- the visible scene changes
 
-Preguntas útiles:
-- ¿qué chunks deben estar activos alrededor del jugador?
-- ¿qué distancia activa usamos para visual, física y gameplay?
-- ¿cuándo regeneramos malla y cuándo solo actualizamos datos?
+Useful questions:
+- which chunks should be active around the player?
+- what active distance do we use for visuals, physics, and gameplay?
+- when do we regenerate mesh and when do we only update data?
 
-## Anti-patrones
-- un mesh por bloque o por prop minúsculo en mundos enormes
-- usar la escena como base de datos del mundo
-- no separar mundo lógico y representación visual
-- no chunkear cuando el mundo ya lo pide a gritos
-- reconstruir el mundo entero por cambios locales pequeños
+## Anti-patterns
+- one mesh per block or tiny prop in huge worlds
+- using the scene as the world database
+- not separating logical world and visual representation
+- not chunking when the world is already screaming for it
+- rebuilding the whole world for small local changes
 
-## Recomendación fuerte
-Para juegos web:
-- mundo lógico chunked
-- representación agregada por chunk
-- instancing para repetición con variación ligera
-- meshes individuales solo para objetos importantes
+## Strong recommendation
+For web games:
+- chunked logical world
+- aggregated representation per chunk
+- instancing for repetition with light variation
+- individual meshes only for important objects
 
-## Pendiente de ampliar
-- política de tamaños de chunk
-- world streaming alrededor de cámara o player
-- meshing incremental
-- integración con física por chunk
-- navegación y queries espaciales
-- procedural generation reproducible por seed
+## To expand later
+- chunk size policy
+- world streaming around camera or player
+- incremental meshing
+- integration with physics by chunk
+- navigation and spatial queries
+- reproducible procedural generation by seed

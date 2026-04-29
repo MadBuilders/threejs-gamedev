@@ -1,111 +1,111 @@
 # glTF Pipeline
 
-## Objetivo
-Tratar `glTF` y `GLB` como un pipeline de producción real para Three.js, no como un simple `loader.load()` aislado.
+## Goal
+Treat `glTF` and `GLB` as a real production pipeline for Three.js, not as a simple isolated `loader.load()`.
 
-## Default principal
-Para juegos web nuevos en Three.js:
-- usar `glTF` o `GLB` como runtime format principal
-- mantener archivos fuente aparte
-- centralizar carga con `GLTFLoader`
-- usar `LoadingManager` cuando haya varios assets o una pantalla de carga real
-- considerar compresión de geometría y texturas solo con pipeline claro
+## Primary default
+For new web games in Three.js:
+- use `glTF` or `GLB` as the main runtime format
+- keep source files separate
+- centralize loading with `GLTFLoader`
+- use `LoadingManager` when there are multiple assets or a real loading screen
+- consider geometry and texture compression only with a clear pipeline
 
-## Regla principal
-Separar estas capas:
+## Main rule
+Separate these layers:
 1. **source assets**
 2. **runtime exports**
 3. **load orchestration**
-4. **instanciación/clonado**
-5. **activación visual y cleanup**
+4. **instancing/cloning**
+5. **visual activation and cleanup**
 
 ## `glTF` vs `GLB`
-Regla práctica:
-- `GLB` suele ser mejor default de distribución cuando quieres un runtime empaquetado y simple de servir
-- `glTF` puede ser útil cuando necesitas inspección fácil o assets externos explícitos
+Practical rule:
+- `GLB` is usually the better distribution default when you want a packaged runtime that is simple to serve
+- `glTF` can be useful when you need easy inspection or explicit external assets
 
-No convertir esto en religión. Lo importante es que el runtime sea consistente y mantenible.
+Do not turn this into religion. What matters is that the runtime is consistent and maintainable.
 
 ## Source files vs runtime files
-Regla fuerte:
-- los archivos de editor no son runtime assets
-- exportar una versión pensada para juego
-- no depender del archivo de Blender, Maya o similar como si fuera el asset final
+Strong rule:
+- editor files are not runtime assets
+- export a version intended for the game
+- do not depend on the Blender, Maya, or similar file as if it were the final asset
 
-Mantener claro:
-- fuente editable
-- export runtime
-- variante comprimida si existe
+Keep these clear:
+- editable source
+- runtime export
+- compressed variant if one exists
 
-## Checklist de export
-Antes de integrar:
-- escala correcta
-- orientación correcta
-- pivots útiles
-- nombres estables
-- materiales razonables
-- jerarquía limpia
-- clips de animación con nombre
-- texturas con tamaño sensato
-- polycount proporcional al uso real
+## Export checklist
+Before integration:
+- correct scale
+- correct orientation
+- useful pivots
+- stable names
+- reasonable materials
+- clean hierarchy
+- named animation clips
+- sensibly sized textures
+- polycount proportional to actual use
 
-## Animación: cuidado con tracks de **scale**
+## Animation: beware **scale** tracks
 
-En rigs exportados desde herramientas de IA o con retarget ruidoso, un clip puede llevar **keyframes de scale** en huesos raíz o torso. En reproducción eso se traduce en “inflado” o clipping durante el walk.
+In rigs exported from AI tools or noisy retargeting, a clip may include **scale keyframes** on root or torso bones. During playback this becomes “inflation” or clipping during the walk.
 
-Opciones:
-- arreglar en DCC / re-export limpio;
-- en runtime, **eliminar tracks de scale** del `AnimationClip` al cargar (quedan posición y rotación), si el modelo ya tiene escala correcta en bind pose.
+Options:
+- fix it in DCC / re-export cleanly;
+- at runtime, **remove scale tracks** from the `AnimationClip` on load (leaving position and rotation) if the model already has correct scale in bind pose.
 
-Relacionado: `animation-systems.md` y bounding boxes en skinned meshes (`Box3.setFromObject(..., true)`).
+Related: `animation-systems.md` and bounding boxes on skinned meshes (`Box3.setFromObject(..., true)`).
 
-## Orquestación de carga
-Cuando haya varios modelos o dependencias:
-- usar `LoadingManager`
-- exponer progreso al usuario si la espera no es trivial
-- no arrancar gameplay serio antes de que los assets críticos estén listos
+## Load orchestration
+When there are multiple models or dependencies:
+- use `LoadingManager`
+- expose progress to the user if the wait is not trivial
+- do not start serious gameplay before critical assets are ready
 
-El manual de `game` es bastante claro aquí: la coordinación de carga y la UI de progreso forman parte del producto, no de un detalle menor.
+The `game` manual is quite clear here: load coordination and progress UI are part of the product, not a minor detail.
 
-## Asset registry recomendado
-Patrón sano:
-- registrar assets por id
-- separar metadata de runtime object
-- cachear el resultado del load cuando toque
-- exponer factories para instancias visuales
+## Recommended asset registry
+Healthy pattern:
+- register assets by id
+- separate metadata from runtime object
+- cache the load result when appropriate
+- expose factories for visual instances
 
-Ejemplo conceptual:
+Conceptual example:
 - `assets.characters.knight`
 - `assets.props.crate`
 - `assets.environments.village`
 
-## Clonado e instanciación
-No todo asset cargado debe añadirse tal cual a escena.
+## Cloning and instancing
+Not every loaded asset should be added to the scene as-is.
 
-### Caso 1, una única escena grande
-- cargar
-- montar
-- configurar ownership y lifecycle
+### Case 1, one large scene
+- load
+- mount
+- configure ownership and lifecycle
 
-### Caso 2, múltiples instancias del mismo asset
-- clonar con criterio
-- si es personaje skinned, usar `SkeletonUtils.clone()`
-- no compartir estado animado por accidente
+### Case 2, multiple instances of the same asset
+- clone deliberately
+- if it is a skinned character, use `SkeletonUtils.clone()`
+- do not accidentally share animated state
 
-### Caso 3, muchos objetos repetidos
-- evaluar instancing o assets preparados con instancing
-- no asumir que clonar cientos de nodos normales es gratis
+### Case 3, many repeated objects
+- evaluate instancing or assets prepared with instancing
+- do not assume cloning hundreds of normal nodes is free
 
-La example `webgl_loader_gltf_instancing` deja una pista útil: glTF puede convivir con `EXT_mesh_gpu_instancing`, así que parte del coste puede resolverse ya desde el asset pipeline.
+The `webgl_loader_gltf_instancing` example leaves a useful hint: glTF can coexist with `EXT_mesh_gpu_instancing`, so part of the cost can already be solved in the asset pipeline.
 
-#### Migración de `clone()` a `InstancedMesh` por leaf
-Patrón recurrente: una función `loadXxxModel()` devuelve un wrapper que expone `instance()` implementado como `wrapper.clone(true)`. Sirve hasta que el nivel escala a decenas o cientos de copias del mismo GLB: cada instancia aporta sus propios `Object3D` (transform, matrix world update) y una draw call por leaf mesh del wrapper.
+#### Migrating from `clone()` to `InstancedMesh` per leaf
+Recurring pattern: a `loadXxxModel()` function returns a wrapper exposing `instance()` implemented as `wrapper.clone(true)`. That works until the level scales to dozens or hundreds of copies of the same GLB: each instance adds its own `Object3D`s (transform, matrix world update) and one draw call per leaf mesh of the wrapper.
 
-Plantilla reutilizable para extender el mismo factory con instancing de verdad, sin obligar a cambiar el resto del juego:
+Reusable template to extend the same factory with real instancing, without forcing the rest of the game to change:
 
 ```ts
-// 1) Al cargar el GLB, extraer los leaf meshes aplanados con su matriz
-//    local respecto al wrapper (la que ya aplica escala, recentrado, etc.).
+// 1) When loading the GLB, extract the flattened leaf meshes with their matrix
+//    local to the wrapper (the one that already applies scale, recentering, etc.).
 const leafMeshes: { geometry: THREE.BufferGeometry; material: THREE.Material; baseMatrix: THREE.Matrix4 }[] = [];
 wrapper.updateMatrixWorld(true);
 wrapper.traverse((obj) => {
@@ -118,7 +118,7 @@ wrapper.traverse((obj) => {
   });
 });
 
-// 2) Nuevo método: una InstancedMesh por leaf, N matrices.
+// 2) New method: one InstancedMesh per leaf, N matrices.
 function createInstancedMeshes(placements: ReadonlyArray<{ x: number; z: number; yaw: number }>) {
   const group = new THREE.Group();
   const tmp = new THREE.Matrix4();
@@ -128,9 +128,9 @@ function createInstancedMeshes(placements: ReadonlyArray<{ x: number; z: number;
     const im = new THREE.InstancedMesh(leaf.geometry, leaf.material, placements.length);
     im.castShadow = castShadow;
     im.receiveShadow = true;
-    // Con instancias esparcidas por todo el mundo, el frustum culling
-    // per-instance puede esconder instancias reales; suele merecer la pena
-    // dejarlo a cargo del bounding sphere global.
+    // With instances scattered across the whole world, per-instance frustum culling
+    // can hide real instances; it is usually worth leaving this to the global
+    // bounding sphere.
     im.frustumCulled = false;
 
     for (let i = 0; i < placements.length; i++) {
@@ -146,44 +146,44 @@ function createInstancedMeshes(placements: ReadonlyArray<{ x: number; z: number;
 }
 ```
 
-Puntos a cuidar:
-- **Agrupar placements por variante** antes de llamar al instanced factory: si tu juego mezcla "árbol A" y "árbol B", son dos `InstancedMesh` distintos (no los fuerces a uno mismo aunque compartan escala).
-- **Conservar `instance()` para casos raros**: obstáculos interactivos, props que necesitan animación propia o swap de material; esos siguen con `clone(true)`. El instanced path es el default para "decoración densa".
-- **Los obstáculos de colisión que apuntaban a la instancia individual ahora deben apuntar al grupo instanced completo** (si los necesitas). Verifica dónde se usa ese `visual` (en muchos juegos solo para debug o para hacer un swap puntual); si el único lifecycle es "vive desde boot hasta fin del nivel", compartir la referencia es seguro.
-- **Draw calls**: pasas de `N × leafCount` a `leafCount` (una por submesh del GLB), no "a 1" salvo que el GLB tenga un único mesh.
-- **Sombras**: `InstancedMesh` casta sombra por instancia igual que un mesh normal; el shadow pass también se beneficia del colapso de draw calls.
-- Si los GLBs llevan `EXT_mesh_gpu_instancing` de origen, este paso en runtime sobra: resuelve ya el pipeline.
+Things to watch:
+- **Group placements by variant** before calling the instanced factory: if your game mixes “tree A” and “tree B”, those are two different `InstancedMesh` objects (do not force them into one even if they share scale).
+- **Keep `instance()` for rare cases**: interactive obstacles, props that need their own animation, or material swaps; those still use `clone(true)`. The instanced path is the default for “dense decoration”.
+- **Collision obstacles that pointed at the individual instance should now point at the whole instanced group** (if you need them). Check where that `visual` is used (in many games only for debug or for a one-off swap); if the only lifecycle is “lives from boot until the end of the level”, sharing the reference is safe.
+- **Draw calls**: you go from `N × leafCount` to `leafCount` (one per GLB submesh), not “to 1” unless the GLB has a single mesh.
+- **Shadows**: `InstancedMesh` casts shadows per instance like a normal mesh; the shadow pass also benefits from the draw call collapse.
+- If the GLBs already carry `EXT_mesh_gpu_instancing` from the source, this runtime step is unnecessary: the pipeline already solves it.
 
-## AI-generated GLBs (Meshy y similares)
+## AI-generated GLBs (Meshy and similar)
 
-Los generadores de assets 3D por IA (Meshy, Rodin, Luma, etc.) aceleran mucho el lookdev pero **vienen con defaults silenciosos que hay que corregir siempre** antes de meter el GLB en el juego. Tratarlos como "source editable con lookdev bonito", no como runtime assets.
+AI 3D asset generators (Meshy, Rodin, Luma, etc.) speed up lookdev a lot, but **they come with silent defaults that must always be corrected** before putting the GLB in the game. Treat them as “editable source with nice lookdev”, not as runtime assets.
 
-Checklist obligatorio tras descargar cualquier GLB de IA:
+Mandatory checklist after downloading any AI GLB:
 
-- **`doubleSided: true` en todos los materiales**, incluso en opacos (troncos, paredes, vasijas). Para geometría cerrada es puro coste de fragment shader ~2× sin ganancia visual. Hay que forzar `FrontSide` — ver más abajo.
-- **Texturas a 2048×2048 por defecto**, cada slot PBR (baseColor + normal + metallicRoughness + emissive). Un solo árbol puede pedir ~90 MB de VRAM. Bajar a 512 o 1024 según uso real.
-- **Sin compresión de geometría ni texturas**. `meshopt` + `webp`/KTX2 como paso automático del pipeline.
-- **Polycount descontrolado**. Un mesh "de presentación" puede venir a 0.5M–3M tris. Para realtime: foliage lejano 10K, prop de escenario ~10–30K, edificio ~20–30K. Subir solo si la silueta lo pide de verdad.
-- **Skinned meshes: no pasar por AI-remesh**. Las herramientas de IA rompen weights, skeleton y animaciones. Si hay que reducir un personaje animado, el camino es Blender Decimate preservando grupos de vértices, y reverificar cada clip.
+- **`doubleSided: true` on all materials**, even opaque ones (trunks, walls, vases). For closed geometry this is pure fragment shader cost, roughly 2×, with no visual gain. Force `FrontSide` — see below.
+- **2048×2048 textures by default**, every PBR slot (baseColor + normal + metallicRoughness + emissive). A single tree can ask for ~90 MB of VRAM. Drop to 512 or 1024 depending on actual use.
+- **No geometry or texture compression**. Add `meshopt` + `webp`/KTX2 as an automatic pipeline step.
+- **Uncontrolled polycount**. A “presentation” mesh can arrive at 0.5M–3M tris. For realtime: distant foliage 10K, scenery prop ~10–30K, building ~20–30K. Go higher only if the silhouette truly demands it.
+- **Skinned meshes: do not run through AI remesh**. AI tools break weights, skeleton, and animations. If you need to reduce an animated character, the path is Blender Decimate while preserving vertex groups, then reverify every clip.
 
-### Pipeline post-download canónico
+### Canonical post-download pipeline
 
 ```bash
-# Bajar resolución de texturas al tamaño real de uso
+# Downscale textures to their real in-game usage size
 pnpm dlx @gltf-transform/cli@latest resize in.glb tmp.glb --width 512 --height 512
 
-# Re-encode a WebP (normal maps y demás). KTX2 si el runtime lo soporta.
+# Re-encode to WebP (normal maps and the rest). KTX2 if the runtime supports it.
 pnpm dlx @gltf-transform/cli@latest webp tmp.glb tmp2.glb
 
-# Compresión de geometría
+# Geometry compression
 pnpm dlx @gltf-transform/cli@latest meshopt tmp2.glb out.glb
 ```
 
-Luego `inspect` para confirmar que el resultado es el esperado (tris, `doubleSided`, resolución de texturas, extensiones aplicadas).
+Then run `inspect` to confirm the result is what you expect (tris, `doubleSided`, texture resolution, applied extensions).
 
-### Forzar `FrontSide` en el loader, no en el GLB
+### Force `FrontSide` in the loader, not in the GLB
 
-Arreglar `doubleSided` con `gltf-transform` o re-export también funciona, pero **es más robusto hacerlo en el loader del juego**:
+Fixing `doubleSided` with `gltf-transform` or re-export also works, but **it is more robust to do it in the game loader**:
 
 ```ts
 gltf.scene.traverse((obj) => {
@@ -196,11 +196,11 @@ gltf.scene.traverse((obj) => {
 });
 ```
 
-Ventaja: cubre cualquier re-export futuro (otra generación, otra herramienta, otro artista) sin depender de que alguien se acuerde de pasar el pipeline. Un solo punto de control en el loader por tipo de asset (árboles, props, casas) evita que la "optimización" se quede anclada al GLB concreto.
+Advantage: it covers any future re-export (another generation, another tool, another artist) without depending on someone remembering to run the pipeline. One control point in the loader per asset type (trees, props, houses) prevents the “optimization” from being tied to one concrete GLB.
 
-### Variant scale como dato authored, no baked in GLB
+### Variant scale as authored data, not baked into the GLB
 
-Si un asset se va a regenerar (textura nueva, mesh mejorada, variante estilística), **no bakear el tamaño final en el GLB** — mantenerlo como constante en código/JSON:
+If an asset will be regenerated (new texture, better mesh, stylistic variant), **do not bake the final size into the GLB** — keep it as a constant in code/JSON:
 
 ```ts
 export const TREE_VARIANT_SCATTER_SCALE: Record<TreeVariantKind, number> = {
@@ -210,144 +210,144 @@ export const TREE_VARIANT_SCATTER_SCALE: Record<TreeVariantKind, number> = {
 };
 ```
 
-Así puedes re-remeshar el asset sin retunear placements en toda la escena. Es la misma doctrina de **"source editable → artifact"** aplicada a dimensiones: el GLB es el artifact, las decisiones de "qué tan grande va en el mundo" son source humano.
+This lets you re-remesh the asset without retuning placements across the whole scene. It is the same **“editable source → artifact”** doctrine applied to dimensions: the GLB is the artifact; decisions about “how big it is in the world” are human source.
 
-Aplicable a árboles, props, edificios, cualquier cosa que puedas querer refrescar la malla en el futuro.
+Applicable to trees, props, buildings, and anything whose mesh you may want to refresh in the future.
 
-## Compresión
-La revisión oficial empuja varias ideas distintas:
+## Compression
+The official review pushes several different ideas:
 
-### Compresión HTTP
-Primer win casi gratis:
-- servir assets con compresión HTTP correcta
-- muchas veces da una mejora enorme sin tocar el contenido del asset
+### HTTP compression
+First almost-free win:
+- serve assets with correct HTTP compression
+- often gives a huge improvement without touching the asset content
 
-El manual de `game` deja un ejemplo muy claro: varios megas bajan muchísimo solo por compresión del servidor.
+The `game` manual gives a very clear example: several megabytes shrink massively just through server compression.
 
-### Compresión de geometría y texturas
-El example `webgl_loader_gltf_compressed` enseña un camino canónico:
-- `KTX2Loader` para texturas comprimidas
-- `MeshoptDecoder` para geometría comprimida
+### Geometry and texture compression
+The `webgl_loader_gltf_compressed` example shows a canonical path:
+- `KTX2Loader` for compressed textures
+- `MeshoptDecoder` for compressed geometry
 
-Patrón base:
-- detectar soporte real del renderer para KTX2
-- configurar loaders auxiliares explícitamente
-- no meter compresión a ciegas sin validar pipeline y dispositivos objetivo
+Base pattern:
+- detect the renderer’s real KTX2 support
+- configure auxiliary loaders explicitly
+- do not add compression blindly without validating the pipeline and target devices
 
 ## gltf-transform (CLI)
 
-[gltf-transform](https://gltf-transform.dev/) es la herramienta de referencia para **inspeccionar, limpiar y optimizar** glTF/GLB en pipeline reproducible. No sustituye a Blender/Substance para authoring, pero sí a **export ad hoc** y a “bajar megas” antes de subir a `public/`.
+[gltf-transform](https://gltf-transform.dev/) is the reference tool for **inspecting, cleaning, and optimizing** glTF/GLB in a reproducible pipeline. It does not replace Blender/Substance for authoring, but it does replace **ad hoc export** and “shrinking megabytes” before uploading to `public/`.
 
-**Paquete:** `@gltf-transform/cli` (el binario suele invocarse como `gltf-transform` vía `npx` o `pnpm dlx`).
+**Package:** `@gltf-transform/cli` (the binary is usually invoked as `gltf-transform` via `npx` or `pnpm dlx`).
 
-**Cuándo usarla**
-- Antes de integrar un GLB enorme: entender qué pesa (geometría vs texturas vs extensiones).
-- Antes de producción: deduplicar accessors, simplificar materiales, comprimir geometría (p. ej. Meshopt) o texturas según el proyecto.
-- En CI: validar que un export no ha crecido más de un umbral (combinar con `benchmarking.md` si aplica).
+**When to use it**
+- Before integrating a huge GLB: understand what is heavy (geometry vs textures vs extensions).
+- Before production: deduplicate accessors, simplify materials, compress geometry (for example Meshopt) or textures according to the project.
+- In CI: validate that an export has not grown beyond a threshold (combine with `benchmarking.md` if applicable).
 
-**Comandos típicos (ejemplos)**
+**Typical commands (examples)**
 
 ```bash
-# Estructura, tamaños, meshes, animaciones, texturas
-npx @gltf-transform/cli inspect modelo.glb
+# Structure, sizes, meshes, animations, textures
+npx @gltf-transform/cli inspect model.glb
 
-# Optimización general (revisar flags en la doc del paquete; evolucionan entre versiones)
-npx @gltf-transform/cli optimize entrada.glb salida.glb
+# General optimization (review flags in the package docs; they evolve between versions)
+npx @gltf-transform/cli optimize input.glb output.glb
 ```
 
-**Reglas sanas**
-- Fijar **versión mayor** del CLI en el proyecto (script en `package.json` o documentado en README) para que `optimize` sea reproducible entre máquinas.
-- Tras optimizar, **probar en el juego real** (Three.js + extensiones que uses: Meshopt decoder, KTX2, etc.).
-- No tratar la compresión como magia: si el asset sigue gigante, el cuello a menudo son **texturas 4K** u opciones de export del DCC.
+**Healthy rules**
+- Pin the CLI’s **major version** in the project (script in `package.json` or documented in README) so `optimize` is reproducible across machines.
+- After optimizing, **test in the real game** (Three.js + extensions you use: Meshopt decoder, KTX2, etc.).
+- Do not treat compression as magic: if the asset is still huge, the bottleneck is often **4K textures** or DCC export options.
 
-**Anti-patrones**
-- Optimizar una sola vez “a mano” sin script ni versión fijada y olvidar cómo se regeneró el artefacto.
-- Asumir que `optimize` siempre baja calidad visual: depende de flags y del contenido.
+**Anti-patterns**
+- Optimizing once “by hand” without a script or pinned version, then forgetting how the artifact was regenerated.
+- Assuming `optimize` always lowers visual quality: it depends on flags and content.
 
-## Recomendación actual
-Con lo revisado en esta ola, la apuesta más sana para proyectos serios sería:
-- `GLB` como artefacto runtime principal
-- compresión HTTP siempre que puedas
-- `KTX2` para texturas si el pipeline lo soporta bien
-- `Meshopt` como opción muy seria para geometría
-- Draco solo si encaja con tu pipeline y lo has medido, no por reflejo
+## Current recommendation
+Based on this review wave, the healthiest bet for serious projects would be:
+- `GLB` as the main runtime artifact
+- HTTP compression whenever possible
+- `KTX2` for textures if the pipeline supports it well
+- `Meshopt` as a very serious option for geometry
+- Draco only if it fits your pipeline and you have measured it, not by reflex
 
-## Shader warmup y activación visual
-La example moderna de `webgl_loader_gltf` deja un detalle muy valioso:
-- `renderer.compileAsync()` antes de añadir el modelo puede evitar bloqueos visibles al activar el asset
+## Shader warmup and visual activation
+The modern `webgl_loader_gltf` example leaves a very valuable detail:
+- `renderer.compileAsync()` before adding the model can prevent visible stalls when activating the asset
 
-Esto merece default mental en escenas donde:
-- cargas bajo demanda
-- cambias de personaje o skin
-- entras en zonas nuevas
-- presentas modelos grandes al usuario
+This deserves to be the mental default in scenes where you:
+- load on demand
+- change character or skin
+- enter new areas
+- present large models to the user
 
-Para frame pacing, warmup y política general de activación sin tirones, ver `frame-pacing-stutter.md`.
+For frame pacing, warmup, and general hitch-free activation policy, see `frame-pacing-stutter.md`.
 
-## Entorno y lookdev
-Varios examples oficiales mezclan carga de glTF con:
+## Environment and lookdev
+Several official examples mix glTF loading with:
 - environment map
 - tone mapping
-- ajuste de cámara
+- camera adjustment
 
-Esto importa porque un asset puede “verse mal” no por el asset, sino por:
-- entorno sin iluminar bien
-- tone mapping incoherente
-- cámara mal ajustada
+This matters because an asset may “look bad” not because of the asset, but because of:
+- an environment that does not light it well
+- incoherent tone mapping
+- a poorly adjusted camera
 
-No culpar al modelo demasiado pronto.
+Do not blame the model too early.
 
-## Fit de cámara y presentación
-Para visores, menús de selección o inspección:
-- calcular bounds
-- ajustar cámara a selección
-- actualizar near/far con criterio
+## Camera fit and presentation
+For viewers, selection menus, or inspection:
+- compute bounds
+- fit the camera to the selection
+- update near/far deliberately
 
-El example oficial lo usa bien como patrón de presentación.
+The official example uses this well as a presentation pattern.
 
-## Lifecycle de modelos cargados
-Al cambiar de modelo o reemplazar vistas:
-- remover visual de escena
-- parar actions o mixers si existen
-- limpiar recursos si el asset no va a reutilizarse
-- no dejar loads viejos ganar carreras de async
+## Lifecycle of loaded models
+When changing models or replacing views:
+- remove the visual from the scene
+- stop actions or mixers if they exist
+- clean up resources if the asset will not be reused
+- do not let old loads win async races
 
-La example oficial moderna también deja una señal útil:
-- usar ids o guards de carga para ignorar respuestas antiguas cuando el usuario cambia rápido de asset
+The modern official example also leaves a useful signal:
+- use ids or load guards to ignore old responses when the user changes assets quickly
 
 ## Ownership
-Cada modelo cargado debería tener dueño claro:
+Every loaded model should have a clear owner:
 - viewer
 - scene chunk
 - enemy factory
 - character roster
 - skin selector
 
-Sin ownership claro, el caos entra por tres sitios:
-- fugas
-- dobles cargas
-- cleanup roto
+Without clear ownership, chaos enters through three places:
+- leaks
+- duplicate loads
+- broken cleanup
 
-## Anti-patrones
-- tratar el export del DCC como asset final sin revisión
-- cargar glTF desde cualquier archivo sin registry ni coordinación
-- mezclar load, gameplay y setup visual en el mismo callback kilométrico
-- clonar personajes animados sin `SkeletonUtils.clone()`
-- comprimir assets sin pipeline reproducible
-- ignorar stutter de compilación de shaders
-- no tener estrategia para cancelación lógica o loads obsoletos
+## Anti-patterns
+- treating the DCC export as the final asset without review
+- loading glTF from any file without a registry or coordination
+- mixing load, gameplay, and visual setup in the same huge callback
+- cloning animated characters without `SkeletonUtils.clone()`
+- compressing assets without a reproducible pipeline
+- ignoring shader compilation stutter
+- having no strategy for logical cancellation or obsolete loads
 
-## Recomendación fuerte
-Si el proyecto pasa de prototipo pequeño, crear explícitamente:
+## Strong recommendation
+If the project grows beyond a small prototype, explicitly create:
 - `assetRegistry`
 - `gltfAssetLoader`
 - `modelFactory`
-- `preloadPhase` o `loadingScreenController`
-- `assetLifecycle` o integración con lifecycle general
+- `preloadPhase` or `loadingScreenController`
+- `assetLifecycle` or integration with the general lifecycle
 
-## Pendiente de ampliar
-- variantes por plataforma
-- preload por escena o bioma
-- streaming de bundles glTF
-- validación automática de budgets
-- política exacta Draco vs Meshopt según proyecto
+## To expand
+- variants by platform
+- preload by scene or biome
+- glTF bundle streaming
+- automatic budget validation
+- exact Draco vs Meshopt policy per project

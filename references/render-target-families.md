@@ -1,271 +1,271 @@
 # Render Target Families: Mirrors, Portals, Minimap
 
-## Objetivo
-Aterrizar tres familias muy comunes de RTT en juegos Three.js, entendiendo qué las hace distintas, qué trampas traen y qué defaults suelen ser sanos.
+## Goal
+Ground three very common RTT families in Three.js games, understanding what makes them different, what traps they bring, and which defaults are usually healthy.
 
-## Regla principal
-**No todos los render targets se comportan igual.**
-Un mirror, un portal y un minimapa comparten infraestructura, pero no comparten la misma cámara, la misma frecuencia de update ni el mismo coste aceptable.
+## Main rule
+**Not all render targets behave the same.**
+A mirror, a portal, and a minimap share infrastructure, but they do not share the same camera, the same update frequency, or the same acceptable cost.
 
 ## 1. Mirrors
 
-### Qué son realmente
-Un mirror plano no es solo “otra cámara mirando lo mismo”.
-Necesita:
-- cámara reflejada respecto al plano
-- clipping correcto para evitar ver cosas detrás del espejo
-- ocultar el propio espejo durante su render
+### What they really are
+A planar mirror is not just “another camera looking at the same thing”.
+It needs:
+- camera reflected relative to the plane
+- correct clipping to avoid seeing things behind the mirror
+- hiding the mirror itself during its render
 
-El addon `Reflector` deja muy claro este patrón.
+The `Reflector` addon makes this pattern very clear.
 
-### Patrón útil visto en `Reflector`
-- crea un `WebGLRenderTarget`
-- genera una cámara reflejada por cada cámara de escena que lo usa
-- actualiza una texture matrix
-- modifica la proyección con clip plane oblicuo
-- oculta el reflector durante la pasada
-- vuelve a render target anterior al terminar
+### Useful pattern seen in `Reflector`
+- creates a `WebGLRenderTarget`
+- generates a reflected camera for each scene camera that uses it
+- updates a texture matrix
+- modifies the projection with an oblique clip plane
+- hides the reflector during the pass
+- restores the previous render target when finished
 
-Eso ya no es un “monitorcito”. Es infraestructura bastante seria.
+That is no longer a “little monitor”. It is fairly serious infrastructure.
 
-### Defaults sanos
-- usar `Reflector` si el caso es un espejo plano estándar
-- bajar `textureWidth/textureHeight` antes de degradar toda la escena
-- no poner espejos full-res alegremente en móvil
-- actualizar tamaño del target en resize
+### Healthy defaults
+- use `Reflector` if the case is a standard planar mirror
+- lower `textureWidth/textureHeight` before degrading the whole scene
+- do not casually use full-res mirrors on mobile
+- update target size on resize
 
-### Costes y riesgos
-- pasada extra cara
-- múltiples espejos multiplican coste muy rápido
-- riesgo de feedback visual o recursion si el espejo ve otros espejos
-- picos de resize si el target sigue al drawing buffer principal
+### Costs and risks
+- expensive extra pass
+- multiple mirrors multiply cost very quickly
+- risk of visual feedback or recursion if the mirror sees other mirrors
+- resize spikes if the target follows the main drawing buffer
 
-### Cuándo apagar o recortar
-- tiers bajos
-- espejos secundarios o decorativos
-- escenas con varios reflectores simultáneos
+### When to disable or trim
+- low tiers
+- secondary or decorative mirrors
+- scenes with several simultaneous reflectors
 
-Palancas buenas:
-- resolución del target
-- frecuencia de update
-- desactivar espejo lejano o no visible
+Good levers:
+- target resolution
+- update frequency
+- disable distant or invisible mirrors
 
 ## 1.5 Refractors
 
-### Qué son realmente
-Un refractor plano comparte mucha infraestructura con un mirror plano:
+### What they really are
+A planar refractor shares a lot of infrastructure with a planar mirror:
 - render target
-- clip plane oblicuo
-- ocultar la propia superficie durante la pasada
+- oblique clip plane
+- hiding the surface itself during the pass
 
-Pero no vende una reflexión especular del mundo. Vende una vista refractada o distorsionada a través de una superficie.
+But it does not sell a specular reflection of the world. It sells a refracted or distorted view through a surface.
 
-La clase `Refractor` y la example `webgl_refraction` dejan esto bastante claro.
+The `Refractor` class and the `webgl_refraction` example make this quite clear.
 
-### Qué cambia frente a un mirror
-- usa cámara virtual copiada de la cámara principal en vez de cámara reflejada
-- el resultado final depende mucho más del shader de refracción
-- suele apoyarse en mapas auxiliares, por ejemplo dudv, para distorsión
-- visualmente puede tolerar más resolución modesta si el shader hace bien su trabajo
+### What changes compared with a mirror
+- uses a virtual camera copied from the main camera instead of a reflected camera
+- the final result depends much more on the refraction shader
+- often relies on auxiliary maps, such as dudv, for distortion
+- visually it can tolerate more modest resolution if the shader does its job well
 
-### Defaults sanos
-- tratarlo como superficie premium, no como decoración gratis repetida por todo el nivel
-- bajar `textureWidth/textureHeight` antes de tocar toda la escena
-- medir si de verdad aporta más que una solución fake o material más barato
-- usar update continuo solo si la superficie lo necesita de verdad
+### Healthy defaults
+- treat it as a premium surface, not free decoration repeated everywhere in the level
+- lower `textureWidth/textureHeight` before touching the whole scene
+- measure whether it truly adds more than a fake solution or cheaper material
+- use continuous updates only if the surface truly needs them
 
-### Riesgos típicos
-- confundirlo con mirror y esperar la misma credibilidad geométrica
-- subir mucho resolución para tapar un shader flojo
-- olvidarse de que la distorsión también puede degradar legibilidad
-- meter agua/vidrio refractivo en exceso y comerse GPU a lo tonto
+### Typical risks
+- confusing it with a mirror and expecting the same geometric credibility
+- raising resolution a lot to hide a weak shader
+- forgetting that distortion can also hurt readability
+- adding too much refractive water/glass and wasting GPU for no reason
 
-### Cuándo merece la pena
-- agua o cristales hero
-- superficies mágicas o sci-fi concretas
-- momentos donde la distorsión aporta identidad real
+### When it is worth it
+- hero water or glass
+- specific magic or sci-fi surfaces
+- moments where distortion adds real identity
 
-### Cuándo no
-- HUDs internos
-- decoración secundaria repetida
-- móvil modesto sin presupuesto claro
+### When not
+- internal HUDs
+- repeated secondary decoration
+- modest mobile without a clear budget
 
 ## 2. Portals
 
-### Qué son realmente
-Un portal no suele ser una reflexión. Es una ventana a otra vista coherente del mundo.
+### What they really are
+A portal is usually not a reflection. It is a window into another coherent view of the world.
 
-La example `webgl_portal` deja un patrón bastante fino:
-- un target por portal visible
-- una cámara de portal específica
-- transformar la posición del jugador/cámara al espacio del otro portal
-- ajustar la proyección para encajar exactamente el marco del portal
-- ocultar el propio portal durante su render
+The `webgl_portal` example leaves a fairly refined pattern:
+- one target per visible portal
+- a specific portal camera
+- transform the player/camera position into the other portal’s space
+- adjust the projection to fit the portal frame exactly
+- hide the portal itself during its render
 
-### Qué complica de verdad
-- correspondencia espacial entre portal A y portal B
-- proyección ajustada al marco, no solo una cámara cualquiera
-- clipping local
-- recursion potencial si un portal ve otro portal
-- orden de render muy fácil de romper
+### What actually complicates it
+- spatial correspondence between portal A and portal B
+- projection fitted to the frame, not just any camera
+- local clipping
+- potential recursion if one portal sees another
+- render order that is very easy to break
 
-### Defaults sanos
-- empezar con portals no recursivos
-- limitar profundidad de recursion si aparece
-- usar resolución moderada
-- ocultar la superficie del portal durante su propia pasada
-- medir muy pronto picos si hay dos o más portales en pantalla
+### Healthy defaults
+- start with non-recursive portals
+- limit recursion depth if it appears
+- use moderate resolution
+- hide the portal surface during its own pass
+- measure spikes very early if two or more portals are on screen
 
-Para recursion, resolución por nivel y masking más fino, ver `portal-recursion.md` y `portal-masking-stencil-scissor.md`.
+For recursion, resolution by level, and finer masking, see `portal-recursion.md` and `portal-masking-stencil-scissor.md`.
 
-### Riesgos típicos
-- verla bien en una demo simple y romperse al meter gameplay real
-- jitter o seams por mala transformación de cámara
-- coste explosivo si cada portal renderiza demasiado mundo
-- recursion visual accidental
+### Typical risks
+- looking good in a simple demo and breaking when real gameplay is added
+- jitter or seams from bad camera transforms
+- explosive cost if each portal renders too much world
+- accidental visual recursion
 
-### Palancas útiles
-- resolución del target
-- número máximo de portales activos
-- limitar contenido visible por layers o proxies
-- apagar actualización si el portal está fuera de pantalla o irrelevante
+### Useful levers
+- target resolution
+- maximum number of active portals
+- limit visible content with layers or proxies
+- stop updating if the portal is offscreen or irrelevant
 
 ## 3. Minimap
 
-### Qué es realmente
-Un minimapa no suele pedir fidelidad cinematográfica. Pide:
-- lectura clara
-- orientación estable
-- coste bajo
+### What it really is
+A minimap usually does not ask for cinematic fidelity. It asks for:
+- clear readability
+- stable orientation
+- low cost
 
-Normalmente encaja mejor con cámara ortográfica o casi ortográfica que con perspectiva dramática.
+It normally fits better with an orthographic or nearly orthographic camera than with dramatic perspective.
 
-### Default recomendado
-- cámara ortográfica para mapa táctico o top-down limpio
-- target de resolución modesta
-- update a menor frecuencia que la vista principal si el juego lo tolera
-- contenido filtrado: solo lo que aporta lectura
+### Recommended default
+- orthographic camera for a tactical map or clean top-down view
+- modest-resolution target
+- update at a lower frequency than the main view if the game tolerates it
+- filtered content: only what helps readability
 
-### Qué renderizar
-No meter el mundo completo sin discriminar.
+### What to render
+Do not put the whole world in without discrimination.
 
-Mejor incluir:
-- terreno base o proxies simples
+Better include:
+- base terrain or simple proxies
 - player
-- objetivos
-- enemigos relevantes
-- markers y elementos navegables
+- objectives
+- relevant enemies
+- markers and navigable elements
 
-Mejor excluir:
-- detalle cosmético fino
-- partículas
-- transparencias caras
-- props irrelevantes
+Better exclude:
+- fine cosmetic detail
+- particles
+- expensive transparencies
+- irrelevant props
 - postprocessing
 
-### Buenas decisiones visuales
-- colores claros por facción o categoría
-- iconos o proxies simples
-- rotación controlada: o rota el mapa o rota el icono del jugador, no ambas cosas sin necesidad
+### Good visual decisions
+- clear colors by faction or category
+- simple icons or proxies
+- controlled rotation: either rotate the map or rotate the player icon, not both without a need
 
-### Frecuencia de update
-Muchas veces un minimapa no necesita 60 fps.
+### Update frequency
+A minimap often does not need 60 fps.
 
-Opciones sanas:
-- cada N frames
-- solo cuando el jugador o targets cambian suficiente
-- update completo en momentos importantes y parcial el resto
+Healthy options:
+- every N frames
+- only when the player or targets change enough
+- full update at important moments and partial update the rest of the time
 
-Si además hay fog of war, explored state o blending de máscara, ver `minimap-fog-of-war.md` y `fog-mask-blending.md`.
+If there is also fog of war, explored state, or mask blending, see `minimap-fog-of-war.md` and `fog-mask-blending.md`.
 
-## Comparación rápida entre familias
+## Quick comparison between families
 ### Mirror
-- prioridad: credibilidad visual
-- cámara: reflejada
-- riesgo: recursion y coste por resolución
+- priority: visual credibility
+- camera: reflected
+- risk: recursion and resolution cost
 
 ### Refractor
-- prioridad: distorsión/refracción creíble
-- cámara: virtual copiada + clip plane
-- riesgo: coste GPU + shader caro + pérdida de legibilidad
+- priority: credible distortion/refraction
+- camera: copied virtual camera + clip plane
+- risk: GPU cost + expensive shader + readability loss
 
 ### Portal
-- prioridad: coherencia espacial
-- cámara: transformada entre espacios
-- riesgo: recursion, clipping, orden de render
+- priority: spatial coherence
+- camera: transformed between spaces
+- risk: recursion, clipping, render order
 
 ### Minimap
-- prioridad: legibilidad y coste bajo
-- cámara: ortográfica casi siempre defendible
-- riesgo: sobre-renderizar detalles inútiles
+- priority: readability and low cost
+- camera: orthographic is almost always defensible
+- risk: over-rendering useless detail
 
-## Quality tiers por familia
+## Quality tiers by family
 ### Mirrors
-- bajar resolución primero
-- luego bajar frecuencia o apagar secundarios
+- lower resolution first
+- then lower frequency or disable secondary mirrors
 
 ### Refractors
-- bajar resolución primero
-- luego apagar superficies secundarias
-- evitar shaders premium en tiers modestos
+- lower resolution first
+- then disable secondary surfaces
+- avoid premium shaders in modest tiers
 
 ### Portals
-- limitar portales activos
-- bajar resolución
-- recortar contenido visible
-- capar recursion por tier
+- limit active portals
+- lower resolution
+- trim visible content
+- cap recursion by tier
 
 ### Minimap
-- bajar tamaño del target
-- bajar frecuencia
-- simplificar layers renderizadas
-- separar mapa base y overlay de fog si existe
+- lower target size
+- lower frequency
+- simplify rendered layers
+- separate base map and fog overlay if it exists
 
-## Lifecycle por familia
-Todos necesitan dueño claro, pero:
-- mirrors y portals suelen requerir más cuidado con cámara auxiliar y estado de render
-- minimap suele requerir más cuidado con filtros de contenido y UI asociada
+## Lifecycle by family
+All need a clear owner, but:
+- mirrors and portals usually require more care with auxiliary camera and render state
+- minimap usually requires more care with content filters and associated UI
 
-Siempre:
-- resize explícito si depende del viewport
-- `dispose()` del target
-- cleanup de materiales/superficies auxiliares si se crean para esa familia
+Always:
+- explicit resize if it depends on the viewport
+- `dispose()` the target
+- cleanup auxiliary materials/surfaces if they were created for that family
 
-## Qué medir en benches
+## What to measure in benches
 ### Mirrors
-- coste por espejo activo
-- impacto de resolución del target
-- picos de resize
+- cost per active mirror
+- impact of target resolution
+- resize spikes
 
 ### Refractors
-- coste por superficie activa
-- impacto de resolución del target
-- coste adicional del shader de distorsión
+- cost per active surface
+- impact of target resolution
+- extra cost of the distortion shader
 
 ### Portals
-- coste por portal visible
-- impacto de recursion limitada
-- picos al cruzar o activar portales
+- cost per visible portal
+- impact of limited recursion
+- spikes when crossing or activating portals
 
 ### Minimap
-- coste por frecuencia de update
-- impacto de layers completas vs simplificadas
-- claridad visual frente a coste
+- cost by update frequency
+- impact of full vs simplified layers
+- visual clarity versus cost
 
-## Anti-patrones
-- usar la misma receta de cámara para las tres familias
-- full-res por defecto
-- no ocultar mirror/portal durante su propia pasada
-- renderizar todo el mundo en minimapa
-- asumir que portal = mirror con distinta textura
+## Anti-patterns
+- using the same camera recipe for all three families
+- full-res by default
+- not hiding mirror/portal during its own pass
+- rendering the whole world in a minimap
+- assuming portal = mirror with a different texture
 
-## Recomendación fuerte
-Tratar cada familia como subsistema propio:
+## Strong recommendation
+Treat each family as its own subsystem:
 - `mirrorSystem`
 - `portalSystem`
 - `minimapSystem`
 
-Cada uno con cámara/math propios, política de resolución, frecuencia de update, filtros de contenido y lifecycle explícito.
+Each with its own camera/math, resolution policy, update frequency, content filters, and explicit lifecycle.
 
-## Pendiente de ampliar
-- mirrors/refractions en móvil
+## To expand
+- mirrors/refractions on mobile

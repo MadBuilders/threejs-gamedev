@@ -1,187 +1,187 @@
 # Assets
 
-## Objetivo
-Definir un pipeline de assets 3D práctico para juegos en Three.js puro, con foco en estabilidad, claridad y coste razonable para web.
+## Goal
+Define a practical 3D asset pipeline for pure Three.js games, focused on stability, clarity, and reasonable cost for the web.
 
-## Default principal
-Usar `glTF` o `GLB` como formato principal para assets 3D.
+## Primary default
+Use `glTF` or `GLB` as the main format for 3D assets.
 
-Razones:
-- es el formato más natural para Three.js moderno
-- transporta mallas, materiales, jerarquía, animaciones y escenas
-- reduce conversiones raras a mitad del proyecto
-- encaja bien con flujos web y herramientas actuales
+Reasons:
+- it is the most natural format for modern Three.js
+- it carries meshes, materials, hierarchy, animations, and scenes
+- it reduces weird conversions halfway through the project
+- it fits well with web workflows and current tools
 
-## Regla base
-Separar el pipeline en cuatro fases:
+## Base rule
+Split the pipeline into four phases:
 
-1. **generación o adquisición**
-   - modelado manual
-   - librerías externas
-   - herramientas generativas como Meshy si encajan
-2. **limpieza y validación**
-   - escala
-   - orientación
-   - nombres
+1. **generation or acquisition**
+   - manual modeling
+   - external libraries
+   - generative tools like Meshy when they fit
+2. **cleanup and validation**
+   - scale
+   - orientation
+   - names
    - polycount
-   - materiales
-3. **compresión y empaquetado**
-   - decidir si usar Draco o KTX2 cuando aporte valor real
-4. **integración en juego**
-   - carga
+   - materials
+3. **compression and packaging**
+   - decide whether Draco or KTX2 adds real value
+4. **game integration**
+   - loading
    - cache
-   - instanciación
-   - binding con gameplay
+   - instancing
+   - binding to gameplay
 
-## Formatos recomendados
+## Recommended formats
 
 ### 3D
 - default: `glTF` / `GLB`
-- evitar formatos legacy salvo necesidad concreta
+- avoid legacy formats unless there is a specific need
 
-### Texturas
-- preferir tamaños razonables
-- evitar texturas gigantes por defecto
-- usar compresión cuando el pipeline lo permita
-- mantener convenciones claras de color y maps
-- detalle de maps, color space, tiling, anisotropy y compresión: ver `texturing-pipeline.md`
+### Textures
+- prefer reasonable sizes
+- avoid giant textures by default
+- use compression when the pipeline allows it
+- keep clear color and map conventions
+- for map details, color space, tiling, anisotropy, and compression, see `texturing-pipeline.md`
 
 ### Audio
-- fuera de alcance principal de esta referencia por ahora
+- outside the main scope of this reference for now
 
-## Loaders base
-Normalmente partir de:
+## Base loaders
+Usually start with:
 - `LoadingManager`
 - `GLTFLoader`
 - `TextureLoader`
-- loaders adicionales solo si están justificados
+- additional loaders only when justified
 
-Para la parte específica de export, `GLB` vs `glTF`, compresión, `compileAsync`, guards de async y variantes de instanciación, ver `gltf-pipeline.md`.
+For the specifics of export, `GLB` vs `glTF`, compression, `compileAsync`, async guards, and instancing variants, see `gltf-pipeline.md`.
 
-La revisión del manual refuerza una decisión clara: para juegos nuevos, tratar `glTF` como camino feliz y evitar abrir demasiados frentes con formatos legacy salvo necesidad real.
+The manual review reinforces a clear decision: for new games, treat `glTF` as the happy path and avoid opening too many fronts with legacy formats unless there is a real need.
 
-## Reglas de integración
-- No cargar assets desde cualquier parte sin coordinación.
-- Centralizar rutas, preload y errores de carga.
-- Separar la carga del asset de la lógica de gameplay.
-- No asumir que un asset externo viene limpio.
-- Crear wrappers o factories cuando un asset tenga configuración repetida.
-- Tener una estrategia de liberación de recursos cuando un asset deje de usarse.
+## Integration rules
+- Do not load assets from anywhere without coordination.
+- Centralize paths, preload, and load errors.
+- Separate asset loading from gameplay logic.
+- Do not assume an external asset arrives clean.
+- Create wrappers or factories when an asset has repeated configuration.
+- Have a resource release strategy for when an asset is no longer used.
 
-## Carga y ciclo de vida
-El manual empuja bien una idea importante: cargar es solo la mitad del problema. La otra mitad es saber cuándo mantener, reutilizar o liberar recursos.
+## Loading and lifecycle
+The manual pushes an important idea well: loading is only half the problem. The other half is knowing when to keep, reuse, or release resources.
 
-Regla práctica:
-- si un asset se reutiliza mucho, cachearlo con criterio
-- si pertenece a una zona o escena que desaparece, preparar su descarga
-- no dejar geometrías, materiales y texturas vivas por accidente durante toda la sesión
+Practical rule:
+- if an asset is reused heavily, cache it deliberately
+- if it belongs to an area or scene that disappears, prepare to unload it
+- do not leave geometries, materials, and textures alive by accident for the whole session
 
-La example de instancing/performance deja además otra señal sana: cuando reconstruyas grupos grandes de meshes o cambies de estrategia de representación, limpia explícitamente geometrías y materiales viejos en vez de confiar en que el problema se arreglará solo.
+The instancing/performance example also gives another healthy signal: when you rebuild large mesh groups or change representation strategy, explicitly clean up old geometries and materials instead of trusting the problem to fix itself.
 
-Y el manual de disposal lo deja aún más claro: sacar un mesh de la escena no libera automáticamente geometría, material ni textura. Si un asset ya no se necesita, hay que tener una ruta real de cleanup.
+And the disposal manual makes it even clearer: removing a mesh from the scene does not automatically release geometry, material, or texture. If an asset is no longer needed, there must be a real cleanup path.
 
-## Patrón "placeholder first, swap later"
-Un patrón que se repite con todos los assets pesados (GLBs, HDRIs, texturas PBR): **no bloquear el arranque del juego por una descarga**. El juego inicia con un placeholder aceptable y el asset real entra en caliente cuando resuelve. Se aplica igual a:
-- modelos → primitiva simple (cápsula, caja) + `setVisual(real)` al cargar el GLB
-- materiales → `MeshStandardMaterial` con color plano y luego `mesh.material = real`
-- entornos/skybox → color de fondo plano y luego `scene.background = envTex`
+## “Placeholder first, swap later” pattern
+A pattern that repeats with all heavy assets (GLBs, HDRIs, PBR textures): **do not block game startup on a download**. The game starts with an acceptable placeholder, and the real asset is hot-swapped in when it resolves. This applies equally to:
+- models → simple primitive (capsule, box) + `setVisual(real)` when the GLB loads
+- materials → `MeshStandardMaterial` with a flat color, then `mesh.material = real`
+- environments/skybox → flat background color, then `scene.background = envTex`
 
-Reglas:
-- el placeholder tiene que ser jugable, no "roto con pantalla negra"
-- el swap tiene que ser puntual y con un handle claro (`setVisual`, `swapMeshMaterial`, función `loadX(level)` que hace el swap)
-- al sustituir **liberar lo viejo**: `oldMaterial.dispose()`, `oldTexture.dispose()`, `oldGeometry.dispose()`. Quitar un objeto de la escena no libera nada por sí solo.
-- si la carga falla, `console.error` y seguir jugando con el placeholder; nunca lanzar
+Rules:
+- the placeholder must be playable, not “broken with a black screen”
+- the swap must be precise and have a clear handle (`setVisual`, `swapMeshMaterial`, a `loadX(level)` function that performs the swap)
+- when replacing, **release the old resource**: `oldMaterial.dispose()`, `oldTexture.dispose()`, `oldGeometry.dispose()`. Removing an object from the scene releases nothing by itself.
+- if loading fails, `console.error` and keep playing with the placeholder; never throw
 
-Este patrón también limpia el ciclo de desarrollo: cambios en código se ven al instante sin esperar a que recargue cada GLB/HDRI de turno.
+This pattern also cleans up the development cycle: code changes are visible instantly without waiting for every current GLB/HDRI to reload.
 
-## Prefetch paralelo para colecciones de props
-Cuando un nivel coloca muchas copias de pocos "kinds" (casas, árboles, rocas, props con una factory por kind), el bucle natural es:
+## Parallel prefetch for prop collections
+When a level places many copies of a few “kinds” (houses, trees, rocks, props with one factory per kind), the natural loop is:
 
 ```ts
 for (const placement of level.props) {
-  const model = await getModel(placement.kind);   // ← serializa los fetches
+  const model = await getModel(placement.kind);   // ← serializes fetches
   addInstance(model, placement);
 }
 ```
 
-Si el loader ya cachea por kind, esto sigue siendo serial la primera vez que aparece cada kind: el primer prop de cada tipo bloquea al siguiente hasta que su GLB resuelve. Con 4-5 kinds distintos y red mediocre puedes perder varios segundos de boot sin necesidad.
+If the loader already caches by kind, this is still serial the first time each kind appears: the first prop of each type blocks the next one until its GLB resolves. With 4–5 different kinds and mediocre network, you can lose several seconds of boot time unnecessarily.
 
-Truco genérico: **preload en paralelo de los kinds únicos** antes del bucle de placement.
+Generic trick: **preload the unique kinds in parallel** before the placement loop.
 
 ```ts
 const uniqueKinds = Array.from(new Set(level.props.map((p) => p.kind)));
 await Promise.all(uniqueKinds.map((k) => getModel(k)));
 
 for (const placement of level.props) {
-  const model = await getModel(placement.kind);   // ← ahora hit de cache instantáneo
+  const model = await getModel(placement.kind);   // ← now an instant cache hit
   addInstance(model, placement);
 }
 ```
 
-Requisitos para que funcione limpio:
-- el loader debe **cachear por kind**, o harás el fetch dos veces.
-- el `await` dentro del bucle sigue siendo útil: si el cache fallara por cualquier motivo, sigue cargando en vez de crashear.
-- si los kinds únicos son muchísimos (cientos), `Promise.all` no es el patrón; querrás un pool con concurrencia limitada (p. ej. 4-8 fetches simultáneos).
+Requirements for this to stay clean:
+- the loader must **cache by kind**, or you will fetch twice.
+- the `await` inside the loop is still useful: if the cache failed for any reason, it keeps loading instead of crashing.
+- if there are very many unique kinds (hundreds), `Promise.all` is not the pattern; you want a pool with limited concurrency (for example, 4–8 simultaneous fetches).
 
-Este mismo patrón aplica a HDRIs, sprites y cualquier recurso con factory cacheada.
+This same pattern applies to HDRIs, sprites, and any resource with a cached factory.
 
-## Disposal sin drama
-Cuando sustituyes un recurso, el viejo no se libera solo. Mini-recetas:
+## Drama-free disposal
+When you replace a resource, the old one is not released by itself. Mini-recipes:
 
-- **material**: `oldMat.dispose()`. Si ese material tenía texturas exclusivas, disponerlas también (`oldMat.map?.dispose()`, etc.).
-- **textura**: `tex.dispose()`.
+- **material**: `oldMat.dispose()`. If that material had exclusive textures, dispose those too (`oldMat.map?.dispose()`, etc.).
+- **texture**: `tex.dispose()`.
 - **geometry**: `geom.dispose()`.
-- **render targets**: `rt.dispose()`. `PMREMGenerator` expone su propio `dispose()` tras usar `fromEquirectangular`.
-- **objetos de escena**: `scene.remove(obj)` + recorrer y disponer `geometry`/`material` de cada mesh descendiente.
+- **render targets**: `rt.dispose()`. `PMREMGenerator` exposes its own `dispose()` after using `fromEquirectangular`.
+- **scene objects**: `scene.remove(obj)` + traverse and dispose each descendant mesh’s `geometry`/`material`.
 
-Regla de brocha gorda: si duplicas assets y no ves bajar memoria de GPU al recargar, sospecha de un `dispose()` olvidado.
+Broad rule of thumb: if you duplicate assets and do not see GPU memory drop after reloading, suspect a forgotten `dispose()`.
 
-## Checklist de entrada para un asset 3D
-Antes de meter un asset en el juego, revisar:
+## Intake checklist for a 3D asset
+Before putting an asset into the game, check:
 
-- **escala**: que no venga absurdamente grande o pequeño
-- **orientación**: que forward/up encajen con el juego
-- **pivot**: que tenga sentido para animación y colocación
-- **polycount**: que no sea desproporcionado para su uso real
-- **materiales**: que no venga con materiales imposibles o demasiado caros
-- **texturas**: tamaños, compresión, nombres y maps correctos
-- **jerarquía**: nodos limpios, sin basura innecesaria
-- **animaciones**: nombres claros y clips útiles
-- **sombras**: revisar si realmente debe cast/receive shadow
+- **scale**: it is not absurdly large or small
+- **orientation**: forward/up match the game
+- **pivot**: it makes sense for animation and placement
+- **polycount**: it is not disproportionate to its actual use
+- **materials**: it does not come with impossible or overly expensive materials
+- **textures**: sizes, compression, names, and maps are correct
+- **hierarchy**: clean nodes, no unnecessary junk
+- **animations**: clear names and useful clips
+- **shadows**: check whether it should actually cast/receive shadow
 
-## Convenciones recomendadas
-- nombres estables para nodos y clips
-- carpetas por tipo de asset
-- distinguir claramente source files de runtime files
-- mantener una lista de assets pesados o problemáticos
-- versionar decisiones de pipeline si cambian durante el proyecto
+## Recommended conventions
+- stable names for nodes and clips
+- folders by asset type
+- clearly distinguish source files from runtime files
+- keep a list of heavy or problematic assets
+- version pipeline decisions if they change during the project
 
-## Meshy y herramientas generativas
-Se pueden usar para acelerar, pero con disciplina.
+## Meshy and generative tools
+They can be used to speed things up, but with discipline.
 
-Tratar Meshy como:
-- acelerador de prototipos
-- opción para concepts o props secundarios
-- herramienta que exige revisión manual posterior
+Treat Meshy as:
+- a prototyping accelerator
+- an option for concepts or secondary props
+- a tool that requires later manual review
 
-No tratar Meshy como garantía de:
-- topología buena
-- materiales listos para producción
-- escalado correcto
-- coste razonable para móvil
+Do not treat Meshy as a guarantee of:
+- good topology
+- production-ready materials
+- correct scaling
+- reasonable cost for mobile
 
-## Anti-patrones
-- meter FBX, OBJ y otros formatos mezclados sin criterio
-- usar assets generados sin revisión técnica
-- cargar cada asset de forma ad hoc en archivos sueltos
-- texturas gigantes porque "se ven mejor"
-- resolver problemas de pipeline tarde, cuando ya hay 40 assets dentro
-- no tener plan para `dispose()` y limpieza de recursos
-- bloquear el boot esperando a que cargue un asset "bonito": rompe el dev loop y si falla deja al jugador en pantalla en blanco
-- sustituir materiales/texturas sin disponer los viejos (memoria de GPU que se pierde silenciosamente)
+## Anti-patterns
+- mixing FBX, OBJ, and other formats without a clear reason
+- using generated assets without technical review
+- loading each asset ad hoc in scattered files
+- giant textures because “they look better”
+- solving pipeline problems late, after 40 assets are already in the project
+- having no plan for `dispose()` and resource cleanup
+- blocking boot while waiting for a “pretty” asset: it breaks the dev loop and leaves the player on a blank screen if it fails
+- replacing materials/textures without disposing the old ones (GPU memory silently leaks)
 
-## Pendiente de ampliar
-- preload y asset registry
-- streaming de assets por zonas o chunks
-- validación automática de nombres y tamaños
-- integración con animaciones y state machines
+## To expand
+- preload and asset registry
+- asset streaming by areas or chunks
+- automatic validation of names and sizes
+- integration with animations and state machines

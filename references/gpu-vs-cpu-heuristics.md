@@ -1,227 +1,227 @@
 # GPU vs CPU Bottleneck Heuristics
 
-## Objetivo
-Distinguir de forma práctica si un problema de rendimiento en un juego Three.js parece venir sobre todo de GPU, de CPU, o de otra fuente como carga/stutter, sin fingir precisión imposible.
+## Goal
+Practically distinguish whether a performance problem in a Three.js game seems to come mostly from GPU, CPU, or another source such as loading/stutter, without pretending impossible precision.
 
-## Regla principal
-**No diagnosticar por intuición ni por un solo contador.**
-Cruzar señales, hacer pruebas pequeñas y comparar cambios concretos.
+## Main rule
+**Do not diagnose by intuition or from a single counter.**
+Cross-check signals, run small tests, and compare concrete changes.
 
-## Qué intenta resolver
-- no bajar resolución cuando el problema es lógica o scene graph
-- no quitar gameplay cuando el problema real es postprocessing o sombras
-- no usar adaptive quality como parche ciego
+## What it tries to solve
+- do not lower resolution when the problem is logic or scene graph
+- do not remove gameplay when the real problem is postprocessing or shadows
+- do not use adaptive quality as a blind patch
 
-## Qué no resuelve por sí solo
-- profiling profundo de GPU real
-- bugs de lifecycle
-- stutter por compilación o activación de assets
-- problemas mixtos donde CPU y GPU se pisan a la vez
+## What it does not solve by itself
+- deep real GPU profiling
+- lifecycle bugs
+- stutter from compilation or asset activation
+- mixed problems where CPU and GPU step on each other
 
-## Pregunta correcta
-No preguntar solo:
-- “¿va lento?”
+## The right question
+Do not only ask:
+- “is it slow?”
 
-Preguntar:
-- ¿mejora al bajar resolución interna?
-- ¿mejora al quitar postprocessing o sombras?
-- ¿mejora al reducir entidades, lógica o raycasts?
-- ¿el problema es constante o aparece en eventos concretos?
+Ask:
+- does it improve when lowering internal resolution?
+- does it improve when removing postprocessing or shadows?
+- does it improve when reducing entities, logic, or raycasts?
+- is the problem constant, or does it appear during specific events?
 
-## Heurística más útil: tocar una palanca limpia
-### Señales de GPU-bound
-Sospechar más de GPU si mejora claramente al:
-- bajar `renderScale` o resolución interna
-- bajar pixel ratio o cap de pixel budget
-- desactivar bloom, DOF u otros passes caros
-- bajar sombras o su resolución
-- reducir transparencias o materiales costosos
-- apagar una **categoría de decor concreta** (árboles, edificios, foliage) incluso cuando hay pocas instancias
+## Most useful heuristic: touch one clean lever
+### Signs of GPU-bound
+Suspect GPU more if it clearly improves when:
+- lowering `renderScale` or internal resolution
+- lowering pixel ratio or pixel-budget cap
+- disabling bloom, DOF, or other expensive passes
+- lowering shadows or their resolution
+- reducing transparencies or costly materials
+- disabling one **specific decor category** (trees, buildings, foliage) even when it has few instances
 
-### "Pocos assets" no implica "barato"
+### “Few assets” does not imply “cheap”
 
-Trampa frecuente con assets de IA o escaneados: un nivel con **20 árboles** puede ir peor que otro con **200**, si esos 20 son mallas de 1–3M tris con `doubleSided`, PBR completo y `receiveShadow`. El instance count engaña.
+Common trap with AI-generated or scanned assets: a level with **20 trees** can run worse than another with **200**, if those 20 are 1–3M-triangle meshes with `doubleSided`, full PBR, and `receiveShadow`. Instance count lies.
 
-El coste real por asset en GPU es aproximadamente:
+The real GPU cost per asset is roughly:
 
 ```
-tris × instancias × fragments × doubleSided × PBR samples × shadow samples × worldScale²
+tris × instances × fragments × doubleSided × PBR samples × shadow samples × worldScale²
 ```
 
-Donde `worldScale²` importa porque un escalado ×2 cuadruplica los píxeles que el fragment shader tiene que procesar. Cualquier multiplicador de esos puestos "sin querer" mata el presupuesto.
+Where `worldScale²` matters because a ×2 scale quadruples the pixels the fragment shader has to process. Any one of those multipliers set “by accident” kills the budget.
 
-Síntomas que apuntan aquí:
-- desactivar una categoría decor completa (trees, buildings) con un flag gana 15–30 fps aunque la categoría solo tenga 20 instancias
-- `renderer.info.render.triangles` en decenas de millones con una escena "vacía"
-- el adaptive scaler baja resolución pero casi no cambia el frame time
+Symptoms that point here:
+- disabling an entire decor category (trees, buildings) with a flag gains 15–30 fps even though the category only has 20 instances
+- `renderer.info.render.triangles` in the tens of millions in an “empty” scene
+- the adaptive scaler lowers resolution but frame time barely changes
 
-Arreglo: ir al GLB y bajar tris/`doubleSided`/textura, no al renderer. `InstancedMesh` **colapsa draw calls pero no baja coste por instancia**: si el mesh es obeso, el InstancedMesh también lo es.
+Fix: go to the GLB and lower triangles/`doubleSided`/texture, not the renderer. `InstancedMesh` **collapses draw calls but does not lower per-instance cost**: if the mesh is obese, the InstancedMesh is too.
 
-### Señales de CPU-bound
-Sospechar más de CPU si mejora claramente al:
-- reducir entidades con update por frame
-- bajar frecuencia de systems secundarios
-- quitar raycasts o queries caras
-- simplificar lógica de gameplay, IA o física
-- reducir nodos vivos o trabajo de scene graph
-- evitar rebuilds de geometría o cambios masivos en JS
+### Signs of CPU-bound
+Suspect CPU more if it clearly improves when:
+- reducing entities with per-frame updates
+- lowering frequency of secondary systems
+- removing expensive raycasts or queries
+- simplifying gameplay, AI, or physics logic
+- reducing live nodes or scene graph work
+- avoiding geometry rebuilds or mass JS changes
 
-### Señales de load-bound o stutter-bound
-Sospechar otra categoría si el problema aparece sobre todo al:
-- entrar en escena
-- cambiar skin o modelo
-- activar materiales o passes
-- spawnear o destruir cosas de golpe
-- cambiar tier en caliente
+### Signs of load-bound or stutter-bound
+Suspect another category if the problem appears mainly when:
+- entering a scene
+- changing skin or model
+- enabling materials or passes
+- spawning or destroying many things at once
+- changing tier live
 
-Ahí suele mandar más `frame-pacing-stutter.md` que una simple dicotomía CPU/GPU.
+There, `frame-pacing-stutter.md` usually matters more than a simple CPU/GPU dichotomy.
 
-## Pruebas rápidas que suelen decir mucho
-### 1. Test de resolución
-Baja resolución interna de forma visible.
+## Quick tests that often say a lot
+### 1. Resolution test
+Lower internal resolution visibly.
 
-Si el frame mejora bastante:
-- huele a GPU
+If the frame improves a lot:
+- smells like GPU
 
-Si casi no cambia:
-- probablemente no era el cuello principal de GPU
+If it barely changes:
+- GPU probably was not the main bottleneck
 
-## 2. Test de postprocessing
-Desactiva composer o passes caros.
+## 2. Postprocessing test
+Disable composer or expensive passes.
 
-Si el frame mejora mucho:
-- GPU/postprocess sospechoso fuerte
+If the frame improves a lot:
+- strong GPU/postprocess suspect
 
-Si apenas cambia:
-- mira otra parte
+If it barely changes:
+- look elsewhere
 
-## 3. Test de densidad lógica
-Reduce entidades activas, updates, raycasts o systems.
+## 3. Logic density test
+Reduce active entities, updates, raycasts, or systems.
 
-Si mejora claro:
-- CPU sospechosa fuerte
+If it clearly improves:
+- strong CPU suspect
 
-## 4. Test de draw calls
-Reduce meshes sueltas, materiales distintos o densidad visible.
+## 4. Draw-call test
+Reduce loose meshes, distinct materials, or visible density.
 
-Si bajan `renderer.info.render.calls` y mejora mucho:
-- puede ser cuello de CPU por driver/submit y también GPU por draw overhead
-- no asumir que draw calls son “solo GPU”
+If `renderer.info.render.calls` drops and performance improves a lot:
+- it may be a CPU bottleneck from driver/submit and also GPU from draw overhead
+- do not assume draw calls are “GPU-only”
 
-## 5. Test de scene graph
-Sustituye masa de meshes por instancing o merge en una escena equivalente.
+## 5. Scene graph test
+Replace a mass of meshes with instancing or merge in an equivalent scene.
 
-Si mejora:
-- había coste importante en mantenimiento de nodos, draw calls o ambas
+If it improves:
+- there was important cost in node maintenance, draw calls, or both
 
-## `renderer.info` como ayuda, no como juez supremo
-Mirar:
+## `renderer.info` as aid, not supreme judge
+Look at:
 - `render.calls`
 - `triangles`
 - `geometries`
 - `textures`
 - `programs`
 
-Lecturas útiles:
-- `render.calls` muy alto, sospechar draw overhead
-- `programs` creciendo al tocar materiales, sospechar permutations y compilación
-- geometrías/texturas creciendo sin bajar, sospechar lifecycle o fuga
+Useful readings:
+- very high `render.calls`, suspect draw overhead
+- `programs` growing when touching materials, suspect permutations and compilation
+- geometries/textures growing without dropping, suspect lifecycle or leak
 
-Pero `renderer.info` no te dice solo con eso “esto es CPU” o “esto es GPU”.
+But `renderer.info` alone does not tell you “this is CPU” or “this is GPU”.
 
-## Scene graph y CPU
-Los manuales de optimización dejan una pista muy fuerte:
-- demasiados nodos, helpers y transforms también cuestan aunque el render no parezca escandaloso
+## Scene graph and CPU
+The optimization manuals leave a very strong clue:
+- too many nodes, helpers, and transforms also cost even when render does not look outrageous
 
-Sospechar CPU cuando:
-- la escena tiene miles de objetos con updates
-- el problema cae al reducir entidades lógicas
-- instancing/merge mejora sin tocar mucho el shading
+Suspect CPU when:
+- the scene has thousands of objects with updates
+- the problem drops when reducing logical entities
+- instancing/merge improves things without changing shading much
 
-## Material changes y falsos diagnósticos
-`how-to-update-things` deja claro que ciertos cambios de material fuerzan recompilación.
+## Material changes and false diagnoses
+`how-to-update-things` makes clear that certain material changes force recompilation.
 
-Eso puede parecer “GPU lenta” cuando en realidad estás viendo:
-- compilación de shaders
-- stutter por `needsUpdate`
-- reconfiguración costosa en mal momento
+That can look like “slow GPU” when you are actually seeing:
+- shader compilation
+- stutter from `needsUpdate`
+- costly reconfiguration at a bad time
 
-Regla:
-- separar throughput lento de picos por recompilación
+Rule:
+- separate slow throughput from recompilation spikes
 
-## Resolución y pixel budget
-El manual `responsive` deja otro patrón fuerte:
-- controlar explícitamente el drawing buffer ayuda a hacer tests limpios de GPU
-- capar pixel count evita ahogarse en HD-DPI
+## Resolution and pixel budget
+The `responsive` manual leaves another strong pattern:
+- explicitly controlling the drawing buffer helps make clean GPU tests
+- capping pixel count avoids drowning in HD-DPI
 
-Esto hace que la prueba de resolución sea bastante fiable como primer filtro práctico.
+That makes the resolution test fairly reliable as a first practical filter.
 
-## Quality scaling y diagnóstico
-El adaptive scaler no debería actuar solo por frame time bruto.
+## Quality scaling and diagnosis
+The adaptive scaler should not act only on raw frame time.
 
-Si hay indicios de CPU-bound:
-- bajar resolución puede servir poco
-- incluso puede ocultar el problema real
+If there are signs of CPU-bound:
+- lowering resolution may help little
+- it may even hide the real problem
 
-Patrón sano:
-- usar heurísticas ligeras para estimar si el coste parece más visual o más lógico
-- priorizar `renderScale` y post recuts cuando huele a GPU
-- no tocar calidad visual agresivamente si los síntomas apuntan a CPU o stutter de activación
+Healthy pattern:
+- use lightweight heuristics to estimate whether the cost looks more visual or more logical
+- prioritize `renderScale` and post cuts when it smells like GPU
+- do not touch visual quality aggressively if symptoms point to CPU or activation stutter
 
-## Benchmarks recomendados para separar causas
-Conviene tener benchmarks distintos para:
+## Recommended benchmarks for separating causes
+It is useful to have distinct benchmarks for:
 - fill/postprocessing heavy
 - draw-call heavy
 - scene graph/update heavy
 - spawn/activation heavy
 
-Si todo se mete en una sola escena gigante, el diagnóstico se vuelve barro.
+If everything goes into one giant scene, diagnosis turns into mud.
 
-Y si además quieres comparar runs a lo largo del tiempo, esos benches deberían emitir reportes consistentes. Ver `benchmark-reporting.md`.
+And if you also want to compare runs over time, those benchmarks should emit consistent reports. See `benchmark-reporting.md`.
 
-## Casos mixtos
-Muy común:
-- draw calls altas pegan en CPU y GPU
-- sombras pegan en GPU, pero también pueden disparar variants y trabajo extra
-- demasiados objetos pegan en scene graph y también en render submission
+## Mixed cases
+Very common:
+- high draw calls hit CPU and GPU
+- shadows hit GPU, but can also trigger variants and extra work
+- too many objects hit scene graph and render submission too
 
-Regla:
-- aceptar que a veces el cuello principal cambia por dispositivo o escena
-- buscar la palanca más rentable, no una etiqueta perfecta
+Rule:
+- accept that sometimes the main bottleneck changes by device or scene
+- look for the most profitable lever, not a perfect label
 
-## Heurística de bolsillo
-### Huele a GPU si
-- bajar resolución ayuda mucho
-- quitar post/shadows ayuda mucho
-- la lógica apenas cambia el resultado
+## Pocket heuristic
+### Smells like GPU if
+- lowering resolution helps a lot
+- removing post/shadows helps a lot
+- logic barely changes the result
 
-### Huele a CPU si
-- bajar resolución ayuda poco
-- reducir entities/updates ayuda mucho
-- devtools muestran JS pesado o callbacks caros
+### Smells like CPU if
+- lowering resolution helps little
+- reducing entities/updates helps a lot
+- devtools show heavy JS or costly callbacks
 
-### Huele a stutter/load si
-- la media no parece terrible pero hay golpes concretos
-- el problema aparece al activar, cargar, compilar o reconfigurar
+### Smells like stutter/load if
+- the average does not look terrible but there are concrete hits
+- the problem appears when enabling, loading, compiling, or reconfiguring
 
-## Anti-patrones
-- asumir que FPS bajo en móvil significa automáticamente GPU
-- bajar calidad visual antes de aislar la CPU
-- culpar a triangles cuando el problema son draw calls o lógica
-- culpar a draw calls cuando el problema es compilación de shaders
-- intentar resolver stutter de activación con simple downgrade visual
+## Anti-patterns
+- assuming low FPS on mobile automatically means GPU
+- lowering visual quality before isolating CPU
+- blaming triangles when the problem is draw calls or logic
+- blaming draw calls when the problem is shader compilation
+- trying to solve activation stutter with a simple visual downgrade
 
-## Recomendación fuerte
-Tener una rutina corta de diagnóstico:
-1. medir frame time y contexto
-2. hacer test de resolución
-3. hacer test de post/shadows
-4. hacer test de entidades/update
-5. cruzar con `renderer.info` y devtools
-6. etiquetar provisionalmente: GPU, CPU, mixed o stutter/load
+## Strong recommendation
+Have a short diagnostic routine:
+1. measure frame time and context
+2. run the resolution test
+3. run the post/shadows test
+4. run the entities/update test
+5. cross-check with `renderer.info` and devtools
+6. provisionally label: GPU, CPU, mixed, or stutter/load
 
-## Pendiente de ampliar
-- heurísticas por género de juego
-- señales más finas con tooling de navegador
-- diagnóstico por dispositivo o tier
-- integración directa con `adaptiveScaler`
+## To expand later
+- heuristics by game genre
+- finer signals with browser tooling
+- diagnosis by device or tier
+- direct integration with `adaptiveScaler`

@@ -1,118 +1,118 @@
 # Portal Masking with Stencil and Scissor
 
-## Objetivo
-Recortar la vista de un portal al marco correcto y evitar overdraw innecesario, usando stencil o scissor cuando el caso lo justifique.
+## Goal
+Clip the portal view to the correct frame and avoid unnecessary overdraw, using stencil or scissor when the case justifies it.
 
-## Regla principal
-**No todo portal necesita stencil.**
-Y usar stencil o scissor sin entender qué problema resuelven es una receta para un render order infernal.
+## Main rule
+**Not every portal needs stencil.**
+And using stencil or scissor without understanding what problem they solve is a recipe for infernal render order.
 
-## Qué intenta resolver
-- que la vista del portal no se derrame fuera del marco
-- reducir render inútil fuera del área del portal
-- tener marcos no triviales o recortes más precisos
+## What it tries to solve
+- prevent the portal view from spilling outside the frame
+- reduce useless rendering outside the portal area
+- support non-trivial frames or more precise clipping
 
-## Dos herramientas distintas
+## Two different tools
 ### Scissor test
-Encaja bien cuando:
-- el portal ocupa un rectángulo o área de pantalla aproximable
-- quieres recortar rápido por screen-space
-- buscas ahorro simple de fillrate
+Fits well when:
+- the portal occupies a rectangle or screen area that can be approximated
+- you want quick screen-space clipping
+- you want simple fillrate savings
 
-Ventajas:
-- simple mentalmente
-- útil para limitar coste de la pasada del portal
+Advantages:
+- mentally simple
+- useful for limiting the cost of the portal pass
 
-Límites:
-- recorte rectangular
-- menos útil si el marco es irregular o transformado de forma compleja
+Limits:
+- rectangular clipping
+- less useful if the frame is irregular or transformed in a complex way
 
 ### Stencil buffer
-Encaja cuando:
-- el marco del portal tiene forma más precisa
-- necesitas enmascarado más fino
-- hay composición más seria del portal con la escena
+Fits when:
+- the portal frame has a more precise shape
+- you need finer masking
+- there is more serious portal composition with the scene
 
-Ventajas:
-- máscara más exacta
-- sirve mejor para marcos no rectangulares o más controlados
+Advantages:
+- more exact mask
+- works better for non-rectangular or more controlled frames
 
-Coste:
-- orden de render más delicado
-- estado GL más fácil de romper
+Cost:
+- more delicate render order
+- easier to break GL state
 
-## Default recomendado
-- empezar sin stencil si el portal ya funciona y el marco es simple
-- añadir scissor primero si el problema es overdraw o recorte rectangular
-- reservar stencil para marcos complejos o composición que de verdad lo pida
+## Recommended default
+- start without stencil if the portal already works and the frame is simple
+- add scissor first if the problem is overdraw or rectangular clipping
+- reserve stencil for complex frames or composition that truly asks for it
 
-## Patrón conceptual con scissor
-1. proyectar bounds del portal a screen-space
-2. calcular rectángulo de recorte
-3. activar scissor para la pasada del portal
-4. renderizar solo esa región
-5. restaurar estado
+## Conceptual pattern with scissor
+1. project portal bounds to screen-space
+2. calculate clipping rectangle
+3. enable scissor for the portal pass
+4. render only that region
+5. restore state
 
-Buen uso:
-- portal pequeño en pantalla
-- varios portales donde quieres ahorrar fillrate
+Good use:
+- small portal on screen
+- several portals where you want to save fillrate
 
-## Patrón conceptual con stencil
-1. renderizar máscara del marco al stencil
-2. configurar pruebas para que la vista del portal solo pinte donde la máscara permite
-3. renderizar la escena del portal con ese estado
-4. limpiar o restaurar stencil según pipeline
+## Conceptual pattern with stencil
+1. render the frame mask to stencil
+2. configure tests so the portal view only paints where the mask allows
+3. render the portal scene with that state
+4. clear or restore stencil according to the pipeline
 
-Buen uso:
-- marcos irregulares
-- superficies donde el portal debe respetar geometría precisa
+Good use:
+- irregular frames
+- surfaces where the portal must respect precise geometry
 
-## Riesgos típicos
-- fugas de estado del renderer entre pasadas
-- depender de stencil sin cleanup claro
-- usar scissor con bounds mal calculados y cortar de más
-- resolver con stencil lo que en realidad pedía solo mejor portal quad o mejor clip
+## Typical risks
+- renderer state leaking between passes
+- relying on stencil without clear cleanup
+- using scissor with badly calculated bounds and clipping too much
+- solving with stencil what really only needed a better portal quad or better clip
 
-## Integración con recursion
-Stencil o scissor no eliminan el coste base de la recursion.
-Solo ayudan a controlar dónde se dibuja.
+## Integration with recursion
+Stencil or scissor do not eliminate the base cost of recursion.
+They only help control where it is drawn.
 
-Seguir necesitando:
-- cap de profundidad
-- resolución por nivel
+You still need:
+- depth cap
+- resolution by level
 - update policy
 
-## Integración con quality tiers
-Exponer si hace falta:
+## Integration with quality tiers
+Expose if needed:
 - `portalUseScissor`
 - `portalUseStencil`
 - `portalMaskQuality`
 
-En tiers bajos, muchas veces basta:
-- sin stencil
-- con scissor simple o incluso sin ambos si el portal ya es pequeño
+In low tiers, often enough:
+- no stencil
+- simple scissor, or even neither if the portal is already small
 
-## Debug útil
-Mirar:
-- área real del portal en pantalla
-- fillrate aparente
-- overdraw si hay tooling
-- glitches al cambiar orden de render
-- coste con y sin scissor/stencil
+## Useful debug
+Look at:
+- real portal area on screen
+- apparent fillrate
+- overdraw if tooling exists
+- glitches when changing render order
+- cost with and without scissor/stencil
 
-## Anti-patrones
-- activar stencil por defecto en todos los portales
-- no restaurar estado GL/renderer
-- usar scissor para marcos muy complejos como si fuera máscara perfecta
-- confundir máscara visual con solución total del portal system
+## Anti-patterns
+- enabling stencil by default on all portals
+- not restoring GL/renderer state
+- using scissor for very complex frames as if it were a perfect mask
+- confusing visual mask with a complete solution for the portal system
 
-## Recomendación fuerte
-Pensar así:
-- problema de área rectangular en pantalla, prueba scissor
-- problema de forma precisa del marco, mira stencil
-- problema de coste global, vuelve primero a resolución, recursion y contenido
+## Strong recommendation
+Think this way:
+- rectangular screen-area problem: try scissor
+- precise frame-shape problem: consider stencil
+- global cost problem: first go back to resolution, recursion, and content
 
-## Pendiente de ampliar
-- marcos curvos o arbitrarios
-- interacción con postprocessing
-- stencil en cadenas de varios portales
+## To expand later
+- curved or arbitrary frames
+- interaction with postprocessing
+- stencil in chains of multiple portals

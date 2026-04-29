@@ -1,49 +1,49 @@
 # Architecture
 
-## Objetivo
-Definir una base razonable para juegos en Three.js puro que no colapse en un único archivo y que permita crecer sin mezclar responsabilidades demasiado pronto.
+## Goal
+Define a reasonable foundation for pure Three.js games that does not collapse into a single file and can grow without mixing responsibilities too early.
 
-## Regla principal
-Separar, como mínimo, estas capas:
+## Main rule
+Separate, at minimum, these layers:
 
 1. **Bootstrap**
-   - crear renderer
-   - crear escena y cámara principal
-   - montar canvas
-   - registrar resize
-   - arrancar loop
+   - create renderer
+   - create scene and main camera
+   - mount canvas
+   - register resize
+   - start loop
 
 2. **World / Scene setup**
-   - luces
-   - entorno
-   - suelo o geometría base
-   - objetos persistentes del mundo
+   - lights
+   - environment
+   - floor or base geometry
+   - persistent world objects
 
 3. **Systems**
    - input
-   - cámara
-   - animación
+   - camera
+   - animation
    - audio
-   - networking bridge si hay multijugador
+   - networking bridge if there is multiplayer
    - physics bridge
    - spawners
-   - UI bridge si aplica
+   - UI bridge if applicable
 
 4. **Gameplay**
-   - reglas
-   - puntuación
-   - estados de partida
-   - objetivos
-   - progresión
+   - rules
+   - score
+   - match/game states
+   - objectives
+   - progression
 
 5. **Entities / Actors**
    - player
-   - enemigos
+   - enemies
    - pickups
-   - obstáculos
-   - props interactivos
+   - obstacles
+   - interactive props
 
-## Estructura mínima sugerida
+## Suggested minimum structure
 
 ```text
 src/
@@ -68,50 +68,50 @@ src/
     pickup.js
 ```
 
-Adaptar la granularidad al tamaño real del proyecto. No fragmentar por postureo.
+Adapt granularity to the real size of the project. Do not fragment for show.
 
 ## Loop
-Usar `renderer.setAnimationLoop()` por defecto.
+Use `renderer.setAnimationLoop()` by default.
 
-Separar dentro del loop:
-- lectura de input
-- update de systems
-- update de gameplay
-- sync visual final
+Separate inside the loop:
+- input read
+- systems update
+- gameplay update
+- final visual sync
 - render
 
-Evitar meter lógica arbitraria directamente en callbacks DOM o dentro de `render()`.
+Avoid putting arbitrary logic directly in DOM callbacks or inside `render()`.
 
-`setAnimationLoop()` encaja bien como base de juego y además mantiene una vía natural si más adelante hay XR. Aun así, no confundir el loop de render con un permiso para actualizar todo sin control. Si una parte del sistema puede vivir fuera del frame crítico, mejor.
+`setAnimationLoop()` works well as a game foundation and also keeps a natural path open if XR arrives later. Still, do not confuse the render loop with permission to update everything without control. If part of the system can live outside the critical frame, that is better.
 
-## Resize y lifecycle
-Centralizar:
-- ancho/alto actuales
+## Resize and lifecycle
+Centralize:
+- current width/height
 - aspect ratio
 - `camera.updateProjectionMatrix()`
 - `renderer.setSize()`
-- si hace falta, `renderer.setPixelRatio()` con límites razonables
+- if needed, `renderer.setPixelRatio()` with reasonable limits
 
-## Convenciones útiles
-- Mantener referencias explícitas a systems compartidos.
-- Evitar singletons globales sin control.
-- Pasar dependencias importantes por composición cuando sea razonable.
-- No acoplar la lógica de juego a una cámara concreta más de lo necesario.
-- No mezclar carga de assets con reglas de gameplay.
-- Si hay multijugador, no usar el scene graph como fuente de verdad del estado compartido.
+## Useful conventions
+- Keep explicit references to shared systems.
+- Avoid uncontrolled global singletons.
+- Pass important dependencies through composition when reasonable.
+- Do not couple game logic to one concrete camera more than necessary.
+- Do not mix asset loading with gameplay rules.
+- If there is multiplayer, do not use the scene graph as the source of truth for shared state.
 
 ## Core vs addons
-La revisión del repo y de la docs deja una regla útil: distinguir claramente entre lo que es **core** de Three.js y lo que entra por **addons/examples**.
+Reviewing the repo and docs leaves a useful rule: clearly distinguish what is **core** Three.js and what comes through **addons/examples**.
 
-- core: escena, cámara, renderer, materiales, geometrías, math, `Object3D`, `Raycaster`, etc.
-- addons: loaders específicos, controles, postprocessing y muchas utilidades de examples
+- core: scene, camera, renderer, materials, geometries, math, `Object3D`, `Raycaster`, etc.
+- addons: specific loaders, controls, postprocessing, and many utilities from examples
 
-En la arquitectura del juego, los addons deberían entrar como dependencias explícitas en systems concretos, no desperdigados como si fueran base del motor.
+In the game architecture, addons should enter as explicit dependencies of concrete systems, not be scattered around as if they were engine fundamentals.
 
-## Bootstrap recomendado (TS)
+## Recommended bootstrap (TS)
 
-### Mal ejemplo
-Todo pegado en `main.ts`, input y gameplay mezclados, resize y loop ad-hoc:
+### Bad example
+Everything stuck in `main.ts`, input and gameplay mixed, ad-hoc resize and loop:
 
 ```ts
 const canvas = document.querySelector('canvas')!;
@@ -140,10 +140,10 @@ function tick() {
 tick();
 ```
 
-Problemas: input DOM toca gameplay directo, resize hace tres cosas, no hay `dt`, no hay `dispose`, la cámara y el jugador no tienen sistemas detrás.
+Problems: DOM input touches gameplay directly, resize does three things, there is no `dt`, there is no `dispose`, and the camera and player have no systems behind them.
 
-### Buen ejemplo
-Capas explícitas, loop con `dt`, resize centralizado, input abstraído:
+### Good example
+Explicit layers, loop with `dt`, centralized resize, abstracted input:
 
 ```ts
 const renderer = createRenderer(canvas);
@@ -169,24 +169,24 @@ renderer.setAnimationLoop(() => {
 });
 ```
 
-Claves:
-- cada factory vive en su módulo (`app/bootstrap`, `systems/input`, `entities/player`, `world/...`).
-- `dt` con clamp para evitar pasos enormes al volver de una pestaña suspendida.
-- input es un sistema, no un listener suelto.
-- resize centralizado, con cleanup si hace falta.
-- la cámara es un rig que consume estado, no un hijo del mesh (ver `cameras.md`).
+Keys:
+- each factory lives in its own module (`app/bootstrap`, `systems/input`, `entities/player`, `world/...`).
+- clamp `dt` to avoid huge steps when returning from a suspended tab.
+- input is a system, not a loose listener.
+- resize is centralized, with cleanup if needed.
+- the camera is a rig that consumes state, not a child of the mesh (see `cameras.md`).
 
-## Anti-patrones iniciales
-- `main.ts` gigante con todo mezclado
-- input DOM disparando gameplay directo por todos lados
-- assets cargados desde cualquier archivo sin coordinación
-- cámara, player y reglas pegados en una sola clase
-- `requestAnimationFrame` custom en vez de `setAnimationLoop`
-- update loop sin `dt` (todo acoplado al frame rate)
-- no hacer clamp del `dt`: un tab inactivo devuelve un delta enorme y rompe física
-- optimizar demasiado pronto sin medir el coste real
+## Initial anti-patterns
+- giant `main.ts` with everything mixed together
+- DOM input triggering gameplay directly everywhere
+- assets loaded from any file without coordination
+- camera, player, and rules glued into a single class
+- custom `requestAnimationFrame` instead of `setAnimationLoop`
+- update loop without `dt` (everything coupled to frame rate)
+- not clamping `dt`: an inactive tab returns a huge delta and breaks physics
+- optimizing too early without measuring the real cost
 
-## Referencias asociadas
+## Related references
 - `phased-game-workflow.md`
 - `default-project-stack.md`
 - `resource-lifecycle.md`

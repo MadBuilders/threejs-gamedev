@@ -1,155 +1,155 @@
 # Three.js Game Viability and Inspiration
 
-## Objetivo
-Ayudar a decidir qué tipo de juego encaja bien con Three.js, qué ideas conviene acotar o prototipar primero, y dónde están las zonas que suelen parecer fáciles pero se vuelven caras o frágiles.
+## Goal
+Help decide what kind of game fits Three.js well, which ideas should be scoped down or prototyped first, and where the areas are that tend to look easy but become expensive or fragile.
 
-## Regla principal
-**Que algo sea posible no significa que sea buena idea para arrancar.**
-Three.js permite muchísimo, pero la pregunta útil al inicio no es solo “¿se puede?”, sino “¿se puede con este scope, este equipo y este tiempo?”.
+## Main rule
+**Just because something is possible does not mean it is a good idea to start with.**
+Three.js allows a lot, but the useful question at the beginning is not only “can it be done?” but “can it be done with this scope, this team, and this time?”
 
-## Cómo usar esta referencia
-Usarla cuando el usuario pregunte:
-- si una idea de juego es viable en Three.js
-- si algo encaja bien o mal como primer proyecto
-- qué tipo de juegos o prototipos tienen más sentido
-- qué ideas merecen spike temprano antes de comprometer arquitectura
+## How to use this reference
+Use it when the user asks:
+- whether a game idea is viable in Three.js
+- whether something fits well or poorly as a first project
+- what kinds of games or prototypes make more sense
+- which ideas deserve an early spike before committing to architecture
 
-## Tres categorías útiles
-### 1. Buena idea para arrancar
-Encaja bien con Three.js y suele permitir prototipo rápido.
+## Three useful categories
+### 1. Good idea to start with
+Fits Three.js well and usually allows a quick prototype.
 
-### 2. Viable, pero con cuidado
-Se puede hacer, pero suele esconder coste técnico, rendimiento o contenido.
+### 2. Viable, but with care
+Can be done, but usually hides technical, performance, or content cost.
 
-### 3. Mala idea para arrancar
-No porque sea imposible, sino porque suele explotar scope, tooling o complejidad demasiado pronto.
+### 3. Bad idea to start with
+Not because it is impossible, but because it tends to explode scope, tooling, or complexity too early.
 
-## Buena idea para arrancar
-### Juegos que suelen encajar bien
-- runner 3D o arcade simple
-- conducción simple o circuito corto
-- exploración ligera en tercera persona
-- shooter simple con pocos enemigos
-- puzzle 3D con una sola mecánica fuerte
-- survival pequeño con un loop muy claro
-- toy box física pequeña
-- experiencia estilizada/abstracta con pocos sistemas simultáneos
+## Good idea to start with
+### Games that usually fit well
+- 3D runner or simple arcade
+- simple driving or short circuit
+- light third-person exploration
+- simple shooter with few enemies
+- 3D puzzle with one strong mechanic
+- small survival game with a very clear loop
+- small physics toy box
+- stylized/abstract experience with few simultaneous systems
 
-### Por qué encajan bien
-- loop jugable prototipable rápido
-- dependencia baja o moderada de contenido masivo
-- cámara y control relativamente controlables
-- margen para usar placeholders sin romper la idea
+### Why they fit well
+- quickly prototypable gameplay loop
+- low or moderate dependence on massive content
+- relatively controllable camera and controls
+- room to use placeholders without breaking the idea
 
-## Viable, pero con cuidado
-### Mundos grandes o procedural serio
-Viable si se acota bien, pero obliga a pensar en:
+## Viable, but with care
+### Large worlds or serious procedural generation
+Viable if scoped well, but it forces you to think about:
 - streaming
 - chunks
-- budgets de draw calls y memoria
-- herramientas de contenido
+- draw call and memory budgets
+- content tools
 
-### Multiplayer competitivo
-Viable, pero requiere:
-- autoridad clara
+### Competitive multiplayer
+Viable, but requires:
+- clear authority
 - snapshots/prediction/reconciliation
-- validación de hits
-- testing de latencia
+- hit validation
+- latency testing
 
-Como primer gran proyecto suele ser mala apuesta salvo que el loop social sea el corazón del juego.
+As a first large project, it is usually a bad bet unless the social loop is the heart of the game.
 
-### Física relevante y continua
-Viable, pero conviene confirmar pronto:
-- si de verdad hace falta simulación seria
-- si Rapier entra por necesidad real o por reflejo
-- cuánto del gameplay depende de estabilidad física fina
+### Relevant continuous physics
+Viable, but confirm early:
+- whether serious simulation is truly needed
+- whether Rapier enters because of real need or reflex
+- how much of the gameplay depends on fine physics stability
 
-### Portals, mirrors, refractors y RTT premium
-Viables, pero pueden comerse rendimiento y complejidad visual si se usan como adorno generalizado.
+### Portals, mirrors, refractors, and premium RTT
+Viable, but they can eat performance and visual complexity if used as generalized decoration.
 
-### Vehículos, vuelo o movimiento no trivial
-Muy buenos para prototipo si el juego gira alrededor de eso, pero requieren validar pronto:
-- cámara
-- feel del control
-- colisión
-- estabilidad de movimiento
+### Vehicles, flight, or non-trivial movement
+Great for prototyping if the game revolves around it, but validate early:
+- camera
+- control feel
+- collision
+- movement stability
 
-## Mala idea para arrancar
-### MMO-ish o mundo social enorme
-No imposible, pero pésima idea como arranque si todavía no existe core loop pequeño y probado.
+## Bad idea to start with
+### MMO-ish or huge social world
+Not impossible, but a terrible starting point if there is not already a small, proven core loop.
 
-### Juego hiper sistémico con crafting, housing, combate, economía y multiplayer desde día 1
-Eso no es un prototipo. Eso es una máquina de scope explosion.
+### Hyper-systemic game with crafting, housing, combat, economy, and multiplayer from day 1
+That is not a prototype. That is a scope explosion machine.
 
-### Shooter competitivo serio con anti-cheat fuerte, backend complejo y matchmaking completo desde el inicio
-Viable en teoría, pero no como primer paso de un proyecto nuevo salvo equipo muy preparado.
+### Serious competitive shooter with strong anti-cheat, complex backend, and full matchmaking from the start
+Viable in theory, but not as the first step of a new project unless the team is very prepared.
 
-### Sandbox procedural inmenso con física compleja y multiplayer simultáneo
-Se puede soñar, claro. También se puede hundir el proyecto en la primera semana.
+### Huge procedural sandbox with complex physics and simultaneous multiplayer
+You can dream it, of course. You can also sink the project in the first week.
 
-## Señales de que una idea necesita spike temprano
-- depende de una cámara rara o difícil
-- depende de una física muy concreta
-- depende de RTT premium o portals como fantasy central
-- depende de latencia o sincronización para ser divertida
-- depende de streaming o mundos grandes para existir
+## Signs that an idea needs an early spike
+- it depends on a strange or difficult camera
+- it depends on very specific physics
+- it depends on premium RTT or portals as the central fantasy
+- it depends on latency or synchronization to be fun
+- it depends on streaming or large worlds to exist
 
-Cuando aparezca una de esas señales:
-- hacer spike pequeño primero
-- no diseñar todo el juego alrededor de una suposición no validada
+When one of those signs appears:
+- make a small spike first
+- do not design the whole game around an unvalidated assumption
 
-## Ideas que suelen lucir bien en Three.js
-### Por estética
-- low poly limpio
-- stylized sencillo
-- abstracto geométrico
-- ambientes dreamlike o surrealistas con pocos assets pero buena luz/color
+## Ideas that usually look good in Three.js
+### By aesthetic
+- clean low poly
+- simple stylized
+- geometric abstract
+- dreamlike or surreal environments with few assets but good light/color
 
-### Por mecánica
-- movimiento agradable y cámara clara
-- interacción física ligera
-- puzzles espaciales
-- conducción arcade
-- traversal corto y expresivo
-- action toy con pocos enemigos pero buen feel
+### By mechanic
+- pleasant movement and clear camera
+- light physical interaction
+- spatial puzzles
+- arcade driving
+- short, expressive traversal
+- action toy with few enemies but good feel
 
-Three.js brilla mucho cuando:
-- la lectura espacial importa
-- el movimiento se siente bien
-- la dirección visual no depende de contenido masivo fotorrealista
+Three.js shines when:
+- spatial readability matters
+- movement feels good
+- the visual direction does not depend on massive photoreal content
 
-## Ideas que requieren disciplina extra
-- horror atmosférico, porque el feel depende mucho de lighting/audio/pacing
-- builders o sandboxes, porque piden tooling y contenido escalable
-- shooters, porque el feel del arma y la validación de hit importan muchísimo
-- simulaciones, porque parece que “ya funciona” mucho antes de estar realmente bien
+## Ideas that require extra discipline
+- atmospheric horror, because the feel depends heavily on lighting/audio/pacing
+- builders or sandboxes, because they demand tooling and scalable content
+- shooters, because weapon feel and hit validation matter a lot
+- simulations, because they look like “they already work” long before they are actually good
 
-## Regla de inspiración sana
-Al inspirarse en examples o demos:
-- coger patrón técnico, no promesa de producción automática
-- extraer sensación o mecánica, no copiar todo el scope implícito
-- traducir la idea a un slice jugable pequeño
+## Healthy inspiration rule
+When taking inspiration from examples or demos:
+- take the technical pattern, not a promise of automatic production readiness
+- extract a feeling or mechanic, not the whole implicit scope
+- translate the idea into a small playable slice
 
-## Preguntas útiles para bajar una idea a tierra
-- ¿cuál es el loop principal en una frase?
-- ¿se puede demostrar divertido con placeholders?
-- ¿qué sistema técnico más arriesgado hay que validar primero?
-- ¿qué parte puedo dejar fuera durante dos semanas sin romper la fantasía central?
+## Useful questions to ground an idea
+- what is the main loop in one sentence?
+- can it be proven fun with placeholders?
+- what is the riskiest technical system to validate first?
+- what can I leave out for two weeks without breaking the central fantasy?
 
-## Recomendación fuerte
-Cuando una idea llega verde:
-1. clasificarla como buena para arrancar, viable con cuidado o mala idea para arrancar
-2. detectar el riesgo técnico central
-3. definir un slice mínimo que pruebe solo esa fantasía
-4. dejar explícito qué se aparca fuera de la primera fase
+## Strong recommendation
+When an idea arrives green:
+1. classify it as good to start with, viable with care, or bad to start with
+2. detect the central technical risk
+3. define a minimum slice that tests only that fantasy
+4. explicitly state what is parked outside the first phase
 
-## Anti-patrones
-- responder “sí, todo se puede” sin hablar de scope
-- vender multiplayer o procedural masivo como siguiente paso obvio
-- confundir example vistoso con feature barata
-- intentar validar la idea con assets finales en vez de con mecánica
+## Anti-patterns
+- answering “yes, anything is possible” without talking about scope
+- selling multiplayer or massive procedural generation as the obvious next step
+- confusing a flashy example with a cheap feature
+- trying to validate the idea with final assets instead of with mechanics
 
-## Referencias asociadas
+## Related references
 - `game-kickoff-planning.md`
 - `phased-game-workflow.md`
 - `default-project-stack.md`

@@ -1,35 +1,35 @@
 # Default Project Stack
 
-## Objetivo
-Dar un stack por defecto suficientemente opinionado para arrancar juegos Three.js sin perder tiempo en decisiones base cada vez.
+## Goal
+Provide a sufficiently opinionated default stack for starting Three.js games without wasting time on the same baseline decisions every time.
 
-## Regla principal
-**Default no significa obligatorio.**
-Significa “esto es lo que usaríamos salvo que el juego pida otra cosa”.
+## Main rule
+**Default does not mean mandatory.**
+It means “this is what we would use unless the game asks for something else.”
 
-## Default recomendado
+## Recommended default
 ### Base
-- Three.js puro
+- pure Three.js
 - Vite
-- TypeScript por defecto
-- HTML/CSS normal para shell y UI simple
-- sin React/R3F por defecto
+- TypeScript by default
+- plain HTML/CSS for the shell and simple UI
+- no React/R3F by default
 
-## Por qué este default
-- Three.js puro mantiene control y claridad
-- Vite da dev server, imports, build y manejo sano de assets sin meter framework grande
-- TypeScript compensa bastante bien cuando el proyecto empieza a crecer
-- HTML/CSS simple evita meter UI framework demasiado pronto
+## Why this default
+- pure Three.js keeps control and clarity
+- Vite provides a dev server, imports, builds, and healthy asset handling without bringing in a large framework
+- TypeScript pays off well once the project starts growing
+- simple HTML/CSS avoids introducing a UI framework too early
 
-## Cuándo bajar a JavaScript normal
-Se puede usar JS en vez de TS cuando:
-- es un prototipo muy corto
-- el usuario quiere velocidad extrema sobre rigor
-- el equipo realmente no quiere TS
+## When to drop down to plain JavaScript
+You can use JS instead of TS when:
+- it is a very short prototype
+- the user wants maximum speed over rigor
+- the team truly does not want TS
 
-Pero el default defendible sigue siendo TS.
+But the defensible default is still TS.
 
-## Estructura de carpetas recomendada
+## Recommended folder structure
 ```text
 project/
   AGENTS.md
@@ -63,81 +63,81 @@ project/
     utils/
 ```
 
-No hace falta crear todas las carpetas el día 1, pero sí tener esta dirección.
+You do not need to create every folder on day 1, but this should be the direction.
 
-## Bootstrap mínimo sano
-- inicialización de renderer, camera y scene
+## Healthy minimum bootstrap
+- renderer, camera, and scene initialization
 - resize
-- loop central
-- asset preload mínimo
-- primer estado jugable antes de menús o meta-sistemas
+- central loop
+- minimum asset preload
+- first playable state before menus or meta-systems
 
-## Física por defecto
-Si el juego necesita física de verdad:
-- **Rapier** como default recomendado
+## Default physics
+If the game needs real physics:
+- **Rapier** as the recommended default
 
-Buena elección cuando quieres:
-- rendimiento sólido
-- API razonable
-- colisiones y rigid bodies serios
-- una opción ya bastante asentada en web
+A good choice when you want:
+- solid performance
+- a reasonable API
+- serious collisions and rigid bodies
+- an option that is already fairly established on the web
 
-Si el juego solo necesita colisiones o overlaps simples:
-- no meter Rapier por inercia
-- empezar más simple
+If the game only needs simple collisions or overlaps:
+- do not add Rapier by inertia
+- start simpler
 
-## Multiplayer por defecto
-Default sano:
-- **singleplayer primero**
-- no meter red hasta que el loop base funcione y el juego demuestre necesitarla
+## Default multiplayer
+Healthy default:
+- **singleplayer first**
+- do not add networking until the base loop works and the game proves it needs it
 
-Si multiplayer es core desde el concepto:
-- diseñarlo pronto, pero no casar el proyecto con una librería por reflejo
-- tratar soluciones como MavonEngine o similares como **candidatas a validar en spike**, no como dogma automático todavía
+If multiplayer is core to the concept:
+- design it early, but do not marry the project to a library reflexively
+- treat solutions like MavonEngine or similar as **candidates to validate in a spike**, not as automatic dogma yet
 
-Si multiplayer termina aterrizando de verdad:
-- valorar pronto un **monorepo** con `client/` + `server/` + `shared/`
-- mover a `shared/` solo lo que de verdad tenga que coincidir entre ambos lados
-  (constantes de gameplay, validación, wire shapes)
-- no forzar el monorepo el día 1 si el juego sigue siendo estrictamente local
+If multiplayer truly lands later:
+- evaluate a **monorepo** early with `client/` + `server/` + `shared/`
+- move only what genuinely must match on both sides into `shared/`
+  (gameplay constants, validation, wire shapes)
+- do not force a monorepo on day 1 if the game is still strictly local
 
-## Assets y shell
-- `public/` para assets estáticos simples
-- loaders y registro coordinado de assets en `src/assets/`
-- no esconder lógica del juego dentro de componentes de UI
+## Assets and shell
+- `public/` for simple static assets
+- coordinated asset loaders and registry in `src/assets/`
+- do not hide game logic inside UI components
 
-Si el juego tiene niveles editables o authoring data:
-- considerar pronto una carpeta de datos explícita (`public/levels/`,
+If the game has editable levels or authoring data:
+- consider an explicit data folder early (`public/levels/`,
   `src/game/levelDefinition.ts`, etc.)
-- no enterrar layout jugable crítico en constantes dispersas dentro del render
+- do not bury critical playable layout in scattered constants inside rendering code
 
-## Defaults de scope
-Al arrancar:
-- un solo loop jugable
-- una sola escena o nivel de prueba
-- una sola cámara principal
-- una sola mecánica central
+## Scope defaults
+When starting:
+- one playable loop
+- one test scene or level
+- one main camera
+- one central mechanic
 
-## Anti-patrones
-- HTML+JS pelado cuando el proyecto ya va a crecer
-- meter React solo por costumbre
-- meter backend o multiplayer antes del core loop
-- meter Rapier cuando bastaba con colisiones simples
-- estructura de carpetas caótica desde el primer día
+## Anti-patterns
+- raw HTML+JS when the project is already going to grow
+- adding React out of habit
+- adding backend or multiplayer before the core loop
+- adding Rapier when simple collisions were enough
+- chaotic folder structure from day one
 
-## Recomendación fuerte
-Para la mayoría de juegos nuevos:
-- Three.js puro
+## Strong recommendation
+For most new games:
+- pure Three.js
 - Vite
 - TypeScript
-- Rapier solo si la física importa de verdad
-- singleplayer first salvo requisito claro de multiplayer
+- Rapier only if physics really matters
+- singleplayer first unless there is a clear multiplayer requirement
 
-Cuando el proyecto pase a multiplayer real o a herramientas internas:
-- cliente raíz + `server/` + `shared/` es una evolución sana del stack base
-- `AGENTS.md` debería reflejar ese salto de estructura en cuanto ocurra
+When the project moves into real multiplayer or internal tooling:
+- root client + `server/` + `shared/` is a healthy evolution of the base stack
+- `AGENTS.md` should reflect that structural jump as soon as it happens
 
-## Referencias asociadas
+## Related references
 - `game-kickoff-planning.md`
 - `project-agents-md.md`
 - `default-content-sourcing.md`

@@ -1,217 +1,217 @@
 # Physics
 
-## Objetivo
-Integrar física en juegos Three.js de forma pragmática, evitando que el motor físico se coma la arquitectura o complique el gameplay más de la cuenta.
+## Objective
+Integrate physics into Three.js games pragmatically, avoiding letting the physics engine swallow the architecture or overcomplicate gameplay.
 
-## Antes de meter un motor
+## Before adding an engine
 
-Three.js **no tiene detección de colisiones**. Es una librería de render. Lo que ofrece son helpers geométricos (`Raycaster`, `Box3`, `Sphere`, `Plane`, `Frustum`) con sus métodos `intersect*`, que son matemáticas, no un sistema de colisión.
+Three.js **does not have collision detection**. It is a rendering library. What it offers are geometric helpers (`Raycaster`, `Box3`, `Sphere`, `Plane`, `Frustum`) with their `intersect*` methods, which are math utilities, not a collision system.
 
-Eso significa que la primera decisión no es "qué motor físico uso", sino **"¿necesito un motor?"**. En la mayoría de juegos casual/3D ligeros la respuesta es no.
+That means the first decision is not "which physics engine do I use", but **"do I need an engine?"**. In most casual/lightweight 3D games, the answer is no.
 
-Escalera de estrategias, de menor a mayor coste:
+Strategy ladder, from lowest to highest cost:
 
-1. **Raycasting puntual**. `THREE.Raycaster` contra un mesh o lista de meshes. Ideal para picking (click), line-of-sight, altura de terreno debajo del player, hit tests de armas. Barato si los targets son pocos o el mesh está acelerado con BVH.
-2. **Bounding volumes manuales**. Lista propia de colliders (`{ center, radius }` para cilindros/esferas en XZ, `Box3` para AABB). Tests a mano por frame (`dx*dx + dz*dz < r*r`, o `Box3.intersectsBox`). Suficiente para el 80% de juegos casual: walking games, top-down, shooters ligeros, multijugador simple. Sin WASM, sin step, sin broadphase — solo matemáticas.
-3. **BVH sobre mesh estático**. Con [`three-mesh-bvh`](https://github.com/gkjohnson/three-mesh-bvh) cuando sí necesitas queries contra geometría compleja del mundo (raycast contra paredes de un nivel tallado, shapecasts para movimiento preciso). Sub-ms para geometrías grandes.
-4. **Motor físico real** (Rapier, Cannon-es, Ammo). Cuando hay **fuerzas, contactos persistentes, resolución automática entre cuerpos** o constraints. Entonces sí merece la pena pagar el coste.
+1. **Point raycasting**. `THREE.Raycaster` against a mesh or list of meshes. Ideal for picking (click), line-of-sight, terrain height under the player, weapon hit tests. Cheap if the targets are few or the mesh is accelerated with BVH.
+2. **Manual bounding volumes**. Your own list of colliders (`{ center, radius }` for cylinders/spheres in XZ, `Box3` for AABB). Hand-written tests per frame (`dx*dx + dz*dz < r*r`, or `Box3.intersectsBox`). Enough for 80% of casual games: walking games, top-down, lightweight shooters, simple multiplayer. No WASM, no step, no broadphase — just math.
+3. **BVH over static mesh**. With [`three-mesh-bvh`](https://github.com/gkjohnson/three-mesh-bvh) when you really need queries against complex world geometry (raycasts against walls in a carved level, shapecasts for precise movement). Sub-ms for large geometries.
+4. **Real physics engine** (Rapier, Cannon-es, Ammo). When there are **forces, persistent contacts, automatic resolution between bodies**, or constraints. Then it is worth paying the cost.
 
-Elegir el escalón más bajo que resuelve el problema. Subir de escalón solo cuando el anterior se queda corto, no por inercia.
+Choose the lowest rung that solves the problem. Move up only when the previous rung falls short, not out of inertia.
 
-## El collider nunca es el asset visual
+## The collider is never the visual asset
 
-Regla dura: el mesh del GLB (el modelo bonito con miles de tris, normales, PBR, skinning) **no** es el collider. Confundirlos es un anti-patrón clásico y caro.
+Hard rule: the GLB mesh (the pretty model with thousands of tris, normals, PBR, skinning) is **not** the collider. Confusing them is a classic and expensive anti-pattern.
 
-Razones:
-- Colisión contra geometría arbitraria es carísima comparada con una cápsula o AABB.
-- El mesh puede traer huecos, normales raras, `doubleSided: true` silencioso (muy común en GLBs generados por IA), triángulos degenerados. Todo eso produce bugs de colisión difíciles de debuggear.
-- Un artista o tool externa puede re-exportar el GLB con más detalle y de repente tu colisión se rompe o se encarece sin avisar.
-- El runtime necesita una representación **estable y predecible**: un radio, una cápsula, una caja. Eso no lo da el GLB por sí solo.
+Reasons:
+- Collision against arbitrary geometry is extremely expensive compared to a capsule or AABB.
+- The mesh can contain holes, weird normals, silent `doubleSided: true` (very common in AI-generated GLBs), degenerate triangles. All of that produces collision bugs that are hard to debug.
+- An artist or external tool can re-export the GLB with more detail and suddenly your collision breaks or becomes expensive without warning.
+- Runtime needs a **stable and predictable** representation: a radius, a capsule, a box. The GLB does not provide that by itself.
 
-Pipeline correcto:
-- El **asset visual** vive en el GLB.
-- El **collider lógico** lo declaras tú (radio de tronco para árboles, AABB para casas, cápsula para personajes). Puede ser un número hard-codeado por variante, un valor calculado una vez desde el bounding box del mesh al cargarlo, o un collider authoreado en el editor de niveles.
-- Ambos comparten transform (position/rotation/scale) pero son representaciones distintas.
+Correct pipeline:
+- The **visual asset** lives in the GLB.
+- The **logical collider** is declared by you (trunk radius for trees, AABB for houses, capsule for characters). It can be a hardcoded number per variant, a value calculated once from the mesh bounding box on load, or a collider authored in the level editor.
+- Both share transform (position/rotation/scale), but they are different representations.
 
-Esto aplica a los cuatro escalones de la sección anterior. Vale tanto si haces colisión a mano como si metes Rapier: **nunca** pasas el trimesh del GLB como collider por defecto.
+This applies to all four rungs in the previous section. It is true whether you do collision by hand or add Rapier: **never** pass the GLB trimesh as the default collider.
 
-## Regla principal
-Usar física solo donde aporte valor real.
+## Main rule
+Use physics only where it adds real value.
 
-No todo objeto necesita simulación completa. Muchas veces basta con:
-- colisiones simples
+Not every object needs full simulation. Often this is enough:
+- simple collisions
 - triggers
-- movimiento kinemático
-- constraints puntuales
+- kinematic movement
+- targeted constraints
 
-## Separación sana
-Three.js renderiza. El motor físico simula.
+## Healthy separation
+Three.js renders. The physics engine simulates.
 
-No mezclar ambas responsabilidades.
+Do not mix those responsibilities.
 
-Pensar en tres capas:
-1. **representación visual**
-2. **representación física**
-3. **sincronización entre ambas**
+Think in three layers:
+1. **visual representation**
+2. **physical representation**
+3. **synchronization between the two**
 
-## Recomendación inicial
-Tener una capa o bridge de physics que:
-- cree cuerpos y colliders
-- avance la simulación
-- sincronice transforms visuales
-- exponga eventos o consultas útiles al gameplay
+## Initial recommendation
+Have a physics layer or bridge that:
+- creates bodies and colliders
+- advances the simulation
+- synchronizes visual transforms
+- exposes useful gameplay events or queries
 
-## Cuándo usar física completa
-Sí suele merecer la pena para:
-- objetos que caen, rebotan o empujan de verdad
-- interacción sistémica entre varios cuerpos
-- vehículos o mecanismos si el juego depende de ello
-- gameplay basado en equilibrio, fuerzas o colisiones emergentes
+## When to use full physics
+It is usually worth it for:
+- objects that truly fall, bounce, or push
+- systemic interaction between several bodies
+- vehicles or mechanisms if the game depends on them
+- gameplay based on balance, forces, or emergent collisions
 
-## Cuándo NO hace falta
-A menudo no hace falta para:
-- triggers simples
+## When it is NOT needed
+It is often not needed for:
+- simple triggers
 - pickups
-- obstáculos estáticos
-- puertas o plataformas con movimiento guionado
-- detección básica de proximidad
+- static obstacles
+- doors or platforms with scripted movement
+- basic proximity detection
 
-## Cuándo sí vale la pena el switch a motor físico
+## When switching to a physics engine is worth it
 
-Pregunta operativa para decidir meter Rapier (o equivalente) en un proyecto que hoy resuelve colisión a mano: **¿la mecánica necesita algo que no escribo en 50 líneas?**
+Operational question for deciding whether to add Rapier (or equivalent) to a project that currently solves collision by hand: **does the mechanic need something I would not write in 50 lines?**
 
-Checklist concreta. Si aparece alguno de estos, Rapier deja de ser overhead y empieza a ser ahorro:
+Concrete checklist. If any of these appear, Rapier stops being overhead and starts being savings:
 
-- **Vehículos con ruedas y suspensión**. El raycast vehicle controller es muy difícil de clonar a mano bien; Rapier lo trae.
-- **Apilamiento de cuerpos** (cajas, barriles, torres que se derrumban). Resolver contactos múltiples a mano es un pozo sin fondo.
-- **Pendientes reales con contacto continuo** donde el player tiene que pegar al suelo sin clipping en triángulos ni saltitos en bordes de mesh.
-- **Proyectiles físicos con rebote, fricción y efectos emergentes** (no balas rectas — esas son raycast).
-- **Joints y constraints** (puertas con bisagra, cadenas, puentes colgantes, ragdolls).
-- **Mecánicas sistémicas emergentes** donde el diseño *depende* de que los cuerpos interactúen entre sí sin scripting (puzzles físicos, dominos, empujar objetos a zonas).
+- **Vehicles with wheels and suspension**. A raycast vehicle controller is very hard to clone well by hand; Rapier includes it.
+- **Body stacking** (boxes, barrels, collapsing towers). Resolving multiple contacts by hand is a bottomless pit.
+- **Real slopes with continuous contact** where the player must stick to the ground without clipping through triangles or hopping on mesh edges.
+- **Physical projectiles with bounce, friction, and emergent effects** (not straight bullets — those are raycast).
+- **Joints and constraints** (hinged doors, chains, suspension bridges, ragdolls).
+- **Emergent systemic mechanics** where the design *depends* on bodies interacting with each other without scripting (physics puzzles, dominos, pushing objects into zones).
 
-Señal contraria (probablemente no hace falta):
-- Personajes que solo tienen que no atravesar obstáculos y chocar entre ellos → cilindros/cápsulas en XZ a mano.
-- Pickups, triggers, zonas → AABB contra AABB, sin motor.
-- Nivel plano o con relieve suave sin contacto físico nítido → `getGroundHeight(x, z)` y seguir kinemático.
-- Disparos o line-of-sight → `Raycaster`, no cuerpos.
+Opposite signal (probably not needed):
+- Characters that only need to avoid passing through obstacles and collide with each other → manual cylinders/capsules in XZ.
+- Pickups, triggers, zones → AABB against AABB, no engine.
+- Flat level or smooth terrain without sharp physical contact → `getGroundHeight(x, z)` and stay kinematic.
+- Shots or line-of-sight → `Raycaster`, not bodies.
 
-Corolario: **Rapier cuando la interacción lo pide**. No meterlo "por si acaso" o "porque todo juego 3D serio lleva física". Cada escalón de la escalera de estrategias tiene su nicho.
+Corollary: **Rapier when the interaction calls for it**. Do not add it "just in case" or "because every serious 3D game has physics". Each rung of the strategy ladder has its niche.
 
-## Principio clave
-No usar un motor físico para resolver un problema que ya entiendes mejor con lógica de juego.
+## Key principle
+Do not use a physics engine to solve a problem you already understand better with game logic.
 
-La física realista no siempre produce el mejor juego.
+Realistic physics does not always produce the best game.
 
-## Tipos de cuerpos y uso práctico
+## Body types and practical use
 
-### Estáticos
-Para suelo, paredes, mundo fijo.
+### Static
+For floors, walls, fixed world.
 
-### Dinámicos
-Para objetos que deben reaccionar a fuerzas y colisiones.
+### Dynamic
+For objects that should react to forces and collisions.
 
-### Kinemáticos
-Para personajes, plataformas o elementos gobernados por lógica propia pero que aún interactúan con el mundo físico.
+### Kinematic
+For characters, platforms, or elements governed by custom logic that still interact with the physical world.
 
 ## Colliders
-Preferir colliders simples siempre que sea posible:
-- cajas
-- esferas
-- cápsulas
-- planos aproximados
+Prefer simple colliders whenever possible:
+- boxes
+- spheres
+- capsules
+- approximate planes
 
-No usar malla compleja como collider por defecto salvo necesidad real.
+Do not use complex mesh as the default collider unless there is a real need.
 
 ## Player controller
-El personaje principal suele necesitar cuidado especial.
+The main character usually needs special care.
 
-Recomendaciones:
-- no depender totalmente de física cruda para el control del player
-- separar intención de movimiento de respuesta física
-- definir bien suelo, salto, pendiente y contacto
-- evitar que el personaje se sienta "gelatinoso" por buscar realismo
+Recommendations:
+- do not fully depend on raw physics for player control
+- separate movement intent from physical response
+- define ground, jump, slope, and contact clearly
+- avoid making the character feel "gelatinous" in pursuit of realism
 
-Patrón fuerte que sale muy bien parado en examples reales:
-- player kinemático
-- collider simple, normalmente cápsula
-- mundo consultado con octree, queries o colliders estáticos
-- gravedad, grounded state y salto resueltos por el controller
+Strong pattern that performs very well in real examples:
+- kinematic player
+- simple collider, usually capsule
+- world queried through octree, queries, or static colliders
+- gravity, grounded state, and jump resolved by the controller
 
-Eso suele dar un resultado mucho más controlable que soltar un rigid body humanoide y rezar.
+That usually gives a much more controllable result than dropping in a humanoid rigid body and praying.
 
-## Timing y update
-La física necesita un ritmo claro.
+## Timing and update
+Physics needs a clear rhythm.
 
-Reglas útiles:
-- usar step de simulación controlado
-- no dejar que el delta variable rompa la estabilidad
-- sincronizar visuales después del paso físico
-- registrar claramente el orden de update
+Useful rules:
+- use a controlled simulation step
+- do not let variable delta break stability
+- synchronize visuals after the physics step
+- clearly document update order
 
-## Rendimiento
-La física también consume bastante.
+## Performance
+Physics also consumes a lot.
 
-Vigilar:
-- número de cuerpos activos
-- número de colliders complejos
-- frecuencia de consultas
-- coste de colisiones continuas
-- objetos dormidos que podrían no actualizarse
+Watch:
+- number of active bodies
+- number of complex colliders
+- query frequency
+- continuous collision cost
+- sleeping objects that might not update
 
-### Coste concreto de Rapier
+### Concrete Rapier cost
 
-Cuando se mete Rapier, el coste real se reparte así (orden de magnitud para tenerlo en la cabeza):
+When Rapier is added, the real cost is distributed like this (order of magnitude to keep in mind):
 
-- **Bundle**. `@dimforge/rapier3d-compat` pesa ~1–1.5 MB. La versión `compat` inlinea el WASM en JS para evitar dolor con Vite/ESM. Se nota en el boot móvil.
-- **Init async**. `await RAPIER.init()` antes de crear el world. Centenas de ms en móvil de gama baja. No es per-frame pero sí retrasa el "first playable". Arrancarlo en paralelo con la carga de assets cuando se pueda.
-- **`world.step()` por frame**. Con decenas de cuerpos kinemáticos y colliders primitivos, sub-ms en desktop. Escala con:
-    - cuerpos **dinámicos** activos (los kinemáticos y estáticos son casi gratis)
-    - pares en contacto (el broadphase filtra el resto — no importa el total de colliders, importa cuántos están próximos)
-    - tipo de collider: cuboid/ball/capsule son baratos; **trimesh y heightfield grandes** pesan mucho en queries y memoria
-- **Sincronización Rapier ↔ Three.js**. Cada frame se leen `body.translation()` / `body.rotation()` y se vuelcan al `Object3D`. Mal hecho (objetos nuevos por frame, `.clone()` en el hot path) genera GC visible. Usar scratch vectors/quaternions a nivel de módulo.
-- **Fixed timestep obligatorio**. Rapier espera `dt` fijo (1/60 típicamente). Pasarle el `dt` variable del `rAF` directo produce inestabilidad *y* más substeps = más coste. Patrón correcto: accumulator con fixed step, render interpolado aparte.
-- **Queries (raycast, shapecast)**. Baratas por llamada, pero spamearlas cada frame por cada NPC suma. Compartir resultados y cachear cuando tiene sentido (ground check puede salir del step del propio body en vez de un raycast extra).
+- **Bundle**. `@dimforge/rapier3d-compat` weighs ~1–1.5 MB. The `compat` version inlines WASM in JS to avoid pain with Vite/ESM. This is noticeable on mobile boot.
+- **Async init**. `await RAPIER.init()` before creating the world. Hundreds of ms on low-end mobile. Not per-frame, but it delays "first playable". Start it in parallel with asset loading when possible.
+- **`world.step()` per frame**. With dozens of kinematic bodies and primitive colliders, sub-ms on desktop. Scales with:
+    - active **dynamic** bodies (kinematics and statics are almost free)
+    - contact pairs (the broadphase filters the rest — total colliders matter less than how many are near each other)
+    - collider type: cuboid/ball/capsule are cheap; **large trimesh and heightfield** colliders are heavy in queries and memory
+- **Rapier ↔ Three.js synchronization**. Every frame, read `body.translation()` / `body.rotation()` and copy them into the `Object3D`. Done badly (new objects per frame, `.clone()` in the hot path), this causes visible GC. Use module-level scratch vectors/quaternions.
+- **Fixed timestep is mandatory**. Rapier expects fixed `dt` (typically 1/60). Passing the variable `rAF` `dt` directly causes instability *and* more substeps = more cost. Correct pattern: accumulator with fixed step, render interpolation separately.
+- **Queries (raycast, shapecast)**. Cheap per call, but spamming them every frame for every NPC adds up. Share results and cache where it makes sense (ground check may come from the body's own step instead of an extra raycast).
 
-Números mentales (desktop decente, juego web singleplayer):
+Mental numbers (decent desktop, web singleplayer game):
 
-- 50–200 kinemáticos + puñado de dinámicos + colliders primitivos → **<1 ms/frame** de `world.step()`. Invisible.
-- 500+ dinámicos interactuando → **2–5 ms**. Notable, aún asumible.
-- Trimesh del nivel entero + raycasts per-NPC sin culling → **picos de 10–20 ms** y stutter. Eso es donde duele de verdad.
+- 50–200 kinematics + a handful of dynamics + primitive colliders → **<1 ms/frame** for `world.step()`. Invisible.
+- 500+ interacting dynamics → **2–5 ms**. Noticeable, still acceptable.
+- Whole-level trimesh + per-NPC raycasts without culling → **10–20 ms spikes** and stutter. That is where it really hurts.
 
-Conclusión práctica: Rapier bien usado es muy rápido. "Rapier va lento" casi siempre se traduce en "Rapier mal integrado" — ver anti-patrones específicos abajo.
+Practical conclusion: Rapier used well is very fast. "Rapier is slow" almost always means "Rapier is badly integrated" — see specific anti-patterns below.
 
-## Gameplay y física
-La física debe servir al diseño, no dominarlo.
+## Gameplay and physics
+Physics should serve the design, not dominate it.
 
-Preguntas útiles:
-- ¿esto mejora la sensación del juego?
-- ¿es más divertido o solo más realista?
-- ¿puedo conseguir un resultado mejor con lógica más simple?
+Useful questions:
+- does this improve game feel?
+- is it more fun, or just more realistic?
+- can I get a better result with simpler logic?
 
-## Anti-patrones
-- meter física a todo por inercia
-- usar colliders complejos para cualquier cosa
-- acoplar gameplay directamente a callbacks del motor físico
-- no distinguir entre cuerpo visual y cuerpo físico
-- confiar en física realista para arreglar mal diseño de controles
+## Anti-patterns
+- adding physics to everything out of inertia
+- using complex colliders for everything
+- coupling gameplay directly to physics-engine callbacks
+- not distinguishing visual body from physical body
+- trusting realistic physics to fix bad control design
 
-## Anti-patrones específicos de Rapier
+## Rapier-specific anti-patterns
 
-La mayoría de "Rapier va lento" o "Rapier da problemas raros" en proyectos reales se explica con uno de estos:
+Most cases of "Rapier is slow" or "Rapier has weird problems" in real projects come down to one of these:
 
-- **Trimesh collider del nivel entero**. Pasar el GLB del mundo tal cual a `ColliderDesc.trimesh` crea un collider con miles/decenas de miles de triángulos. Memoria alta, queries lentas, contactos impredecibles. Correcto: cuboides/heightfield para el grueso, trimesh solo para piezas puntuales que lo justifiquen (una roca tallada, una escultura que *necesita* precisión).
-- **Cuerpos dinámicos donde bastaba kinemático**. Players y NPCs no necesitan ser dinámicos salvo que se quiera rebote físico entre ellos. Kinemático = tú mueves, Rapier detecta y opcionalmente te devuelve corrección. Dramáticamente más barato y más controlable.
-- **Sleep roto**. Rapier duerme cuerpos quietos automáticamente y es casi gratis en esa fase. Fuerzas pequeñas aplicadas cada frame "para asegurar", transforms reseteados, o `setNextKinematicTranslation` incluso cuando no ha cambiado la posición, los despiertan y se pierde esa ventaja.
-- **Crear/destruir colliders en el hot path**. Props reciclables, balas, partículas con colisión: pool siempre, activar/desactivar en vez de `world.createCollider` + `world.removeCollider` cada vez.
-- **Delta variable al step**. Pasar el `dt` del `rAF` directo a `world.step()` en vez de fixed timestep con accumulator. Produce inestabilidad (explosiones, tunneling, jitter) y coste variable. Regla dura: el step es fijo, el render interpola.
-- **Raycasts per-frame por NPC para ground check** cuando con el propio contacto del body o un sphere cast puntual basta. Multiplica por N el coste de queries.
-- **Sync con asignaciones por frame**. `new THREE.Vector3(body.translation().x, ...)` por cada cuerpo y por frame produce GC visible en stutter. Scratch buffers a nivel de módulo y asignación directa (`obj.position.set(t.x, t.y, t.z)`).
-- **Mismo collider para render y simulación**. Ya cubierto en *El collider nunca es el asset visual*, pero con Rapier duele especialmente porque el motor sí te deja hacerlo y no avisa del coste.
+- **Whole-level trimesh collider**. Passing the world GLB as-is to `ColliderDesc.trimesh` creates a collider with thousands/tens of thousands of triangles. High memory, slow queries, unpredictable contacts. Correct: cuboids/heightfield for the bulk, trimesh only for specific pieces that justify it (a carved rock, a sculpture that *needs* precision).
+- **Dynamic bodies where kinematic was enough**. Players and NPCs do not need to be dynamic unless you want physical bounce between them. Kinematic = you move, Rapier detects and optionally gives you correction. Dramatically cheaper and more controllable.
+- **Broken sleep**. Rapier automatically sleeps still bodies and they are almost free in that phase. Small forces applied every frame "to make sure", reset transforms, or `setNextKinematicTranslation` even when position has not changed wake them up and lose that advantage.
+- **Creating/destroying colliders in the hot path**. Recyclable props, bullets, particles with collision: always pool, activate/deactivate instead of `world.createCollider` + `world.removeCollider` every time.
+- **Variable delta in the step**. Passing the `rAF` `dt` directly to `world.step()` instead of using a fixed timestep with accumulator. Produces instability (explosions, tunneling, jitter) and variable cost. Hard rule: the step is fixed; rendering interpolates.
+- **Per-frame raycasts per NPC for ground check** when the body's own contact or a targeted sphere cast is enough. Multiplies query cost by N.
+- **Sync with per-frame allocations**. `new THREE.Vector3(body.translation().x, ...)` for every body every frame produces visible GC stutter. Use module-level scratch buffers and direct assignment (`obj.position.set(t.x, t.y, t.z)`).
+- **Same collider for rendering and simulation**. Already covered in *The collider is never the visual asset*, but with Rapier it hurts especially because the engine lets you do it and does not warn about the cost.
 
-## Pendiente de ampliar
-- elección concreta de motor recomendado
-- patrones para personajes y equilibrio
-- triggers y sensores
-- rollback o reconciliación si hay multiplayer
-- herramientas de debug de colliders y contactos
-- integración con world generation y streaming
+## To expand later
+- concrete choice of recommended engine
+- patterns for characters and balance
+- triggers and sensors
+- rollback or reconciliation if there is multiplayer
+- debug tools for colliders and contacts
+- integration with world generation and streaming

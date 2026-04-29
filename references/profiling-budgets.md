@@ -1,230 +1,230 @@
 # Profiling and Budgets
 
-## Objetivo
-Tener una forma práctica de medir rendimiento en juegos Three.js, identificar cuellos reales y trabajar con presupuestos en vez de intuiciones vagas.
+## Goal
+Have a practical way to measure performance in Three.js games, identify real bottlenecks, and work with budgets instead of vague intuition.
 
-## Regla principal
-**No optimizar a ciegas.**
-Primero hay que distinguir qué está fallando:
-- carga inicial
-- CPU por frame
-- GPU por frame
-- memoria
-- stutter por compilación o creación de recursos
+## Main rule
+**Do not optimize blind.**
+First distinguish what is failing:
+- initial load
+- CPU per frame
+- GPU per frame
+- memory
+- stutter from compilation or resource creation
 
-## Pregunta correcta
-No preguntar solo “¿va lento?”.
-Preguntar:
-- ¿cuándo va lento?
-- ¿en qué escena o sistema?
-- ¿es constante o son picos?
-- ¿cae por draw calls, lógica, shaders, texturas o cargas asíncronas?
+## The right question
+Do not only ask “is it slow?”.
+Ask:
+- when is it slow?
+- in which scene or system?
+- is it constant or spiky?
+- is it dropping because of draw calls, logic, shaders, textures, or async loads?
 
-## Presupuesto antes que pánico
-Diseñar con budgets desde el inicio.
+## Budget before panic
+Design with budgets from the start.
 
-Budgets típicos a vigilar:
-- frame time objetivo
+Typical budgets to watch:
+- target frame time
 - draw calls
-- geometrías y nodos vivos
-- memoria de texturas
-- número de luces caras
-- número de objetos actualizados por frame
-- tiempo de carga de escena o zona
+- live geometries and nodes
+- texture memory
+- number of expensive lights
+- number of objects updated per frame
+- scene or zone load time
 
-No hace falta fingir números universales mágicos, pero sí elegir límites concretos por proyecto y revisarlos.
+You do not need to pretend there are magic universal numbers, but you do need to choose concrete limits per project and revisit them.
 
-## Regla de frame time
-Pensar en milisegundos por frame, no solo en FPS.
+## Frame time rule
+Think in milliseconds per frame, not only FPS.
 
-Referencia útil:
-- ~16.7ms para 60fps
-- ~33.3ms para 30fps
+Useful reference:
+- ~16.7ms for 60fps
+- ~33.3ms for 30fps
 
-Si un sistema nuevo mete 4, 6 o 8ms él solo, ya sabes quién está pidiendo demasiado.
+If a new system adds 4, 6, or 8ms by itself, you already know who is asking for too much.
 
-## Separación útil de problemas
+## Useful problem separation
 ### CPU-bound
-Sospechar de:
-- demasiados updates por frame
-- lógica de gameplay pesada
-- raycasts excesivos
-- demasiados nodos en scene graph
-- merges o reconstrucciones frecuentes
-- trabajo JS evitable
-- **asignaciones per-frame en el hot path**: `vec.clone()`, `array.map(...)`, `const arr: Foo[] = []` dentro del loop. Aisladamente son baratos; multiplicados por 60 Hz y por todas las entidades generan presión de GC que aparece como stutter rítmico, no como FPS bajo constante. Patrón sano: **scratch buffers a nivel de módulo** reutilizados (pre-alocar un `Vector3` y usarlo con `.copy()`/`.set()`; array persistente con `length = 0` al empezar el frame y `push()` solo cuando crece). Importante: si un scratch está aliased en un `result` público, limpiarlo in-place en `reset()` en vez de reasignar (`arr.length = 0`, no `arr = []`), o los callers siguen viendo datos viejos.
+Suspect:
+- too many updates per frame
+- heavy gameplay logic
+- excessive raycasts
+- too many scene graph nodes
+- frequent merges or rebuilds
+- avoidable JS work
+- **per-frame allocations in the hot path**: `vec.clone()`, `array.map(...)`, `const arr: Foo[] = []` inside the loop. Individually they are cheap; multiplied by 60 Hz and every entity, they generate GC pressure that appears as rhythmic stutter, not constant low FPS. Healthy pattern: reusable **module-level scratch buffers** (preallocate a `Vector3` and use it with `.copy()`/`.set()`; persistent array with `length = 0` at the start of the frame and `push()` only when it grows). Important: if scratch is aliased in a public `result`, clear it in-place in `reset()` instead of reassigning (`arr.length = 0`, not `arr = []`), or callers keep seeing old data.
 
 ### GPU-bound
-Sospechar de:
-- draw calls altas
-- demasiadas sombras
-- postprocessing caro
-- demasiadas transparencias
-- materiales pesados
-- resolución o pixel ratio demasiado altos
+Suspect:
+- high draw calls
+- too many shadows
+- expensive postprocessing
+- too many transparencies
+- heavy materials
+- resolution or pixel ratio too high
 
-### Load-bound o stutter-bound
-Sospechar de:
-- assets demasiado pesados
-- descompresión o parsing costosos
-- compilación de shaders
-- creación o destrucción masiva de recursos en mal momento
+### Load-bound or stutter-bound
+Suspect:
+- assets that are too heavy
+- costly decompression or parsing
+- shader compilation
+- mass creation or destruction of resources at a bad time
 
-## Herramientas mínimas
+## Minimum tools
 ### `Stats`
-Útil para ver si el frame se degrada de forma obvia y rápida.
-No explica todo, pero sirve para notar caídas y comparar cambios.
+Useful for seeing whether the frame degrades in an obvious and quick way.
+It does not explain everything, but it helps notice drops and compare changes.
 
 ### `renderer.info`
-Mirar especialmente:
+Look especially at:
 - geometries
 - textures
 - programs
 - render.calls
 - triangles
 
-Esto no cuenta toda la historia, pero da una lectura muy buena del estado de render.
+This does not tell the whole story, but it gives a very good read on render state.
 
-### Medición local
-Patrones simples útiles:
-- `console.time()` / `console.timeEnd()` para builds o pasos caros
-- medir duración de cargas
-- medir generación procedural
-- medir creación o rebuild de geometrías
+### Local measurement
+Useful simple patterns:
+- `console.time()` / `console.timeEnd()` for builds or expensive steps
+- measure load duration
+- measure procedural generation
+- measure geometry creation or rebuilds
 
-El example `webgl_instancing_performance` usa este enfoque con bastante honestidad, y merece quedarse como patrón.
+The `webgl_instancing_performance` example uses this approach quite honestly and is worth keeping as a pattern.
 
 ### Browser devtools
-Usar profiling del navegador cuando el problema no está claro.
-Especialmente para:
-- flame charts de JS
-- memoria
-- picos de layout o UI externa
-- coste de callbacks y listeners
+Use browser profiling when the problem is unclear.
+Especially for:
+- JS flame charts
+- memory
+- layout or external UI spikes
+- callback and listener cost
 
-## `renderer.info` como brújula
-Patrón útil:
-- si `render.calls` se dispara, pensar draw calls
-- si geometrías/texturas crecen sin volver a bajar, pensar lifecycle o fuga
-- si triangles suben mucho en escenas que no deberían, revisar assets y LOD
+## `renderer.info` as compass
+Useful pattern:
+- if `render.calls` spikes, think draw calls
+- if geometries/textures grow without dropping again, think lifecycle or leak
+- if triangles rise a lot in scenes where they should not, review assets and LOD
 
-No obsesionarse con un único contador. Cruzarlo con el contexto de la escena.
+Do not obsess over a single counter. Cross-check it with scene context.
 
 ## Draw calls
-El manual y examples dejan una señal muy clara:
-- **muchas draw calls matan antes de lo que mucha gente cree**
+The manual and examples send a very clear signal:
+- **many draw calls kill sooner than many people think**
 
-Soluciones típicas:
+Typical solutions:
 - `InstancedMesh`
-- merge de geometrías
-- menos materiales distintos
-- menos meshes pequeñas inútiles
+- geometry merging
+- fewer distinct materials
+- fewer useless tiny meshes
 
-Tradeoff importante:
-- instancing reduce draw calls y mantiene cierta flexibilidad
-- merge reduce draw calls pero complica updates individuales
-- naive meshes sirven para prototipo, no para cantidades grandes por defecto
+Important tradeoff:
+- instancing reduces draw calls while keeping some flexibility
+- merge reduces draw calls but complicates individual updates
+- naive meshes are fine for prototypes, not as the default for large quantities
 
-## Scene graph y coste CPU
-La docs también dejan otra verdad poco glamourosa:
-- no solo cuesta dibujar, también cuesta mantener miles de nodos, matrices y updates
+## Scene graph and CPU cost
+The docs also leave another unglamorous truth:
+- drawing is not the only cost; maintaining thousands of nodes, matrices, and updates also costs
 
-Regla:
-- si solo representas masa de datos o props repetidos, no usar scene graph como estructura de datos gigantesca porque sí
+Rule:
+- if you are only representing mass data or repeated props, do not use the scene graph as a gigantic data structure just because you can
 
-## Actualizaciones caras
-`how-to-update-things` deja varias alertas importantes:
-- cambiar ciertas propiedades de material puede forzar recompilación
-- redimensionar buffers no es barato
-- geometrías dinámicas necesitan prealloc y updates bien pensados
-- al cambiar instancing o skinned bounds, puede tocar recomputar bounding volumes
+## Expensive updates
+`how-to-update-things` leaves several important warnings:
+- changing certain material properties can force recompilation
+- resizing buffers is not cheap
+- dynamic geometries need prealloc and well-planned updates
+- changing instancing or skinned bounds may require recomputing bounding volumes
 
-Implicación:
-- no medir solo render final, medir también el coste de mutar datos y recursos
+Implication:
+- do not measure only final render; also measure the cost of mutating data and resources
 
-## Presupuestos recomendados por categorías
-No como dogma, sino como disciplina.
+## Recommended budget categories
+Not as dogma, but as discipline.
 
 ### Render
-- límite orientativo de draw calls por escena jugable
-- límite de luces con sombras
-- límite de passes de postprocessing
+- guideline draw-call limit per playable scene
+- limit for shadow-casting lights
+- limit for postprocessing passes
 
 ### Assets
-- tamaño máximo por modelo crítico
-- tamaño máximo por textura según categoría
-- número de materiales por asset importante
+- maximum size per critical model
+- maximum texture size by category
+- number of materials per important asset
 
 ### Gameplay
-- cuántas entidades actualizan full cada frame
-- cuántos raycasts o queries se permiten por tick
-- cuántos sistemas pueden correr a menor frecuencia
+- how many entities update fully every frame
+- how many raycasts or queries are allowed per tick
+- how many systems can run at lower frequency
 
-### Mundo
-- densidad máxima por chunk
-- props simultáneos visibles
-- presupuesto de spawn/despawn por frame
+### World
+- maximum density per chunk
+- simultaneous visible props
+- spawn/despawn budget per frame
 
-## Presupuestos por tier
-Especialmente en web y móvil, definir tiers:
-- bajo
-- medio
-- alto
+## Budgets by tier
+Especially on web and mobile, define tiers:
+- low
+- medium
+- high
 
-Variables candidatas:
+Candidate variables:
 - pixel ratio
-- sombras
-- densidad de props
-- distancia de dibujado
+- shadows
+- prop density
+- draw distance
 - postprocessing
-- calidad de texturas o variantes de asset
+- texture quality or asset variants
 
-## Patrón de profiling sano
-1. reproducir el problema
-2. aislar la escena o sistema
-3. medir antes del cambio
-4. aplicar una sola intervención clara
-5. medir después
-6. dejar anotado el tradeoff
+## Healthy profiling pattern
+1. reproduce the problem
+2. isolate the scene or system
+3. measure before the change
+4. apply one clear intervention
+5. measure after
+6. write down the tradeoff
 
-Para una rutina más explícita de diagnóstico práctico entre cuellos de GPU, CPU, mixed o stutter/load, ver `gpu-vs-cpu-heuristics.md`.
+For a more explicit practical diagnosis routine between GPU, CPU, mixed, or stutter/load bottlenecks, see `gpu-vs-cpu-heuristics.md`.
 
-## Qué medir de forma periódica
-- frame time medio y picos
-- draw calls en escenas clave
-- memoria aproximada viva
-- tiempos de carga por escena
-- coste de generación procedural
-- stutter al cambiar de zona, skin o modelo
+## What to measure periodically
+- average frame time and spikes
+- draw calls in key scenes
+- approximate live memory
+- load times per scene
+- procedural generation cost
+- stutter when changing zone, skin, or model
 
-Para doctrina más concreta sobre tirones, warmup y activación suave, ver `frame-pacing-stutter.md`.
+For more concrete doctrine on stutter, warmup, and smooth activation, see `frame-pacing-stutter.md`.
 
-## Anti-patrones
-- optimizar por superstición
-- mirar solo FPS sin frame time
-- arreglar GPU bajando calidad cuando el cuello es CPU
-- arreglar CPU quitando geometría cuando el problema son shaders o sombras
-- asumir que un benchmark sintético representa tu juego real
-- no medir picos de carga y solo mirar la media
+## Anti-patterns
+- optimizing by superstition
+- looking only at FPS without frame time
+- fixing GPU by lowering quality when the bottleneck is CPU
+- fixing CPU by removing geometry when the problem is shaders or shadows
+- assuming a synthetic benchmark represents your real game
+- not measuring load spikes and only looking at the average
 
-## Recomendación fuerte
-Crear un pequeño `performanceHUD` o panel de debug que pueda mostrar:
-- fps o frame time
+## Strong recommendation
+Create a small `performanceHUD` or debug panel that can show:
+- fps or frame time
 - `renderer.info.render.calls`
 - geometries/textures/programs
-- tier de calidad activo
-- toggles para sombras, post y densidad
+- active quality tier
+- toggles for shadows, post, and density
 
-Eso suele pagar solo en cuanto el proyecto crece un poco.
+That usually pays for itself as soon as the project grows a little.
 
-Para comprobar todo esto contra escenas reproducibles y no solo contra intuición, ver `stress-scenes-benchmarks.md`.
+To verify all this against reproducible scenes and not just intuition, see `stress-scenes-benchmarks.md`.
 
-Para guardar runs comparables con contexto, warmup y resultados estructurados, ver `benchmark-reporting.md`.
+To save comparable runs with context, warmup, and structured results, see `benchmark-reporting.md`.
 
-Para comparar baseline vs candidate sin caer en diffs engañosos por config distinta o ruido, ver `benchmark-diffs.md`.
+To compare baseline vs candidate without falling into misleading diffs from different config or noise, see `benchmark-diffs.md`.
 
-## Pendiente de ampliar
-- GPU timing más fino según navegador y tooling
-- budgets orientativos por género
-- pruebas automatizadas de escenas de estrés
-- integración con quality scaler adaptativo
+## To expand later
+- finer GPU timing by browser and tooling
+- guideline budgets by genre
+- automated stress-scene tests
+- integration with adaptive quality scaler

@@ -1,109 +1,109 @@
 # Audio Systems
 
-## Objetivo
-Dar una base sana de audio para juegos Three.js: carga coordinada, buses, pool de voces y spatial audio, sin acoplar gameplay a llamadas sueltas de `play()`.
+## Objective
+Provide a healthy audio foundation for Three.js games: coordinated loading, buses, voice pools, and spatial audio, without coupling gameplay to loose `play()` calls.
 
-## Regla principal
-**No llamar `play()` desde cualquier sitio.**
-Todo audio pasa por un `AudioService` del juego que conoce buses, volumen global, limitaciones de voces concurrentes y estado (muted, foco de ventana, pausa).
+## Main rule
+**Do not call `play()` from anywhere.**
+All audio goes through the game's `AudioService`, which knows buses, global volume, concurrent voice limits, and state (muted, window focus, pause).
 
-## Qué cubrir
-- SFX cortos y frecuentes
-- música
-- ambientes (loops largos y pesados)
-- voces del personaje o VO
-- audio espacial de entidades del mundo
+## What to cover
+- short and frequent SFX
+- music
+- ambiences (long, heavy loops)
+- character voices or VO
+- spatial audio from world entities
 
-## Decisión base: `three/audio` vs Web Audio API directa
-- Three.js ofrece `AudioListener`, `Audio`, `PositionalAudio` y `AudioLoader`. Base suficiente para empezar.
-- Para juegos con más capas (buses, ducking, filtros dinámicos, crossfade de música), usar Web Audio API directamente y exponer un wrapper propio. `three/audio` se queda corto en mixing serio.
-- En móvil, `AudioContext` puede venir suspendido hasta primer input: desbloquear de forma explícita al primer gesto del usuario.
+## Base decision: `three/audio` vs direct Web Audio API
+- Three.js provides `AudioListener`, `Audio`, `PositionalAudio`, and `AudioLoader`. Enough foundation to start.
+- For games with more layers (buses, ducking, dynamic filters, music crossfades), use the Web Audio API directly and expose your own wrapper. `three/audio` falls short for serious mixing.
+- On mobile, `AudioContext` may start suspended until the first input: unlock it explicitly on the user's first gesture.
 
-## Buses mínimos
+## Minimum buses
 - `master`
 - `music`
 - `sfx`
 - `ambience`
 - `ui`
-- `voice` (si aplica)
+- `voice` (if applicable)
 
-Cada bus con su `GainNode` conectado al master. Settings de usuario modifican volúmenes por bus, no por sonido.
+Each bus has its own `GainNode` connected to master. User settings change volume by bus, not by sound.
 
-## Carga y registro de assets
-- Declarar el set de audio junto al resto de assets del juego (ver `assets.md`).
-- Formatos: `ogg` o `webm/opus` preferente; `mp3` como fallback.
-- SFX cortos: decodificados en memoria (`AudioBuffer`).
-- Música y ambientes largos: streaming con `<audio>` + `MediaElementAudioSourceNode` para no inflar memoria.
-- Registro por clave lógica (`sfx/player-hit`), no por path.
+## Asset loading and registration
+- Declare the audio set alongside the rest of the game's assets (see `assets.md`).
+- Formats: prefer `ogg` or `webm/opus`; `mp3` as fallback.
+- Short SFX: decoded in memory (`AudioBuffer`).
+- Music and long ambiences: stream with `<audio>` + `MediaElementAudioSourceNode` to avoid inflating memory.
+- Register by logical key (`sfx/player-hit`), not by path.
 
-## Pool de voces
-Límites duros por bus:
-- SFX del mismo tipo: collapsing (si ya suenan N iguales en una ventana corta, reemplazar el más viejo o ignorar).
-- Máximo global de voces concurrentes por bus.
-- Prioridades: un SFX importante puede robar voz a uno irrelevante.
+## Voice pool
+Hard limits per bus:
+- SFX of the same type: collapsing (if N identical sounds are already playing within a short window, replace the oldest or ignore).
+- Global maximum concurrent voices per bus.
+- Priorities: an important SFX can steal a voice from an irrelevant one.
 
-Sin esto, una ráfaga de eventos clava la CPU y satura el mix.
+Without this, a burst of events pins the CPU and saturates the mix.
 
 ## Spatial audio
-- `PositionalAudio` con `AudioListener` pegado a la cámara activa.
-- Definir `refDistance`, `maxDistance` y `rolloffFactor` por tipo de fuente, no por sonido individual.
-- En juegos top-down o 2.5D, usar audio espacial con cuidado: el pan puede marear si la cámara y la orientación no casan con el jugador.
+- `PositionalAudio` with `AudioListener` attached to the active camera.
+- Define `refDistance`, `maxDistance`, and `rolloffFactor` by source type, not by individual sound.
+- In top-down or 2.5D games, use spatial audio carefully: panning can be disorienting if camera and orientation do not match the player.
 
-## Música
-- Transiciones con crossfade, no corte brusco.
-- Música por estados del juego, no por nivel cargado.
-- Evitar layers verticales sofisticadas hasta tener el loop jugable validado (fase 3+).
-- Loops con puntos de corte marcados desde el export, no calculados a ojo.
+## Music
+- Transitions with crossfade, not abrupt cuts.
+- Music by game state, not by loaded level.
+- Avoid sophisticated vertical layers until the playable loop is validated (phase 3+).
+- Loops with cut points marked during export, not calculated by eye.
 
-## Ducking y prioridades
-Casos típicos:
-- VO o diálogo: baja temporalmente música y ambientes.
-- Hit crítico de gameplay: pequeño duck del bus de música.
+## Ducking and priorities
+Typical cases:
+- VO or dialogue: temporarily lowers music and ambience.
+- Critical gameplay hit: small duck on the music bus.
 
-Implementar como transiciones cortas de gain en el bus, no tocando sonidos individuales.
+Implement this as short gain transitions on the bus, not by touching individual sounds.
 
-## Pausa y foco de ventana
-- Al perder foco (`visibilitychange`), parar o silenciar según política.
-- Al entrar a pausa del juego, silenciar SFX y ambientes, mantener música en bajada suave.
-- Nunca detener `AudioContext` silenciosamente, o se pierde estado.
+## Pause and window focus
+- On focus loss (`visibilitychange`), stop or silence according to policy.
+- When entering game pause, silence SFX and ambiences, keep music with a smooth fade down.
+- Never silently stop `AudioContext`, or state is lost.
 
 ## Mobile
-- Desbloqueo por primer gesto obligatorio.
-- Menos voces concurrentes.
-- Preferir audio más corto y menos denso en frecuencias altas.
-- No dar por hecho que el dispositivo puede decodificar todos los formatos: tener fallback.
+- Unlock on first gesture is mandatory.
+- Fewer concurrent voices.
+- Prefer shorter audio that is less dense in high frequencies.
+- Do not assume the device can decode every format: provide fallback.
 
 ## Gameplay hooks
-Acoplamiento sano:
-- gameplay emite eventos de dominio (`onPlayerHit`, `onStepGrass`, `onPenalty`).
-- un suscriptor mapea eventos a llamadas al `AudioService`.
-- el `AudioService` decide qué bus, qué pool, qué prioridad.
+Healthy coupling:
+- gameplay emits domain events (`onPlayerHit`, `onStepGrass`, `onPenalty`).
+- a subscriber maps events to `AudioService` calls.
+- the `AudioService` decides which bus, which pool, which priority.
 
-Así se pueden silenciar o remapear sonidos sin tocar gameplay.
+This lets you silence or remap sounds without touching gameplay.
 
 ## Debug
-- overlay con voces activas por bus
-- toggle para solo un bus (solo música, solo SFX)
-- log opcional de eventos de audio con timestamp
+- overlay with active voices by bus
+- toggle to solo a bus (music only, SFX only)
+- optional audio event log with timestamp
 
-## Anti-patrones
-- `new Audio(...).play()` desperdigado en entidades
-- compartir un único `AudioContext` sin desbloquear en móvil
-- cargar música larga como `AudioBuffer` y ver cómo explota la memoria
-- spatial audio sin definir `refDistance` y `rolloffFactor`
-- loops de música con artefactos porque el punto de corte no estaba bien exportado
-- ajustar volumen individualmente en vez de por bus
-- música que cambia brusco al pasar de menú a gameplay
+## Anti-patterns
+- `new Audio(...).play()` scattered through entities
+- sharing one `AudioContext` without unlocking it on mobile
+- loading long music as `AudioBuffer` and watching memory explode
+- spatial audio without defining `refDistance` and `rolloffFactor`
+- music loops with artifacts because the cut point was not exported correctly
+- adjusting volume individually instead of by bus
+- music changing abruptly when moving from menu to gameplay
 
-## Recomendación fuerte
-Tener desde el principio:
-- `AudioService` único con buses explícitos
-- API por claves lógicas
-- pool de voces y prioridades
-- desbloqueo de `AudioContext` estandarizado
-- settings de usuario persistidos por bus (ver `persistence-save.md`)
+## Strong recommendation
+Have from the start:
+- a single `AudioService` with explicit buses
+- API by logical keys
+- voice pool and priorities
+- standardized `AudioContext` unlock
+- user settings persisted by bus (see `persistence-save.md`)
 
-## Referencias asociadas
+## Related references
 - `assets.md`
 - `default-content-sourcing.md`
 - `mobile-performance.md`

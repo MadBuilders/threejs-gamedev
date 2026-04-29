@@ -1,89 +1,89 @@
 # Postprocessing
 
-## Objetivo
-Usar postprocessing en Three.js con cabeza, entendiendo que es una cadena de render adicional y no un adorno gratis.
+## Goal
+Use postprocessing in Three.js thoughtfully, understanding that it is an additional render chain and not a free decoration.
 
-## Regla principal
-El postprocessing debe justificar su coste.
+## Main rule
+Postprocessing must justify its cost.
 
-Si el juego ya funciona visualmente sin él, mejor. Añadirlo después es más sano que construir toda la identidad visual sobre una cadena cara y frágil desde el minuto uno.
+If the game already works visually without it, better. Adding it later is healthier than building the whole visual identity on an expensive, fragile chain from minute one.
 
-## Base técnica
-Three.js monta postprocessing con `EffectComposer` y una cadena de passes.
+## Technical base
+Three.js sets up postprocessing with `EffectComposer` and a chain of passes.
 
-Patrón base:
+Base pattern:
 - `EffectComposer`
 - `RenderPass`
-- passes concretos como bloom u otros
-- `OutputPass` al final
+- specific passes such as bloom or others
+- `OutputPass` at the end
 
-## Qué implica realmente
-El manual deja una idea importante: el composer trabaja con render targets intermedios y va encadenando passes. Eso significa:
-- más memoria
-- más trabajo por frame
-- más sitios donde algo puede salir mal
+## What it really implies
+The manual leaves an important idea: the composer works with intermediate render targets and chains passes together. That means:
+- more memory
+- more work per frame
+- more places where something can go wrong
 
-Esto también significa que el coste del postprocessing debería entrar en los quality tiers, no quedarse como una decisión fija y ciega.
+This also means postprocessing cost should be part of quality tiers, not remain a fixed and blind decision.
 
-Para render targets personalizados fuera de la cadena de post, ver `render-targets.md`.
+For custom render targets outside the post chain, see `render-targets.md`.
 
-## Default recomendado
-- no activar postprocessing por defecto en prototipos de gameplay
-- introducirlo cuando el loop principal ya esté claro
-- mantenerlo modular y fácil de apagar
-- tratarlo como preset de calidad si apunta a móvil
+## Recommended default
+- do not enable postprocessing by default in gameplay prototypes
+- introduce it once the main loop is clear
+- keep it modular and easy to turn off
+- treat it as a quality preset if targeting mobile
 
 ## Resize
-Si hay composer, no basta con redimensionar solo el renderer.
+If there is a composer, resizing only the renderer is not enough.
 
-Regla obligatoria:
-- actualizar cámara
+Mandatory rule:
+- update camera
 - `renderer.setSize(...)`
 - `composer.setSize(...)`
 
 ## Delta time
-`composer.render(deltaTime)` puede necesitar el delta si algunos passes son animados.
+`composer.render(deltaTime)` may need the delta if some passes are animated.
 
-No asumir que cambiar de `renderer.render()` a `composer.render()` es un reemplazo tonto sin consecuencias.
+Do not assume changing from `renderer.render()` to `composer.render()` is a dumb replacement with no consequences.
 
-## Bloom y similares
-Examples y manual dejan una conclusión práctica:
-- bloom puede quedar bonito
-- bloom también puede empastar la imagen y costar bastante
-- no debería convertirse en maquillaje para una dirección visual floja
+## Bloom and similar effects
+Examples and the manual leave a practical conclusion:
+- bloom can look beautiful
+- bloom can also muddy the image and cost a lot
+- it should not become makeup for weak visual direction
 
-## Orden y criterio
-Preguntas útiles antes de meter un pass:
-- ¿mejora de verdad la legibilidad o el tono?
-- ¿cuánto cuesta?
-- ¿se puede apagar por preset?
-- ¿rompe claridad en móvil o pantallas pequeñas?
+## Order and judgment
+Useful questions before adding a pass:
+- does it truly improve readability or tone?
+- how much does it cost?
+- can it be disabled by preset?
+- does it hurt clarity on mobile or small screens?
 
-Y además:
-- ¿introduce tirones al activarse o al redimensionarse?
-- ¿necesita warmup o preparación antes de mostrarse en momento crítico?
+And also:
+- does it introduce hitches when activated or resized?
+- does it need warmup or preparation before appearing at a critical moment?
 
 ## Shader passes
-Si se necesita algo muy concreto, `ShaderPass` permite construir efectos propios.
+If something very specific is needed, `ShaderPass` allows custom effects.
 
-Regla sana:
-- empezar por efectos existentes y pequeños
-- leer el código del pass antes de adoptarlo a ciegas
-- mantener los uniforms importantes bien localizados y documentados
+Healthy rule:
+- start with existing, small effects
+- read the pass code before adopting it blindly
+- keep important uniforms well localized and documented
 
-## Anti-patrones
-- meter bloom porque sí
-- encadenar muchos passes desde el día 1
-- olvidar `composer.setSize()` en resize
-- no tener forma de desactivar efectos
-- usar postprocessing para tapar problemas de materiales, iluminación o dirección artística
+## Anti-patterns
+- adding bloom just because
+- chaining many passes from day 1
+- forgetting `composer.setSize()` on resize
+- having no way to disable effects
+- using postprocessing to hide material, lighting, or art-direction problems
 
-## Recomendación fuerte
-En juegos web, el mejor postprocessing suele ser el mínimo que da identidad sin destruir rendimiento ni claridad.
+## Strong recommendation
+In web games, the best postprocessing is usually the minimum that gives identity without destroying performance or clarity.
 
-Para presets coordinados de calidad que afecten passes, targets y resolución, ver `quality-tiers.md`.
+For coordinated quality presets affecting passes, targets, and resolution, see `quality-tiers.md`.
 
-## Pendiente de ampliar
-- passes recomendables vs peligrosos
-- resolución reducida para ciertos efectos
-- integración con móvil y profiling
+## To expand
+- recommended vs dangerous passes
+- reduced resolution for certain effects
+- mobile and profiling integration

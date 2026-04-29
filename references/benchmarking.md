@@ -1,99 +1,99 @@
 # Benchmarking
 
-## Objetivo
-Convertir mediciones de rendimiento en runs reproducibles, diffs honestos y veredictos accionables. Unifica reporting, diffing y thresholds.
+## Goal
+Turn performance measurements into reproducible runs, honest diffs, and actionable verdicts. Unify reporting, diffing, and thresholds.
 
-## Regla principal
-**Un bench sin rastro comparable y sin thresholds del proyecto se olvida y miente.**
-La cadena útil es: *run reproducible → reporte estructurado → diff validado → veredicto bajo thresholds del proyecto*.
+## Main rule
+**A benchmark without a comparable trail and project thresholds gets forgotten and lies.**
+The useful chain is: *reproducible run → structured report → validated diff → verdict under project thresholds*.
 
-## Qué intenta resolver
-- comparativas antes/después honestas
-- evitar “creo que iba mejor”
-- detectar regresiones de media, percentiles y picos por separado
-- tener un lenguaje común para revisar PRs o cambios grandes
-- traducir deltas numéricos a decisiones (aceptar, vigilar, bloquear)
+## What it tries to solve
+- honest before/after comparisons
+- avoid “I think it was faster”
+- detect regressions in averages, percentiles, and spikes separately
+- create a shared language for reviewing PRs or large changes
+- translate numeric deltas into decisions (accept, watch, block)
 
-## Qué no necesita desde el día 1
-- CI perfecta
-- granja de dispositivos
-- tooling industrial
-- snapshots visuales automáticos
+## What it does not need on day 1
+- perfect CI
+- device farm
+- industrial tooling
+- automatic visual snapshots
 
-Basta con semiautomatización consistente.
+Consistent semi-automation is enough.
 
 ---
 
-## 1. Runs reproducibles
+## 1. Reproducible runs
 
-### Nivel mínimo viable
-Un bench debe poder:
-1. arrancar una escena concreta
-2. fijar una configuración reproducible
-3. correr warmup + ventana de medición
-4. capturar métricas clave
-5. guardar un resultado legible
+### Minimum viable level
+A benchmark must be able to:
+1. start a specific scene
+2. lock a reproducible configuration
+3. run warmup + measurement window
+4. capture key metrics
+5. save a readable result
 
-### Warmup y ventana de medición
-- fase de warmup para absorber compilación, carga y cachés
-- fase de medición estable
-- reporte final separado
-- medir el arranque aparte si importa
+### Warmup and measurement window
+- warmup phase to absorb compilation, loading, and caches
+- stable measurement phase
+- separate final report
+- measure startup separately if it matters
 
-### Reproducibilidad
-Cuanto más controlado, más valor:
-- seed fija si hay aleatoriedad
-- misma ruta de cámara o path pregrabado
-- misma secuencia de inputs
-- misma duración de run
-- misma configuración visual
+### Reproducibility
+The more controlled it is, the more valuable it is:
+- fixed seed if there is randomness
+- same camera route or prerecorded path
+- same input sequence
+- same run duration
+- same visual configuration
 
-Sin esto, comparar runs es barro.
+Without this, comparing runs is mud.
 
-### Rutas de cámara y scripts de acción
-Patrones útiles sin sofisticación:
-- orbitar durante 10s
-- activar tier alto en t=5s
-- spawn de 100 props en t=8s
-- cambiar skin en t=12s
+### Camera paths and action scripts
+Useful patterns without sophistication:
+- orbit for 10s
+- enable high tier at t=5s
+- spawn 100 props at t=8s
+- change skin at t=12s
 
-Eso da contexto real a los picos.
+That gives the spikes real context.
 
-### Qué capturar
-Contexto del run:
-- nombre del bench, fecha, commit
-- dispositivo/navegador si se conoce
-- resolución y pixel ratio efectivos
-- tier activo
-- toggles relevantes (sombras, post, densidad, RTT, etc.)
+### What to capture
+Run context:
+- benchmark name, date, commit
+- device/browser if known
+- effective resolution and pixel ratio
+- active tier
+- relevant toggles (shadows, post, density, RTT, etc.)
 
-Métricas mínimas:
-- frame time medio
-- p95 y p99
-- peor pico relevante
+Minimum metrics:
+- average frame time
+- p95 and p99
+- worst relevant spike
 - draw calls
-- triángulos
+- triangles
 - geometries/textures/programs
 
-Opcionales según bench:
-- tiempo de build
-- tiempo de carga
-- tiempo hasta “asset ready to show smoothly”
-- tiempo de spawn/despawn
-- latencia del scaler adaptativo
+Optional depending on the benchmark:
+- build time
+- load time
+- time until “asset ready to show smoothly”
+- spawn/despawn time
+- adaptive scaler latency
 
-### Separar throughput de stutter
-Dos lecturas distintas:
-- régimen estable: media, percentiles, draw calls y estado medio
-- eventos críticos: pico al activar asset, cambiar tier, crear RTT, entrar a chunk
+### Separate throughput from stutter
+Two different readings:
+- steady state: average, percentiles, draw calls, and average state
+- critical events: spike when enabling an asset, changing tier, creating an RTT, entering a chunk
 
-No aplastar todo en un número único.
+Do not flatten everything into one number.
 
-### Formato de salida
-Resumen legible (markdown o texto):
-- bench, config, métricas clave, observaciones
+### Output format
+Readable summary (markdown or text):
+- benchmark, config, key metrics, observations
 
-Datos estructurados (JSON) con campos estables para diffs y gráficos posteriores:
+Structured data (JSON) with stable fields for later diffs and charts:
 
 ```json
 {
@@ -122,53 +122,53 @@ Datos estructurados (JSON) con campos estables para diffs y gráficos posteriore
 
 ---
 
-## 2. Diffs entre runs
+## 2. Diffs between runs
 
-### Regla previa
-**No comparar runs si no son realmente comparables.**
-Antes de mirar métricas, validar que contexto y configuración sean equivalentes o que la diferencia esté declarada.
+### Prior rule
+**Do not compare runs if they are not truly comparable.**
+Before looking at metrics, validate that context and configuration are equivalent, or that the difference is declared.
 
-### Contexto antes que números
-Validar:
-- mismo bench y variante
-- mismo tier
-- misma resolución efectiva y `renderScale`
-- mismos toggles relevantes
-- misma duración de warmup/measure
-- misma seed o ruta de cámara si aplica
+### Context before numbers
+Validate:
+- same benchmark and variant
+- same tier
+- same effective resolution and `renderScale`
+- same relevant toggles
+- same warmup/measurement duration
+- same seed or camera path if applicable
 
-Si no coincide, marcar `no comparable` o `comparable con reservas` y no vender el resultado como definitivo.
+If they do not match, mark as `not comparable` or `comparable with reservations`, and do not sell the result as definitive.
 
-### Tipos de diff
-1. **Throughput estable**: frame time medio, p95/p99, draw calls, triángulos, geometries/textures/programs.
-2. **Picos/eventos**: peor spike, pico al activar asset, cambiar tier, crear composer o RTT, spawn/despawn.
-3. **Comportamiento adaptativo**: tiempo hasta primer downgrade, número de cambios, thrash.
+### Diff types
+1. **Stable throughput**: average frame time, p95/p99, draw calls, triangles, geometries/textures/programs.
+2. **Spikes/events**: worst spike, spike when enabling an asset, changing tier, creating composer or RTT, spawn/despawn.
+3. **Adaptive behavior**: time to first downgrade, number of changes, thrash.
 
-### Orden sano de lectura
-1. ¿hay diferencia de contexto?
-2. ¿cambió p95/p99?
-3. ¿cambió el peor pico relevante?
-4. ¿cambió la media?
-5. ¿cambió memoria o draw calls?
+### Healthy reading order
+1. Is there any context difference?
+2. Did p95/p99 change?
+3. Did the worst relevant spike change?
+4. Did the average change?
+5. Did memory or draw calls change?
 
-Evitar obsesionarse con media mientras los tirones empeoran.
+Avoid obsessing over the average while stutter gets worse.
 
-### Clasificación
-- **mejora clara**
-- **regresión clara**
-- **mixto / tradeoff**
-- **inconcluso**
-- **no comparable**
+### Classification
+- **clear improvement**
+- **clear regression**
+- **mixed / tradeoff**
+- **inconclusive**
+- **not comparable**
 
-### Casos de tradeoff típicos
-- baja la media pero sube el peor pico
-- mejora p95 pero aumenta memoria viva
-- bajan draw calls pero empeora tiempo de build
-- mejora tier alto pero rompe tier bajo
+### Typical tradeoff cases
+- the average drops but the worst spike rises
+- p95 improves but live memory increases
+- draw calls drop but build time gets worse
+- high tier improves but low tier breaks
 
-Decirlo así. No forzar éxito/fracaso binario.
+Say it that way. Do not force binary success/failure.
 
-### Shape de diff
+### Diff shape
 
 ```json
 {
@@ -185,48 +185,48 @@ Decirlo así. No forzar éxito/fracaso binario.
     "textures": 2
   },
   "highlights": [
-    "mejora clara en p95",
-    "empeora el peor pico al activar bloom",
-    "memoria de texturas sube ligeramente"
+    "clear p95 improvement",
+    "worst spike when enabling bloom gets worse",
+    "texture memory rises slightly"
   ]
 }
 ```
 
 ---
 
-## 3. Thresholds por proyecto
+## 3. Per-project thresholds
 
-### Regla
-**Los thresholds no son universales.**
-Salen del género, target de hardware, frame budget y lo que el proyecto considera aceptable.
+### Rule
+**Thresholds are not universal.**
+They come from the genre, hardware target, frame budget, and what the project considers acceptable.
 
-### Punto de partida
-Antes de fijar thresholds, dejar claro:
-- objetivo de frame rate: 60fps (~16.7ms), 30fps (~33.3ms) o mixto
-- hardware objetivo: desktop, móvil, gama baja
-- escenas críticas: gameplay principal, combate, carga
+### Starting point
+Before setting thresholds, make clear:
+- frame rate target: 60fps (~16.7ms), 30fps (~33.3ms), or mixed
+- target hardware: desktop, mobile, low-end
+- critical scenes: main gameplay, combat, loading
 
-### Tres capas de threshold
-- **ruido**: debajo de esto el cambio no se considera significativo
-- **advertencia**: merece atención y comentario
-- **bloqueo**: rompe presupuesto o política; no aceptar sin excepción justificada
+### Three threshold layers
+- **noise**: below this, the change is not considered significant
+- **warning**: deserves attention and a comment
+- **blocker**: breaks budget or policy; do not accept without a justified exception
 
-### Por categoría
-1. **Throughput estable**: la media tolera más; p95 suele importar más; si p95 se acerca al techo del budget, endurecer.
-2. **Picos y eventos**: thresholds más severos que para la media. Un pico nuevo de 20ms en gameplay crítico no es aceptable aunque la media apenas cambie.
-3. **Recursos y memoria**: mirar no solo delta absoluto, también si el proyecto ya iba justo en móvil o tiers bajos.
+### By category
+1. **Stable throughput**: the average can tolerate more; p95 usually matters more; if p95 is close to the budget ceiling, tighten it.
+2. **Spikes and events**: stricter thresholds than for the average. A new 20ms spike in critical gameplay is not acceptable even if the average barely moves.
+3. **Resources and memory**: look not only at the absolute delta, but also at whether the project was already tight on mobile or low tiers.
 
-### Por bench y por plataforma
-No usar los mismos thresholds para:
-- draw-call sintético vs gameplay slice
-- desktop alto vs móvil
+### By benchmark and platform
+Do not use the same thresholds for:
+- synthetic draw-call benchmark vs gameplay slice
+- high desktop vs mobile
 
-Estructura sana:
-- defaults globales del proyecto
-- overrides por bench o familia
-- overrides por plataforma o tier
+Healthy structure:
+- global project defaults
+- overrides by benchmark or family
+- overrides by platform or tier
 
-### Ejemplo conceptual
+### Conceptual example
 
 ```json
 {
@@ -244,75 +244,75 @@ Estructura sana:
 }
 ```
 
-No son números universales. Solo ilustran la forma.
+These are not universal numbers. They only illustrate the shape.
 
-### Veredicto final
-Combinar diff + thresholds:
-- **ok / ruido**
-- **vigilar**
-- **regresión seria**
-- **bloqueante**
-- **tradeoff aceptable**
+### Final verdict
+Combine diff + thresholds:
+- **ok / noise**
+- **watch**
+- **serious regression**
+- **blocking**
+- **acceptable tradeoff**
 
 ---
 
-## Infraestructura mínima del proyecto
+## Minimum project infrastructure
 
-Capa pequeña y suficiente:
-- `benchRunner`: escenas de bench accesibles (query param, debug menu o ruta dedicada), config reproducible desde fuera (seed, tier, variant, duración, densidad, `renderScale`), recolector de métricas (frame times, percentiles, `renderer.info`, eventos), salida en texto + JSON, marcas de evento relevantes.
-- `benchDiff`: valida comparabilidad, calcula deltas, agrupa por categorías, marca mismatches, emite clasificación.
-- `benchThresholds`: defaults globales + overrides por bench y por plataforma, aplicados sobre el diff.
+Small, sufficient layer:
+- `benchRunner`: accessible benchmark scenes (query param, debug menu, or dedicated route), externally reproducible config (seed, tier, variant, duration, density, `renderScale`), metrics collector (frame times, percentiles, `renderer.info`, events), text + JSON output, relevant event markers.
+- `benchDiff`: validates comparability, computes deltas, groups by categories, marks mismatches, emits classification.
+- `benchThresholds`: global defaults + overrides by benchmark and platform, applied to the diff.
 
-Cercano al código del proyecto, no notas sueltas.
+Keep it close to the project code, not as loose notes.
 
-## Integraciones
+## Integrations
 
-### Con profiling y budgets
-- ¿qué bench rompe el presupuesto?
-- ¿qué tier lo arregla?
-- ¿qué cambio mejora media pero empeora picos?
+### With profiling and budgets
+- which benchmark breaks the budget?
+- which tier fixes it?
+- which change improves the average but worsens spikes?
 
-### Con adaptive quality
-Registrar además:
-- tiempo hasta primer downgrade
-- número de downgrades/upgrades
+### With adaptive quality
+Also record:
+- time to first downgrade
+- number of downgrades/upgrades
 - thrash
-- si mejoró percentiles o solo media
+- whether percentiles improved or only the average
 
-### Con GPU vs CPU heuristics
-Si el bench cambia una palanca visual o lógica limpia, el reporte ayuda a clasificar el cuello: visual/GPU-ish, lógico/CPU-ish, mixed, stutter/load.
+### With GPU vs CPU heuristics
+If the benchmark changes a clean visual or logic lever, the report helps classify the bottleneck: visual/GPU-ish, logic/CPU-ish, mixed, stutter/load.
 
-### Con revisión humana
-El diff no sustituye mirar contexto:
-- ¿el cambio visual merece el coste?
-- ¿el empeoramiento aparece solo en una escena rara o en la principal?
-- ¿el beneficio es desktop y castiga móvil?
+### With human review
+The diff does not replace looking at context:
+- is the visual change worth the cost?
+- does the slowdown appear only in a rare scene or in the main one?
+- is the benefit desktop-only while punishing mobile?
 
-## Inspiración útil de examples
+## Useful inspiration from examples
 `webgl_instancing_performance`:
-- variants comparables
-- `console.time()` para medir build
-- misma escena, distinta estrategia
+- comparable variants
+- `console.time()` to measure build
+- same scene, different strategy
 
-## Anti-patrones
-- medir a ojo y no guardar nada
-- comparar runs con configuración distinta sin decirlo
-- mezclar warmup, loading y steady-state en un único número
-- capturar solo FPS medio
-- no registrar tier o `renderScale` activos
-- cambiar varias variables fuertes a la vez
-- celebrar mejoras de media ignorando picos peores
-- aplicar los mismos thresholds a todos los benches
-- bloquear cambios por ruido minúsculo
-- thresholds inventados sin ligarlos al frame budget
+## Anti-patterns
+- eyeballing performance and saving nothing
+- comparing runs with different configurations without saying so
+- mixing warmup, loading, and steady-state into one number
+- capturing only average FPS
+- not recording the active tier or `renderScale`
+- changing several strong variables at once
+- celebrating average improvements while ignoring worse spikes
+- applying the same thresholds to every benchmark
+- blocking changes because of tiny noise
+- invented thresholds that are not tied to the frame budget
 
-## Recomendación fuerte
-Un bench serio en el proyecto emite siempre:
-- un resumen humano con veredicto
-- un JSON comparable
-- una clasificación bajo los thresholds del proyecto
+## Strong recommendation
+A serious project benchmark always emits:
+- a human summary with verdict
+- comparable JSON
+- a classification under the project thresholds
 
-## Referencias asociadas
+## Related references
 - `stress-scenes-benchmarks.md`
 - `profiling-budgets.md`
 - `gpu-vs-cpu-heuristics.md`

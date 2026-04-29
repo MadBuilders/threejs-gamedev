@@ -1,137 +1,137 @@
 # Build and Deploy
 
-## Objetivo
-Pasar de `pnpm dev` a algo jugable en un dominio público sin romper assets, sin inflar el bundle y sin que los usuarios arrastren cachés viejas.
+## Goal
+Move from `pnpm dev` to something playable on a public domain without breaking assets, inflating the bundle, or making users drag around stale caches.
 
-## Regla principal
-**El juego en producción no es el juego en desarrollo.**
-Compresión de assets, cache busting, target de navegadores y políticas de carga se decide antes del primer deploy, no después del primer bug.
+## Main rule
+**The production game is not the development game.**
+Asset compression, cache busting, browser targets, and loading policies are decided before the first deploy, not after the first bug.
 
-## Stack por defecto (ver `default-project-stack.md`)
-- Vite como bundler.
+## Default stack (see `default-project-stack.md`)
+- Vite as the bundler.
 - TypeScript.
-- `public/` para estáticos (modelos, texturas, audio).
-- `src/` para código.
+- `public/` for static files (models, textures, audio).
+- `src/` for code.
 
-Vite resuelve la mayoría de decisiones sanas por defecto. No cambiar sin motivo.
+Vite resolves most healthy decisions by default. Do not change without a reason.
 
-## Targets de navegador
-Definir explícitamente en `package.json` o config de Vite:
-- desktop moderno (últimas 2 versiones mayores de Chrome/Firefox/Safari/Edge).
-- móvil moderno según objetivo real del juego.
+## Browser targets
+Define explicitly in `package.json` or Vite config:
+- modern desktop (latest 2 major versions of Chrome/Firefox/Safari/Edge).
+- modern mobile according to the real target of the game.
 
-Evitar soportar navegadores que no tienen WebGL2 salvo requisito claro. Declarar el soporte en el README.
+Avoid supporting browsers without WebGL2 unless there is a clear requirement. Declare support in the README.
 
-## Bundle del código
-- sin dependencias gigantes innecesarias. Cada addon cuenta.
-- tree-shaking: importar desde submódulos (`three/examples/jsm/loaders/GLTFLoader.js`), no barrels enormes.
-- code splitting por rutas/pantallas si hay menú grande: el gameplay no debería tirar del bundle del editor de mapas.
-- dynamic imports para sistemas opcionales (debug panel, benchmarks, level editor).
+## Code bundle
+- no unnecessary giant dependencies. Every addon counts.
+- tree-shaking: import from submodules (`three/examples/jsm/loaders/GLTFLoader.js`), not huge barrels.
+- code splitting by routes/screens if there is a large menu: gameplay should not pull in the map editor bundle.
+- dynamic imports for optional systems (debug panel, benchmarks, level editor).
 
 ## Assets: pipeline
-- modelos en **glTF / glb** con **Draco** o **Meshopt** (ver `gltf-pipeline.md`).
-- para **inspección y optimización reproducible** del binario: CLI **gltf-transform** (`@gltf-transform/cli`, ver sección homónima en `gltf-pipeline.md`).
-- texturas en **KTX2** con **Basis Universal** para juegos con mucha textura. Para proyectos pequeños, WebP/AVIF es aceptable.
-- audio en **ogg/webm-opus** (ver `audio-systems.md`).
-- atlas de sprites/íconos para HUD.
+- models in **glTF / GLB** with **Draco** or **Meshopt** (see `gltf-pipeline.md`).
+- for **reproducible inspection and optimization** of binaries: CLI **gltf-transform** (`@gltf-transform/cli`, see the section with the same name in `gltf-pipeline.md`).
+- textures in **KTX2** with **Basis Universal** for texture-heavy games. For small projects, WebP/AVIF is acceptable.
+- audio in **ogg/webm-opus** (see `audio-systems.md`).
+- sprite/icon atlases for the HUD.
 
-Tener un paso de build de assets separado (script), no improvisarlo a mano cada vez.
+Have a separate asset build step (script), not manual improvisation every time.
 
-## Tamaño y descarga
-Decidir estrategia antes del deploy:
-- **todo precargado**: juegos pequeños. Splash con progreso, luego a gameplay.
-- **streaming por nivel/zona**: más complejo, necesita loader central (ver `assets.md` y `world-generation.md`).
-- **lazy de sistemas opcionales**: debug, editores, escenas de stress.
+## Size and download
+Decide strategy before deploy:
+- **everything preloaded**: small games. Splash with progress, then gameplay.
+- **streaming by level/zone**: more complex, needs a central loader (see `assets.md` and `world-generation.md`).
+- **lazy loading optional systems**: debug, editors, stress scenes.
 
-Servir con `Content-Encoding: br` (Brotli) o `gzip`. Verificarlo en prod, no asumirlo.
+Serve with `Content-Encoding: br` (Brotli) or `gzip`. Verify it in prod; do not assume it.
 
 ## Cache busting
-- el build de Vite añade hashes al nombre de assets bundled.
-- assets en `public/` **no** llevan hash por defecto: responsabilidad tuya.
-  - o añadirles hash en el pipeline de build de assets.
-  - o versionar el directorio (`/assets/v3/...`) cuando cambie.
-- `index.html` debe servirse con `no-cache` o `max-age=0` para que el usuario no quede atrapado en una versión vieja.
-- el resto (JS, CSS, assets con hash) puede ir con `immutable, max-age=31536000`.
+- the Vite build adds hashes to bundled asset names.
+- assets in `public/` **do not** get hashes by default: that is your responsibility.
+  - either add hashes in the asset build pipeline.
+  - or version the directory (`/assets/v3/...`) when it changes.
+- `index.html` should be served with `no-cache` or `max-age=0` so the user is not trapped on an old version.
+- everything else (JS, CSS, hashed assets) can use `immutable, max-age=31536000`.
 
-## Service Worker y offline
-- útil para PWA o juegos offline.
-- peligroso si se implementa mal: usuarios pueden quedar cacheados en una versión rota.
-- si se usa, planificar invalidación explícita al cambiar versión.
-- por defecto, no añadir SW hasta que haya necesidad clara.
+## Service Worker and offline
+- useful for PWA or offline games.
+- dangerous if implemented poorly: users can get cached on a broken version.
+- if used, plan explicit invalidation when the version changes.
+- by default, do not add a SW until there is a clear need.
 
-## HTTPS y embeds
-- `AudioContext`, gamepad, fullscreen y pointer lock requieren contexto seguro.
-- desarrollar y publicar sobre HTTPS.
-- si el juego va embebido en iframe externo, probar pointer lock, audio y fullscreen desde el principio; romper bien temprano es mejor que romper en el lanzamiento.
+## HTTPS and embeds
+- `AudioContext`, gamepad, fullscreen, and pointer lock require a secure context.
+- develop and publish over HTTPS.
+- if the game will be embedded in an external iframe, test pointer lock, audio, and fullscreen from the start; breaking very early is better than breaking at launch.
 
 ## Hosting
-Sana mezcla para juegos web:
-- estáticos + CDN (Netlify, Vercel, Cloudflare Pages, GitHub Pages, S3+CloudFront).
-- si hay backend (multiplayer, leaderboards), separar front y back; no mezclar en un monolito por comodidad.
-- dominio propio desde el principio si el proyecto es “serio”, para no migrar URLs después.
+Healthy mix for web games:
+- static files + CDN (Netlify, Vercel, Cloudflare Pages, GitHub Pages, S3+CloudFront).
+- if there is a backend (multiplayer, leaderboards), separate front and back; do not mix them into a monolith for convenience.
+- use a custom domain from the start if the project is “serious”, so URLs do not need to migrate later.
 
-## Entornos
-- `dev`: HMR, source maps completos, debug panel, benches accesibles.
-- `staging`: build de producción pero con debug behind flag; targets reales de navegador.
-- `prod`: debug detrás de flag, telemetría mínima si aplica, no assets placeholder.
+## Environments
+- `dev`: HMR, full source maps, debug panel, benches accessible.
+- `staging`: production build but debug behind a flag; real browser targets.
+- `prod`: debug behind a flag, minimal telemetry if applicable, no placeholder assets.
 
-Variables de entorno (`import.meta.env.VITE_*`) para flags. No dejar toggles hardcoded.
+Environment variables (`import.meta.env.VITE_*`) for flags. Do not leave hardcoded toggles.
 
 ## Source maps
-- sí generarlos para debuggear crashes en producción.
-- no publicarlos en el mismo endpoint del bundle si prefieres ocultar el código: servirlos desde un path privado o cargarlos solo cuando se necesite.
-- minimum: subirlos al servicio de error reporting (si hay).
+- yes, generate them to debug crashes in production.
+- do not publish them on the same endpoint as the bundle if you prefer to hide the code: serve them from a private path or load them only when needed.
+- minimum: upload them to the error reporting service (if any).
 
-## Crashes y errores en producción
-- `window.onerror` y `onunhandledrejection` enganchados a un sink mínimo (puede ser consola + localStorage de últimos errores, o un servicio).
-- incluir en reportes: build version, commit, WebGL capabilities, user agent.
-- no bloquear el juego por errores no fatales; mostrar aviso discreto.
+## Crashes and production errors
+- `window.onerror` and `onunhandledrejection` hooked to a minimal sink (could be console + localStorage of recent errors, or a service).
+- include in reports: build version, commit, WebGL capabilities, user agent.
+- do not block the game for non-fatal errors; show a discreet warning.
 
 ## WebGL capability check
-- detectar soporte de WebGL2 al arrancar.
-- mensaje claro si el navegador/GPU no lo permite; no dejar pantalla negra.
-- detectar `OES_texture_float_linear`, extensiones concretas, y degradar features si faltan.
+- detect WebGL2 support at startup.
+- show a clear message if the browser/GPU does not allow it; do not leave a black screen.
+- detect `OES_texture_float_linear`, specific extensions, and degrade features if they are missing.
 
-## Performance en primera carga
-- HTML crítico mínimo, canvas y splash temprano.
-- diferir scripts no bloqueantes.
-- precargar assets críticos del primer nivel al mismo tiempo que se inicializa el renderer.
-- LCP/TTI razonables: un juego que tarda 20s sin feedback pierde usuarios antes de jugar.
+## First-load performance
+- minimal critical HTML, canvas and splash early.
+- defer non-blocking scripts.
+- preload critical first-level assets while the renderer initializes.
+- reasonable LCP/TTI: a game that takes 20 s without feedback loses users before they play.
 
-## Versionado
-- `version` en `package.json`, expuesto en la UI (pantalla de título, debug).
-- etiquetar cada release con tag de git.
-- payload de save también guarda la versión para detectar incompatibilidades (ver `persistence-save.md`).
+## Versioning
+- `version` in `package.json`, exposed in the UI (title screen, debug).
+- tag every release with a git tag.
+- save payload also stores the version to detect incompatibilities (see `persistence-save.md`).
 
-## CI/CD mínimo
-- linter + type-check en PRs.
-- build de producción en CI para detectar roturas antes del merge.
-- deploy automático a staging en merges a main.
-- deploy a producción manual, con tag.
+## Minimum CI/CD
+- linter + type-check on PRs.
+- production build in CI to catch breakage before merge.
+- automatic deploy to staging on merges to main.
+- manual production deploy, with tag.
 
-No hace falta pipeline industrial. Sí hace falta “no subir a prod a mano desde tu portátil”.
+You do not need an industrial pipeline. You do need “do not upload to prod by hand from your laptop”.
 
-## Anti-patrones
-- `localStorage`/`window` tocados directamente desde código que dependa del entorno (SSR no aplica aquí, pero probar build de prod sin desarrollo local sí).
-- assets en `public/` sin estrategia de cache busting.
-- `index.html` cacheado agresivamente.
-- meter un Service Worker sin plan de invalidación.
-- publicar con source maps en el mismo CDN público sin darse cuenta.
-- no comprobar capacidades WebGL y dejar pantalla negra.
-- confiar en que Brotli está activo sin verificarlo.
-- telemetría sin consentimiento o sin control claro.
+## Anti-patterns
+- `localStorage`/`window` touched directly from environment-dependent code (SSR does not apply here, but testing a prod build without local development does).
+- assets in `public/` without a cache-busting strategy.
+- aggressively cached `index.html`.
+- adding a Service Worker without an invalidation plan.
+- publishing source maps on the same public CDN without realizing it.
+- not checking WebGL capabilities and leaving a black screen.
+- trusting that Brotli is active without verifying it.
+- telemetry without consent or clear control.
 
-## Recomendación fuerte
-Antes del primer deploy público:
-- targets de navegador declarados.
-- pipeline de assets con compresión.
-- cache busting resuelto para `public/`.
-- `index.html` no cacheado; el resto con hash + `immutable`.
-- error reporting mínimo.
-- version visible en UI.
-- WebGL capability check con mensaje.
+## Strong recommendation
+Before the first public deploy:
+- declared browser targets.
+- asset pipeline with compression.
+- cache busting solved for `public/`.
+- uncached `index.html`; everything else hashed + `immutable`.
+- minimum error reporting.
+- version visible in UI.
+- WebGL capability check with a message.
 
-## Referencias asociadas
+## Related references
 - `default-project-stack.md`
 - `assets.md`
 - `gltf-pipeline.md`

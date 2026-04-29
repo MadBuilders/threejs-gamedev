@@ -1,108 +1,108 @@
 # Resource Lifecycle
 
-## Objetivo
-Evitar fugas, picos de memoria y degradación silenciosa en juegos Three.js gestionando el ciclo de vida real de geometrías, materiales, texturas, render targets y objetos auxiliares.
+## Goal
+Avoid leaks, memory spikes, and silent degradation in Three.js games by managing the real lifecycle of geometries, materials, textures, render targets, and auxiliary objects.
 
-## Regla principal
-Quitar algo de la escena **no** significa liberar sus recursos.
+## Main rule
+Removing something from the scene **does not** mean its resources are freed.
 
-El manual lo deja negro sobre blanco: si ya no necesitas una geometría, material, textura o render target, normalmente tienes que llamar a su `dispose()` de forma explícita.
+The manual states it plainly: if you no longer need a geometry, material, texture, or render target, you usually have to call its `dispose()` explicitly.
 
-## Qué hay que limpiar
+## What to clean up
 
-### Geometrías
+### Geometries
 - `BufferGeometry.dispose()`
 
-### Materiales
+### Materials
 - `Material.dispose()`
 
-### Texturas
+### Textures
 - `Texture.dispose()`
-- si hay `ImageBitmap`, cerrar también el bitmap cuando aplique
+- if there is an `ImageBitmap`, also close the bitmap when applicable
 
 ### Render targets
 - `WebGLRenderTarget.dispose()`
 
 ### Skeletons
-- `Skeleton.dispose()` si ya no se comparte con otros skinned meshes
+- `Skeleton.dispose()` if it is no longer shared with other skinned meshes
 
-### Addons y utilidades
-Muchos addons también tienen `dispose()`:
+### Addons and utilities
+Many addons also have `dispose()`:
 - controls
 - postprocessing passes/composer
-- utilidades con listeners o buffers internos
+- utilities with listeners or internal buffers
 
-## Regla de ownership
-Cada recurso debería tener dueño claro.
+## Ownership rule
+Every resource should have a clear owner.
 
-Ejemplos:
-- un chunk del mundo es dueño de su malla agregada y texturas temporales
-- una escena UI es dueña de sus render targets
-- un sistema de postprocessing es dueño de composer y passes
+Examples:
+- a world chunk owns its aggregated mesh and temporary textures
+- a UI scene owns its render targets
+- a postprocessing system owns its composer and passes
 
-Si nadie sabe quién limpia algo, probablemente se quede vivo más de la cuenta.
+If nobody knows who cleans something up, it will probably stay alive longer than it should.
 
-## Cuándo limpiar
-Buenos momentos típicos:
-- cambio de nivel
-- descarga de chunk
-- salida de una escena o modo de juego
-- reemplazo masivo de assets o estrategia de representación
+## When to clean up
+Typical good moments:
+- level change
+- chunk unload
+- leaving a scene or game mode
+- massive replacement of assets or representation strategy
 
-En pipelines con glTF cargado bajo demanda, añadir además:
-- cambio rápido entre modelos o skins
-- loads asíncronos que quedan obsoletos
-- viewers o selectores donde el usuario puede cambiar de asset antes de terminar la carga
+In pipelines with glTF loaded on demand, also add:
+- quick switching between models or skins
+- asynchronous loads that become obsolete
+- viewers or selectors where the user can change assets before loading finishes
 
 ## Shared resources
-No destruir a lo loco recursos compartidos.
+Do not destroy shared resources recklessly.
 
-Antes de hacer `dispose()` preguntarse:
-- ¿esta textura la usa otro material?
-- ¿este skeleton se comparte?
-- ¿este material lo usan más meshes?
+Before calling `dispose()`, ask:
+- does another material use this texture?
+- is this skeleton shared?
+- do more meshes use this material?
 
-Los examples de animación refuerzan esto bastante: clonar personajes con `SkeletonUtils.clone()` y compartir skeleton son dos estrategias distintas, así que el cleanup también cambia.
+The animation examples reinforce this strongly: cloning characters with `SkeletonUtils.clone()` and sharing a skeleton are two different strategies, so cleanup changes too.
 
 ## Renderer info
-Usar `renderer.info` para vigilar:
-- geometrías
-- texturas
-- programas
-- draw calls y stats del frame
+Use `renderer.info` to watch:
+- geometries
+- textures
+- programs
+- draw calls and frame stats
 
-No es verdad absoluta de todo el sistema, pero sí una alarma muy útil para detectar fugas o crecimiento raro.
+It is not the absolute truth for the entire system, but it is a very useful alarm for leaks or odd growth.
 
-## Reusar tras dispose
-El manual aclara algo útil:
-- en muchos casos Three.js puede recrear recursos si vuelves a usar el objeto tras `dispose()`
-- eso no rompe siempre el runtime, pero puede pegar un coste en el frame
+## Reusing after dispose
+The manual clarifies something useful:
+- in many cases Three.js can recreate resources if you use the object again after `dispose()`
+- that does not always break runtime, but it can add cost to the frame
 
-O sea, `dispose()` mal usado no siempre explota. A veces solo te fastidia el rendimiento.
+In other words, misused `dispose()` does not always explode. Sometimes it just hurts performance.
 
-## Patrón recomendado
-1. desacoplar datos lógicos de recursos GPU
-2. registrar qué crea cada subsistema
-3. tener una ruta de cleanup explícita
-4. limpiar por grupos coherentes, no con cien parches sueltos
+## Recommended pattern
+1. decouple logical data from GPU resources
+2. register what each subsystem creates
+3. have an explicit cleanup path
+4. clean up by coherent groups, not with a hundred loose patches
 
-## Anti-patrones
-- asumir que `scene.remove()` basta
-- no limpiar render targets o composer
-- no revisar `dispose()` en addons
-- destruir recursos compartidos sin ownership claro
-- no mirar `renderer.info` cuando sospechas fuga
+## Anti-patterns
+- assuming `scene.remove()` is enough
+- not cleaning render targets or composer
+- not checking `dispose()` in addons
+- destroying shared resources without clear ownership
+- not looking at `renderer.info` when you suspect a leak
 
-## Recomendación fuerte
-En juegos con chunks, escenas o modos:
-- cada unidad grande del sistema debe tener `create`, `attach`, `detach`, `dispose` o equivalente
-- lifecycle explícito gana siempre a magia implícita
+## Strong recommendation
+In games with chunks, scenes, or modes:
+- every large unit of the system should have `create`, `attach`, `detach`, `dispose`, or equivalent
+- explicit lifecycle always beats implicit magic
 
-Para ownership, resize y política de update de RTT personalizados, ver `render-targets.md`.
+For ownership, resize, and update policy of custom RTTs, see `render-targets.md`.
 
-## Pendiente de ampliar
-- checklist de cleanup por scene/chunk
+## To expand later
+- cleanup checklist by scene/chunk
 - pooling vs dispose
-- lifecycle de composers y passes
-- streaming de assets y descarte diferido
-- relación entre cleanup y stutter de frame
+- lifecycle of composers and passes
+- asset streaming and deferred discard
+- relationship between cleanup and frame stutter

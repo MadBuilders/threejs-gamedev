@@ -1,50 +1,50 @@
 # Multiplayer
 
-## Objetivo
-Usar Three.js como capa de presentación dentro de un juego multijugador, sin convertir el scene graph en la fuente de verdad del estado de red.
+## Goal
+Use Three.js as the presentation layer inside a multiplayer game, without turning the scene graph into the source of truth for network state.
 
-## Regla principal
-**Three.js no resuelve multiplayer.**
-Resuelve render, cámaras, materiales, geometría, animación y scene graph. La red, autoridad, reconciliación, snapshots y consistencia pertenecen a otra capa.
+## Main rule
+**Three.js does not solve multiplayer.**
+It solves rendering, cameras, materials, geometry, animation, and the scene graph. Networking, authority, reconciliation, snapshots, and consistency belong in another layer.
 
-## Default recomendado
-Para la mayoría de juegos con movimiento libre, acción o colisiones:
-- **cliente-servidor**
-- **servidor autoritativo** para estado importante
-- cliente con representación local fluida
-- interpolación para entidades remotas
-- predicción solo donde compense de verdad
+## Recommended default
+For most games with free movement, action, or collisions:
+- **client-server**
+- **authoritative server** for important state
+- client with smooth local representation
+- interpolation for remote entities
+- prediction only where it is truly worth it
 
-Para decidir cuándo pasar de este default a rollback, lockstep o hit validation más formal por género, ver `multiplayer-consistency-models.md`.
+To decide when to move from this default to rollback, lockstep, or more formal hit validation by genre, see `multiplayer-consistency-models.md`.
 
-Si el proyecto es pequeño o por turnos, se puede simplificar. Pero no empezar tratando cada `Object3D` como si fuera una entidad de red completa.
+If the project is small or turn-based, it can be simplified. But do not start by treating every `Object3D` as if it were a full network entity.
 
-## Separación obligatoria
-Separar como mínimo:
+## Mandatory separation
+Separate at minimum:
 1. **network state**
 2. **simulation/game state**
 3. **presentation state**
 4. **scene graph**
 
-Patrón sano:
-- la red trae mensajes o snapshots
-- el gameplay los traduce a estado del juego
-- los systems visuales actualizan `Object3D`, animación, partículas y cámara
+Healthy pattern:
+- the network brings messages or snapshots
+- gameplay translates them into game state
+- visual systems update `Object3D`, animation, particles, and camera
 
-Patrón tóxico:
-- recibir paquete
-- hacer `mesh.position.copy(...)` directamente por toda la app
-- usar el scene graph como base del gameplay
+Toxic pattern:
+- receive packet
+- call `mesh.position.copy(...)` directly all over the app
+- use the scene graph as the basis of gameplay
 
-## Scene graph no es authority
-No usar `Object3D.position`, `quaternion` o jerarquías como verdad principal del mundo compartido.
+## Scene graph is not authority
+Do not use `Object3D.position`, `quaternion`, or hierarchies as the main truth of the shared world.
 
-Mejor:
-- mantener entidades con ids estables
-- estado serializable separado
-- scene nodes como vista derivada
+Better:
+- keep entities with stable ids
+- separate serializable state
+- scene nodes as a derived view
 
-Ejemplo sano de entidad de red:
+Healthy example of a network entity:
 - `id`
 - `type`
 - `position`
@@ -52,303 +52,303 @@ Ejemplo sano de entidad de red:
 - `velocity`
 - `animationState`
 - `health`
-- flags de gameplay relevantes
+- relevant gameplay flags
 
-No enviar:
-- referencias a meshes
-- materiales
-- nodos arbitrarios del scene graph
-- objetos gigantes sin esquema claro
+Do not send:
+- references to meshes
+- materials
+- arbitrary scene graph nodes
+- giant objects without a clear schema
 
-## Autoridad
-Elegir pronto qué decide el resultado real.
+## Authority
+Choose early what decides the real outcome.
 
-### Servidor autoritativo
-Útil para:
+### Authoritative server
+Useful for:
 - shooters
-- acción en tiempo real
-- física compartida
-- juego competitivo
+- real-time action
+- shared physics
+- competitive games
 
-Ventajas:
-- menos trampas fáciles
-- colisiones y daño centralizados
-- reglas consistentes
+Advantages:
+- fewer easy cheats
+- centralized collisions and damage
+- consistent rules
 
-Coste:
-- más complejidad
-- reconciliación
-- latencia visible si no se suaviza bien
+Cost:
+- more complexity
+- reconciliation
+- visible latency if it is not smoothed well
 
-Regla práctica importante:
-- las acciones de score / progreso / entrega deben validarse contra
-  **estado que el servidor ya conoce**, no contra payloads “de confianza”
-  enviados por el cliente en el momento del claim
+Important practical rule:
+- score / progress / delivery actions should be validated against
+  **state the server already knows**, not against “trusted” payloads
+  sent by the client at claim time
 
-Ejemplo clásico:
-- bien: el cliente manda “quiero entregar ahora” y el servidor comprueba la
-  distancia al objetivo usando su última `position` conocida para ese jugador
-- mal: el cliente manda `{ x, z }` y el servidor valida contra esas coordenadas
-  recién recibidas, porque eso abre la puerta al exploit trivial de “marco el
-  goal sin haberme movido”
+Classic example:
+- good: the client sends “I want to deliver now” and the server checks the
+  distance to the target using its latest known `position` for that player
+- bad: the client sends `{ x, z }` and the server validates against those
+  freshly received coordinates, because that opens the trivial exploit of
+  “I mark the goal without having moved”
 
-### Cliente autoritativo o peer-ish
-Solo lo recomendaría en:
-- prototipos
-- cooperativo casual
-- juegos lentos o de baja exigencia
-- herramientas internas
+### Client-authoritative or peer-ish
+I would only recommend it for:
+- prototypes
+- casual co-op
+- slow or low-stakes games
+- internal tools
 
-Si el juego importa de verdad, servidor autoritativo suele ser la apuesta sensata.
+If the game truly matters, an authoritative server is usually the sensible bet.
 
-## Ticks, frames y snapshots
-No mezclar sin pensar:
-- **render frames** del navegador
+## Ticks, frames, and snapshots
+Do not mix these thoughtlessly:
+- browser **render frames**
 - **simulation ticks**
 - **network updates**
 
-Three.js renderiza por frame.
-La red normalmente llega a otro ritmo.
-La simulación puede ir fija o semi-fija.
+Three.js renders per frame.
+The network usually arrives at another rate.
+The simulation may run fixed or semi-fixed.
 
-Default razonable:
-- render desacoplado
-- simulación con tick definido
-- entidades remotas con buffer corto de snapshots e interpolación
+Reasonable default:
+- decoupled rendering
+- simulation with a defined tick
+- remote entities with a short snapshot buffer and interpolation
 
-## Interpolación
-Para entidades remotas:
-- guardar snapshots recientes
-- renderizar ligeramente en el pasado
-- interpolar entre dos snapshots válidos
+## Interpolation
+For remote entities:
+- store recent snapshots
+- render slightly in the past
+- interpolate between two valid snapshots
 
-Eso suele verse mucho mejor que aplicar cada paquete en cuanto llega.
+That usually looks much better than applying every packet as soon as it arrives.
 
-Patrón más concreto:
-- buffer corto de snapshots por entidad
-- timestamp de red o tick autoritativo
-- presentation time retrasado un poco respecto al “ahora”
+More concrete pattern:
+- short snapshot buffer per entity
+- network timestamp or authoritative tick
+- presentation time delayed slightly relative to “now”
 
-Así el cliente puede interpolar de forma estable en vez de pelearse con jitter de llegada.
+This lets the client interpolate stably instead of fighting arrival jitter.
 
 ## Snapshots
-Pensar los snapshots como estado compacto y serializable del mundo relevante para ese cliente.
+Think of snapshots as compact, serializable state of the world relevant to that client.
 
-Según el género, puede convenir:
-- snapshot global pequeño y simple
-- snapshot por interest area
-- entidades parciales con campos opcionales
+Depending on the genre, it may be useful to use:
+- small and simple global snapshot
+- snapshot per interest area
+- partial entities with optional fields
 
-Regla:
-- no mandar estado visual interno de Three.js
-- mandar estado jugable y derivar la presentación localmente
+Rule:
+- do not send internal Three.js visual state
+- send playable state and derive presentation locally
 
-Esto también aplica a eventos de gameplay:
-- si el cliente necesita mandar un claim, que sea una **intención** o una
-  petición pequeña
-- no usar el claim como vehículo para colar authority nueva que el servidor no
-  ha observado previamente
+This also applies to gameplay events:
+- if the client needs to send a claim, it should be an **intent** or a
+  small request
+- do not use the claim as a vehicle to smuggle in new authority the server has
+  not previously observed
 
-Buenos campos típicos:
+Typical good fields:
 - `tick`
 - `entityId`
 - `position`
 - `rotation`
-- `velocity` si ayuda a interpolar o extrapolar
-- estados discretos relevantes
+- `velocity` if it helps interpolate or extrapolate
+- relevant discrete states
 
-## Predicción y reconciliación
-Solo meter esto cuando la sensación lo necesite.
+## Prediction and reconciliation
+Only add this when feel requires it.
 
-Útil para:
-- movimiento del jugador local
-- inputs muy frecuentes
-- acciones donde la latencia se nota demasiado
+Useful for:
+- local player movement
+- very frequent inputs
+- actions where latency is too noticeable
 
-Regla:
-- predecir localmente solo lo imprescindible
-- reconciliar con estado autoritativo sin destrozar la presentación
-- no extender prediction a todo el juego porque sí
+Rule:
+- predict locally only what is essential
+- reconcile with authoritative state without wrecking presentation
+- do not extend prediction to the whole game just because
 
-Patrón sano para jugador local:
-- guardar inputs con tick local
-- simular localmente movimiento o acciones de respuesta inmediata
-- cuando llega corrección autoritativa, re-simular desde el último estado confirmado si hace falta
-- suavizar la capa visual para que la reconciliación no pegue latigazo feo
+Healthy pattern for a local player:
+- store inputs with local tick
+- simulate movement or immediately responsive actions locally
+- when an authoritative correction arrives, re-simulate from the last confirmed state if needed
+- smooth the visual layer so reconciliation does not snap unpleasantly
 
-Patrón tóxico:
-- corregir a base de teleports visibles todo el tiempo
-- predecir también entidades remotas sin necesidad clara
-- mezclar posición visual corregida con authority lógica sin capas
+Toxic pattern:
+- correcting with visible teleports all the time
+- predicting remote entities too without a clear need
+- mixing corrected visual position with logical authority without layers
 
-## Entidades remotas
-Cada entidad remota debería tener:
-- estado de red serializable
-- representación visual local
-- lifecycle claro de spawn, update y despawn
+## Remote entities
+Each remote entity should have:
+- serializable network state
+- local visual representation
+- clear spawn, update, and despawn lifecycle
 
-Patrón útil:
+Useful pattern:
 - `networkEntityMap: id -> entity`
-- sistema de spawn visual por tipo
-- sistema de update visual desacoplado del transporte de red
+- visual spawn system by type
+- visual update system decoupled from network transport
 
-En juegos algo más serios, añadir además:
-- buffer de snapshots por entidad remota
-- interpolador por tipo de entidad
-- política de extrapolación corta o freeze si faltan datos
+In somewhat more serious games, also add:
+- snapshot buffer per remote entity
+- interpolator by entity type
+- short extrapolation or freeze policy if data is missing
 
-## Animación en multiplayer
-No replicar mixers, actions o detalles visuales internos como verdad de red.
+## Multiplayer animation
+Do not replicate mixers, actions, or internal visual details as network truth.
 
-Replicar mejor:
-- estado alto nivel: `idle`, `run`, `jump`, `attack`, `dead`
-- dirección o velocidad relevante
-- eventos discretos: `fired`, `hit`, `respawned`
+Better to replicate:
+- high-level state: `idle`, `run`, `jump`, `attack`, `dead`
+- relevant direction or velocity
+- discrete events: `fired`, `hit`, `respawned`
 
-En personajes algo complejos, conviene pensar esto como salida de una animation state machine, no como lista improvisada de clips.
+For somewhat complex characters, think of this as the output of an animation state machine, not an improvised list of clips.
 
-Luego el cliente resuelve:
-- clips concretos
+Then the client resolves:
+- concrete clips
 - blending
 - additive layers
-- efectos visuales locales
+- local visual effects
 
-## Física compartida
-Si hay física importante para gameplay:
-- decidir dónde corre la física autoritativa
-- no confiar en que dos clientes simulen exactamente igual por magia
-- usar Three.js para visualizar, no para decidir el resultado real
+## Shared physics
+If physics matters for gameplay:
+- decide where authoritative physics runs
+- do not trust that two clients will simulate exactly the same by magic
+- use Three.js to visualize, not to decide the real outcome
 
-Three.js puede convivir con la física, pero no la reemplaza.
+Three.js can coexist with physics, but it does not replace it.
 
-## Cámara y UX local
-La cámara casi siempre es local.
-No hace falta replicarla salvo casos concretos.
+## Camera and local UX
+The camera is almost always local.
+It usually does not need replication except in specific cases.
 
-Regla útil:
-- replicar intención y estado del jugador
-- no replicar cada detalle de cámara o presentación
+Useful rule:
+- replicate player intent and state
+- do not replicate every camera or presentation detail
 
-La sensación del juego suele depender mucho más de una buena predicción local + cámara local suave que de mandar más datos de cámara por red.
+Game feel usually depends much more on good local prediction + a smooth local camera than on sending more camera data over the network.
 
 ## Interest management
-No todos los clientes necesitan todo el mundo todo el tiempo.
+Not every client needs the entire world all the time.
 
-Interés puede depender de:
-- distancia
-- habitación o zona
-- línea de visión aproximada
-- equipo/facción
-- relevancia táctica
+Interest can depend on:
+- distance
+- room or zone
+- approximate line of sight
+- team/faction
+- tactical relevance
 
-Regla:
-- la red debería filtrar antes de que Three.js tenga que representar basura irrelevante
+Rule:
+- the network should filter before Three.js has to represent irrelevant junk
 
-Esto pega especialmente fuerte cuando el mundo crece, hay muchos actores o existen RTT/minimaps que podrían tentar a meter demasiado contenido vivo.
+This hits especially hard when the world grows, there are many actors, or there are RTT/minimaps that may tempt you to include too much live content.
 
-## Rollback, lockstep y hit validation
-No meter estas palabras como si fueran upgrade automático.
+## Rollback, lockstep, and hit validation
+Do not use these words as if they were automatic upgrades.
 
-Regla sana:
-- snapshots autoritativos + interpolación siguen siendo el default general
-- rollback encaja sobre todo en juegos muy sensibles a input
-- lockstep encaja mejor en estrategia o simulación por comandos
-- hit validation autoritativa importa mucho en acción competitiva aunque no uses rollback total
+Healthy rule:
+- authoritative snapshots + interpolation remain the general default
+- rollback mainly fits games very sensitive to input
+- lockstep fits better in strategy or command-based simulation
+- authoritative hit validation matters a lot in competitive action even if you do not use full rollback
 
-Si el proyecto ya está en esa zona, leer `multiplayer-consistency-models.md` antes de diseñar el stack de red final.
+If the project is already in that zone, read `multiplayer-consistency-models.md` before designing the final network stack.
 
-Defaults rápidos por género:
-- shooter o acción competitiva: servidor autoritativo, snapshots frecuentes, predicción local limitada e interest management
-- cooperativo PvE: snapshots + interpolación + predicción moderada
-- sandbox grande: snapshot parcial por área e interés fuerte
-- turnos o baja frecuencia: simplificar y priorizar claridad de estado
+Quick defaults by genre:
+- shooter or competitive action: authoritative server, frequent snapshots, limited local prediction, and interest management
+- cooperative PvE: snapshots + interpolation + moderate prediction
+- large sandbox: partial snapshot by area and strong interest management
+- turn-based or low-frequency: simplify and prioritize state clarity
 
-## Política de representación
-No gastar el mismo presupuesto de red/presentación en todo.
+## Representation policy
+Do not spend the same network/presentation budget on everything.
 
-Elegir por entidad:
-- jugadores remotos: interpolación cuidada
-- proyectiles rápidos: eventos + simulación ligera o autoridad clara
-- props secundarios: smoothing barato o updates discretos
+Choose per entity:
+- remote players: careful interpolation
+- fast projectiles: events + light simulation or clear authority
+- secondary props: cheap smoothing or discrete updates
 
-Separar además:
-- que una entidad no llegue por red
-- que exista pero no se renderice
-- que exista y se renderice simplificada
+Also separate:
+- an entity that does not arrive over the network
+- an entity that exists but is not rendered
+- an entity that exists and is rendered in simplified form
 
-Y mantener payloads pequeños y estables:
-- ids, números compactos, enums y eventos concretos
-- no blobs visuales ni dumps del scene graph
+And keep payloads small and stable:
+- ids, compact numbers, enums, and concrete events
+- no visual blobs or scene graph dumps
 
-## Errores típicos
-- usar meshes como modelo de datos
-- acoplar websocket y scene updates directamente
-- asumir que el orden de llegada siempre será limpio
-- mezclar input local con estado remoto sin capas claras
-- replicar demasiada información visual en vez de estado jugable
-- intentar resolver cheating solo en cliente
-- bloquear el lifecycle de la partida por esperar persistencia externa (DB, API, leaderboard)
+## Common mistakes
+- using meshes as the data model
+- coupling websocket and scene updates directly
+- assuming arrival order will always be clean
+- mixing local input with remote state without clear layers
+- replicating too much visual information instead of playable state
+- trying to solve cheating only on the client
+- blocking match lifecycle while waiting for external persistence (DB, API, leaderboard)
 
-## Recomendación fuerte
-Para cualquier juego multijugador serio, crear explícitamente:
+## Strong recommendation
+For any serious multiplayer game, explicitly create:
 - `networkClient`
 - `networkStateStore`
 - `entityReplicationSystem`
 - `presentationSyncSystem`
 
-Three.js debería entrar sobre todo en la última capa.
+Three.js should mostly enter in the last layer.
 
-## Stack concreto recomendado: Colyseus (TypeScript)
+## Concrete recommended stack: Colyseus (TypeScript)
 
-Para juegos casual / cooperativo / competitivo ligero (no shooter de alto nivel), [Colyseus](https://colyseus.io/) es una elección sensata como capa de red. Cubre transporte (WebSocket), schema sincronizado, salas, lifecycle de jugadores y broadcast con muy poco código. Ya está probado en producción para Three.js puro.
+For casual / cooperative / lightweight competitive games (not high-level shooters), [Colyseus](https://colyseus.io/) is a sensible choice as the networking layer. It covers transport (WebSocket), synchronized schema, rooms, player lifecycle, and broadcast with very little code. It is already proven in production for pure Three.js.
 
-**Por qué considerarlo como default:**
-- Servidor autoritativo desde el primer día sin tener que escribir el protocolo a mano.
-- Schema declarativo (`@colyseus/schema`) que se serializa eficientemente y se hidrata en el cliente como objeto vivo.
-- Un solo monorepo (cliente Vite/TS + `server/` Node/TS) con tipos compartibles si quieres.
-- Patches binarios automáticos en cada `setPatchRate` (default 50 ms), no se reenvía estado completo.
+**Why consider it as the default:**
+- Authoritative server from day one without having to write the protocol by hand.
+- Declarative schema (`@colyseus/schema`) that serializes efficiently and hydrates on the client as a live object.
+- A single monorepo (Vite/TS client + Node/TS `server/`) with shareable types if you want them.
+- Automatic binary patches on each `setPatchRate` (default 50 ms); full state is not resent.
 
-**Cuándo NO**: shooter competitivo de alta cadencia (rollback, hit validation), juego con presupuesto de bw mínimo (turnos por DataChannel/UDP), o cuando ya tienes infraestructura propia. Para esos casos, ver `multiplayer-consistency-models.md` y considerar un protocolo a medida.
+**When NOT to use it**: high-cadence competitive shooter (rollback, hit validation), game with minimal bandwidth budget (turns over DataChannel/UDP), or when you already have your own infrastructure. For those cases, see `multiplayer-consistency-models.md` and consider a custom protocol.
 
-### Colyseus 0.17: gotchas concretos
-Colyseus 0.17 introdujo cambios de API que rompen ejemplos de versiones anteriores y que la doc no siempre deja claros. Estos son los que cuestan tiempo:
+### Colyseus 0.17: concrete gotchas
+Colyseus 0.17 introduced API changes that break examples from earlier versions and that the docs do not always make obvious. These are the ones that cost time:
 
-- **`MapSchema` no es un `Map` real**: no `for...of`, no spread, no `[...map]`. Usar `forEach((value, key) => ...)`. `.get(key)` y `.set(key, value)` sí funcionan.
-- **Listeners de schema NO van en el objeto schema**. En 0.17 desaparecieron `players.onAdd(...)` / `players.onRemove(...)` directos. La API correcta es:
+- **`MapSchema` is not a real `Map`**: no `for...of`, no spread, no `[...map]`. Use `forEach((value, key) => ...)`. `.get(key)` and `.set(key, value)` do work.
+- **Schema listeners do NOT live on the schema object**. In 0.17, direct `players.onAdd(...)` / `players.onRemove(...)` disappeared. The correct API is:
   ```ts
   import { getStateCallbacks } from '@colyseus/sdk';
   const $ = getStateCallbacks(room);
   $(room.state).players.onAdd((player, sessionId) => { /* ... */ });
   $(room.state).players.onRemove((player, sessionId) => { /* ... */ });
   ```
-  Los tipos del SDK son débiles aquí; un cast estructural a través de `unknown` resuelve sin perder seguridad real.
-- **El estado puede no estar hidratado cuando `joinOrCreate` resuelve**. Acceder a `room.state.players` justo tras el `await` puede dar `undefined`. Patrón seguro: registrar callbacks tras `joinOrCreate` y, para "replay" del estado actual a un suscriptor que llega tarde, usar `room.onStateChange.once(() => seedAllPlayers())`.
-- **Schema necesita `useDefineForClassFields: false` en `tsconfig`** del lado servidor (y a veces cliente, depende del bundler). Sin esto, los decoradores de schema fallan silenciosamente y los campos no se sincronizan.
-- **Express 5 + `@colyseus/ws-transport`**: instalar `@types/express` explícitamente o el typecheck del server casca con `Could not find a declaration file for module 'express'`.
+  The SDK types are weak here; a structural cast through `unknown` solves it without losing real safety.
+- **State may not be hydrated when `joinOrCreate` resolves**. Accessing `room.state.players` right after the `await` can return `undefined`. Safe pattern: register callbacks after `joinOrCreate` and, to replay current state for a late subscriber, use `room.onStateChange.once(() => seedAllPlayers())`.
+- **Schema needs `useDefineForClassFields: false` in server-side `tsconfig`** (and sometimes client-side, depending on the bundler). Without this, schema decorators fail silently and fields do not synchronize.
+- **Express 5 + `@colyseus/ws-transport`**: install `@types/express` explicitly or the server typecheck fails with `Could not find a declaration file for module 'express'`.
 
-### Patrón de integración con Three.js puro
-La separación **obligatoria** entre network state, game state, presentation y scene graph (sección de arriba) sigue aplicando, pero con Colyseus se concreta así:
+### Integration pattern with pure Three.js
+The **mandatory** separation between network state, game state, presentation, and scene graph (above) still applies, but with Colyseus it becomes concrete like this:
 
-- **Conexión no bloqueante**: `connectMultiplayer()` se lanza en background, el primer frame del juego no espera a la red. Mientras no hay handle, un `OFFLINE_MULTIPLAYER_HANDLE` no-op deja al juego correr en singleplayer (muy útil para dev sin servidor levantado).
-- **Pose 20 Hz throttled**: el render corre a 60 Hz, pero `sendPose()` rate-limita a 20 Hz internamente. La frecuencia se ajusta en un solo sitio.
-- **`MultiplayerHandle` único**: la API que ve el resto del juego son ~6 métodos (`status`, `selfName`, `selfSessionId`, `sendPose`, `subscribeRemotePlayers`, `dispose`). Esto encapsula Colyseus completo y permite swap a otro transport sin tocar `main.ts`.
-- **Manager de remotos separado**: un módulo `remotePlayers.ts` se suscribe vía el handle, mantiene `Map<sessionId, RemoteAvatar>` con buffer de snapshots para interpolación (~100 ms behind), y reusa el patrón source/instance de `animation-systems.md` para clonar el modelo del personaje (skinned mesh + materiales tinte + jug propios).
-- **Identidad visual determinista**: el servidor asigna un `colorHue` al unirse desde una paleta fija (e.g. 8 valores HSL bien separados), no el cliente. Garantiza consistencia entre todos los clientes sin negociar.
-- **Persistencia desacoplada del round lifecycle**: si guardas leaderboard o resultados al final de ronda, el juego no debería quedarse esperando a la base de datos para pasar a scoreboard / siguiente ronda. Mejor: snapshot de resultados, transición inmediata, persistencia en background con timeout y warning si falla.
+- **Non-blocking connection**: `connectMultiplayer()` launches in the background; the first game frame does not wait for the network. While there is no handle, a no-op `OFFLINE_MULTIPLAYER_HANDLE` lets the game run in singleplayer (very useful for dev without a server running).
+- **Throttled 20 Hz pose**: rendering runs at 60 Hz, but `sendPose()` rate-limits internally to 20 Hz. The frequency is adjusted in one place.
+- **Single `MultiplayerHandle`**: the API seen by the rest of the game is ~6 methods (`status`, `selfName`, `selfSessionId`, `sendPose`, `subscribeRemotePlayers`, `dispose`). This encapsulates all of Colyseus and allows swapping to another transport without touching `main.ts`.
+- **Separate remote manager**: a `remotePlayers.ts` module subscribes through the handle, maintains `Map<sessionId, RemoteAvatar>` with a snapshot buffer for interpolation (~100 ms behind), and reuses the source/instance pattern from `animation-systems.md` to clone the character model (skinned mesh + tinted materials + its own animation mixer).
+- **Deterministic visual identity**: the server assigns a `colorHue` on join from a fixed palette (e.g. 8 well-separated HSL values), not the client. This guarantees consistency across all clients without negotiation.
+- **Persistence decoupled from round lifecycle**: if you save leaderboards or results at the end of a round, the game should not wait for the database before moving to scoreboard / next round. Prefer: snapshot results, immediate transition, background persistence with timeout and warning on failure.
 
-### Persistencia al final de ronda: regla fuerte
-Si hay ranking persistente, analytics o guardado remoto:
-- el lifecycle jugable manda
-- la persistencia debe ser **bounded** (timeout) y preferiblemente fire-and-forget
-  desde el punto de vista del flujo de la partida
+### End-of-round persistence: strong rule
+If there is persistent ranking, analytics, or remote save:
+- playable lifecycle wins
+- persistence must be **bounded** (timeout) and preferably fire-and-forget
+  from the match-flow point of view
 
-Tradeoff sano:
-- peor caso: el leaderboard tarda un refresh más en reflejar la ronda recién terminada
-- mucho peor: toda la partida se queda congelada esperando una DB lenta
+Healthy tradeoff:
+- worst case: the leaderboard takes one more refresh to reflect the newly finished round
+- much worse: the whole match freezes waiting for a slow DB
 
-### Smoke test multi-cliente
-Antes de validar visualmente con dos pestañas, vale la pena un smoke headless con dos `Client`s reales que se observan mutuamente. Detecta regresiones de schema y broadcast en <3 s. Merece la pena tener uno en cualquier proyecto multijugador serio aunque el render todavía vaya por detrás.
+### Multi-client smoke test
+Before validating visually with two tabs, it is worth running a headless smoke test with two real `Client`s that observe each other. It catches schema and broadcast regressions in <3 s. It is worth having in any serious multiplayer project even if rendering still lags behind.
 
-## Pendiente de ampliar
-- multiplayer con física compleja
-- transporte UDP / WebTransport para juegos sensibles a latencia
+## To expand later
+- multiplayer with complex physics
+- UDP / WebTransport for latency-sensitive games

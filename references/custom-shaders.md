@@ -1,133 +1,133 @@
 # Custom Shaders
 
-## Objetivo
-Escribir y mantener shaders custom en Three.js sin tirar por la borda el sistema de materiales/luces del motor, y sabiendo cuándo basta con un material estándar.
+## Goal
+Write and maintain custom shaders in Three.js without throwing away the engine’s material/lighting system, and knowing when a standard material is enough.
 
-## Regla principal
-**No escribir shader hasta haber descartado `MeshStandardMaterial` con texturas bien hechas y un poco de vertex displacement controlado.**
-Muchos efectos que parecen pedir shader se resuelven con texturas, máscaras y uniforms simples.
+## Main rule
+**Do not write a shader until you have ruled out `MeshStandardMaterial` with well-made textures and a little controlled vertex displacement.**
+Many effects that seem to require a shader are solved with textures, masks, and simple uniforms.
 
-## Cuándo sí merece shader
-- efectos que dependen del tiempo (dissolve, hologram, shimmer)
-- shading no físico (toon, cel-shade, paper, comic)
-- distorsión geométrica dinámica (olas, viento, jelly)
-- blending por reglas de mundo (triplanar, slope-aware terrain, altura)
-- impostores, billboarding avanzado, FX de partículas custom
-- postprocesado a medida que ningún pase estándar cubre
+## When a shader is worth it
+- time-dependent effects (dissolve, hologram, shimmer)
+- non-physical shading (toon, cel-shade, paper, comic)
+- dynamic geometric distortion (waves, wind, jelly)
+- blending by world rules (triplanar, slope-aware terrain, height)
+- impostors, advanced billboarding, custom particle FX
+- custom postprocessing not covered by any standard pass
 
-## Cuándo no merece shader
-- cambiar color base → `material.color`
-- hacer algo “brillante” → ajustar `metalness`/`roughness` y lighting
-- un outline simple → postpro o doble pase, no shader custom del objeto
-- un degradado vertical → `vertexColors` o textura
-- fade por distancia → niebla del motor o propiedad del material
+## When it is not worth it
+- changing base color → `material.color`
+- making something “shiny” → adjust `metalness`/`roughness` and lighting
+- a simple outline → postpro or double pass, not an object custom shader
+- a vertical gradient → `vertexColors` or a texture
+- distance fade → engine fog or material property
 
-## Elección del material
-Tres grandes caminos:
+## Material choice
+Three broad paths:
 
-### 1. `onBeforeCompile` sobre material estándar
-- conservas iluminación, sombras, tonemapping y lo demás del motor.
-- inyectas uniforms y modificas chunks concretos del shader generado.
-- ideal para vertex displacement sobre `MeshStandardMaterial` sin perder PBR.
-- riesgo: acoplarse a chunks internos que pueden cambiar entre versiones de Three.js.
+### 1. `onBeforeCompile` on a standard material
+- you keep the engine’s lighting, shadows, tonemapping, and everything else.
+- you inject uniforms and modify specific chunks of the generated shader.
+- ideal for vertex displacement on `MeshStandardMaterial` without losing PBR.
+- risk: coupling to internal chunks that may change between Three.js versions.
 
 ### 2. `ShaderMaterial` / `RawShaderMaterial`
-- control total.
-- pierdes la cadena de lighting del motor salvo que la reimplementes.
-- bueno para unlit effects, postpro, fullscreen passes, cosas muy específicas.
-- `RawShaderMaterial` no añade ninguna uniform/attribute automáticamente: tú te lo curras.
+- total control.
+- you lose the engine’s lighting chain unless you reimplement it.
+- good for unlit effects, postpro, fullscreen passes, very specific things.
+- `RawShaderMaterial` does not add any uniform/attribute automatically: you do the work yourself.
 
 ### 3. Node-based (`NodeMaterial`, TSL)
-- API moderna, modular, portable entre WebGL2/WebGPU.
-- útil para proyectos que apuntan a WebGPU o que quieren editar shaders por composición.
-- más joven, menos ejemplos en la wild, puede cambiar.
-- valorable para proyectos nuevos con intención de aguantar años.
+- modern, modular API, portable between WebGL2/WebGPU.
+- useful for projects targeting WebGPU or wanting shader editing by composition.
+- younger, fewer examples in the wild, may change.
+- worth considering for new projects intended to last for years.
 
-## Patrones comunes
+## Common patterns
 
-### Vertex displacement sano
-- usar `onBeforeCompile` sobre `MeshStandardMaterial`.
-- inyectar uniform `uTime` y funciones de noise/curl.
-- mantener `normal` consistente: si desplazas el vértice, recalcula o aproxima la normal si quieres que la luz no mienta.
-- evitar noise 3D caro si 2D basta.
+### Healthy vertex displacement
+- use `onBeforeCompile` on `MeshStandardMaterial`.
+- inject `uTime` uniform and noise/curl functions.
+- keep `normal` consistent: if you displace the vertex, recalculate or approximate the normal if you want lighting not to lie.
+- avoid expensive 3D noise if 2D is enough.
 
 ### Fullscreen passes
-- quad fullscreen con `ShaderMaterial` y cámara ortográfica trivial.
-- usar RTT con resolución y frecuencia controlada (ver `render-targets.md`).
-- separar passes si ayuda a legibilidad aunque sumes un target intermedio.
+- fullscreen quad with `ShaderMaterial` and a trivial orthographic camera.
+- use RTT with controlled resolution and frequency (see `render-targets.md`).
+- split passes if it helps readability, even if you add an intermediate target.
 
 ### Terrain blending (slope/height/triplanar)
-- muestrear texturas por componente del mundo, no por UV exclusivamente.
-- máscaras prebakeadas o procedurales, no hardcoded.
-- atlas compactos si hay muchas variantes de material.
+- sample textures by world component, not exclusively by UV.
+- prebaked or procedural masks, not hardcoded.
+- compact atlases if there are many material variants.
 
 ### Dissolve / reveal
-- textura de noise + umbral animado.
-- `discard` para recorte, pero cuidado: `discard` deshabilita optimizaciones (early-z) y puede costar más de lo que parece, sobre todo en móvil.
+- noise texture + animated threshold.
+- `discard` for cutout, but be careful: `discard` disables optimizations (early-z) and can cost more than it seems, especially on mobile.
 
 ### Water / waves
-- desplazamiento con `sin/cos` sumados o noise en vertex.
-- reflejo/refracción con RTT (ver `render-target-families.md`).
-- normal map animado en fragment para detalle sin inflar vértices.
+- displacement with summed `sin/cos` or vertex noise.
+- reflection/refraction with RTT (see `render-target-families.md`).
+- animated normal map in fragment for detail without inflating vertices.
 
-## Uniforms y estado
-- objetos `uniforms` compartidos cuando varios materiales usan el mismo tiempo/params.
-- actualizar en un sistema central (`uniformsUpdater`), no en cada entidad.
-- evitar crear objetos nuevos cada frame (`new THREE.Vector3(...)` en el update es un goteo constante de garbage).
+## Uniforms and state
+- shared `uniforms` objects when several materials use the same time/params.
+- update in a central system (`uniformsUpdater`), not in each entity.
+- avoid creating new objects every frame (`new THREE.Vector3(...)` in update is a constant garbage drip).
 
 ## Precision
-- `mediump` en móvil por defecto, `highp` donde haga falta (depth, normales en shading serio).
-- no asumir que `highp` existe siempre en fragment en móvil.
+- `mediump` on mobile by default, `highp` where needed (depth, normals in serious shading).
+- do not assume `highp` always exists in mobile fragment shaders.
 
-## Defines y variantes
-- `#define` por capability (`USE_NORMALMAP`, `ANIMATE_VERTICES`) para compilar solo lo necesario.
-- cuidado con la explosión combinatoria de variantes: si hay demasiadas, mover a uniforms booleanos aunque se pague algo en coste.
+## Defines and variants
+- `#define` by capability (`USE_NORMALMAP`, `ANIMATE_VERTICES`) to compile only what is needed.
+- beware combinatorial variant explosion: if there are too many, move to boolean uniforms even if you pay some runtime cost.
 
-## Shadows y shading con custom vertex
-Si desplazas vértices en `onBeforeCompile`:
-- sombras proyectadas se calculan con un material propio de shadow pass.
-- aplicar el mismo displacement al `customDepthMaterial` y `customDistanceMaterial` del mesh para que la sombra no mienta.
-- alternativa: evitar sombras sobre meshes con displacement fuerte.
+## Shadows and shading with custom vertex
+If you displace vertices in `onBeforeCompile`:
+- projected shadows are calculated with a separate material for the shadow pass.
+- apply the same displacement to the mesh’s `customDepthMaterial` and `customDistanceMaterial` so the shadow does not lie.
+- alternative: avoid shadows on meshes with strong displacement.
 
-## Postpro custom
-- pases pequeños y compuestos antes que un megashader.
-- medir con `benchmarking.md`: un pase custom suele ser más barato que parecía, o al revés, mucho más caro.
-- sobre móvil, cada pase extra se nota.
+## Custom postpro
+- small composed passes instead of a mega-shader.
+- measure with `benchmarking.md`: a custom pass is often cheaper than expected, or the opposite, much more expensive.
+- on mobile, every extra pass is noticeable.
 
-## Debug de shaders
-- uniform de “modo debug” que pinte normales, UVs, profundidad, máscara.
-- isolation view: material plano con solo la parte que dudas.
-- `console.log(material.program?.fragmentShader)` con cuidado, es para leer en desarrollo.
-- integrar con extensions del navegador (Spector.js) cuando haga falta mirar captures.
+## Shader debug
+- “debug mode” uniform that paints normals, UVs, depth, mask.
+- isolation view: flat material with only the part you are unsure about.
+- `console.log(material.program?.fragmentShader)` carefully; this is for reading during development.
+- integrate browser extensions (Spector.js) when captures are needed.
 
 ## Cross-version
-- los chunks internos de Three.js cambian. Si usas `onBeforeCompile`, fijar versión de Three.js y revisar al actualizar.
-- tener tests visuales mínimos (screenshot o escena de verificación) para detectar roturas rápido.
+- Three.js internal chunks change. If you use `onBeforeCompile`, pin the Three.js version and review when updating.
+- keep minimal visual tests (screenshot or verification scene) to catch breakage quickly.
 
 ## WebGPU / TSL
-Si el proyecto puede apuntar a WebGPU más adelante:
-- preferir `NodeMaterial` desde el principio cuando tenga sentido.
-- aislar la lógica de shader en módulos para facilitar la migración.
-- no invertir mucho en shaders manuales muy atados a WebGL 2.
+If the project may target WebGPU later:
+- prefer `NodeMaterial` from the start when it makes sense.
+- isolate shader logic in modules to ease migration.
+- do not invest heavily in manual shaders tightly bound to WebGL 2.
 
-## Anti-patrones
-- escribir `ShaderMaterial` para lo que un `MeshStandardMaterial` con textura resuelve
-- `discard` en fragment sin necesidad, bloqueando optimizaciones
-- recalcular cada frame uniforms estáticos
-- mega-shader con todas las ramas, mezclando efectos que no siempre se usan
-- inyectar `onBeforeCompile` sin fijar versión de Three.js
-- usar `highp` indiscriminado en móvil
-- desplazar vértices sin corregir shadow pass
-- olvidarse de `needsUpdate` al cambiar defines
+## Anti-patterns
+- writing `ShaderMaterial` for something a textured `MeshStandardMaterial` solves
+- unnecessary `discard` in fragment, blocking optimizations
+- recalculating static uniforms every frame
+- mega-shader with every branch, mixing effects that are not always used
+- injecting `onBeforeCompile` without pinning the Three.js version
+- using `highp` indiscriminately on mobile
+- displacing vertices without correcting the shadow pass
+- forgetting `needsUpdate` when changing defines
 
-## Recomendación fuerte
-Flujo sano:
-1. ¿puedo hacerlo con material estándar + textura?
-2. si no, ¿basta con `onBeforeCompile`?
-3. si no, `ShaderMaterial` aislado, con uniforms centralizados y documentación del chunk/versión.
-4. medir coste con un bench pequeño antes de adoptarlo como default.
+## Strong recommendation
+Healthy flow:
+1. can I do it with a standard material + texture?
+2. if not, is `onBeforeCompile` enough?
+3. if not, isolated `ShaderMaterial`, with centralized uniforms and documentation of the chunk/version.
+4. measure cost with a small bench before adopting it as a default.
 
-## Referencias asociadas
+## Related references
 - `lights-shadows.md`
 - `transparency-pitfalls.md`
 - `postprocessing.md`

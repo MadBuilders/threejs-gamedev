@@ -1,130 +1,130 @@
 # Character Locomotion
 
-## Objetivo
-Diseñar movimiento de personaje en Three.js con sensación jugable, arquitectura mantenible y límites claros entre input, locomotion, colisión, cámara y animación.
+## Objective
+Design character movement in Three.js with playable feel, maintainable architecture, and clear boundaries between input, locomotion, collision, camera, and animation.
 
-## Regla principal
-**Locomotion no es solo input ni solo física.**
-Es una capa propia que traduce intención del jugador en movimiento creíble, restricciones espaciales y estado de personaje.
+## Main rule
+**Locomotion is not just input and not just physics.**
+It is its own layer that translates player intent into believable movement, spatial constraints, and character state.
 
-## Separación recomendada
-Separar al menos:
+## Recommended separation
+Separate at least:
 1. **input intent**
 2. **character locomotion state**
 3. **collision/physics queries**
 4. **camera behavior**
 5. **animation state**
 
-Patrón sano:
-- input produce intención (`moveX`, `moveY`, `jumpPressed`, `sprintHeld`)
-- locomotion decide aceleración, velocidad, giro y contacto con suelo
-- colisión resuelve penetraciones y restricciones
-- animación consume estado alto nivel
-- cámara sigue o responde sin convertirse en la lógica del personaje
+Healthy pattern:
+- input produces intent (`moveX`, `moveY`, `jumpPressed`, `sprintHeld`)
+- locomotion decides acceleration, velocity, turning, and ground contact
+- collision resolves penetrations and constraints
+- animation consumes high-level state
+- camera follows or responds without becoming character logic
 
-## Tipos comunes
+## Common types
 ### First-person
-- cámara anclada al personaje
-- movimiento relativo a yaw de cámara
-- pointer lock habitual en escritorio
+- camera anchored to the character
+- movement relative to camera yaw
+- pointer lock is common on desktop
 
 ### Third-person
-- cámara desacoplada parcialmente
-- movimiento relativo a cámara proyectada en plano
-- suele requerir mejor giro, facing y blending de animación
+- camera partially decoupled
+- movement relative to the camera projected onto the plane
+- usually requires better turning, facing, and animation blending
 
-### Tank / vehicle-lite (sin strafe)
+### Tank / vehicle-lite (no strafe)
 
-Cuando **no** quieres A/D como strafe lateral (p. ej. la mano derecha o otra mecánica ya consume ejes “laterales”, o quieres que girar el cuerpo sea una decisión costosa):
+When you **do not** want A/D as lateral strafe (for example, the right hand or another mechanic already consumes “lateral” axes, or you want turning the body to be a costly decision):
 
-- **W/S**: empujan en la dirección **forward/back** del personaje (en su frame), no en el de la cámara.
-- **A/D**: cambian **solo el yaw** (`facing`) a ritmo constante.
-- **Facing como estado**: lo actualiza el input de giro, no `atan2(velocity)` (si derivaras facing de velocidad, los pivotes en seco o el “derrape” de intención se vuelven raros).
+- **W/S**: push in the character's **forward/back** direction (in its frame), not the camera's.
+- **A/D**: change **only yaw** (`facing`) at a constant rate.
+- **Facing as state**: update it from turn input, not from `atan2(velocity)` (if facing were derived from velocity, pivots in place or intent “drift” become weird).
 
-Parámetros típicos a exponer: velocidad de giro (rad/s), eventualmente asimetría adelante/atrás si la fantasía del juego lo pide (no es obligatorio).
+Typical parameters to expose: turn speed (rad/s), eventually forward/backward asymmetry if the game's fantasy calls for it (not required).
 
-Ventajas: esquema estable con free-look o cámara auto-follow; cada giro es explícito (útil si otra simulación acoplada al personaje reacciona a **velocidad angular**).
+Advantages: stable scheme with free-look or auto-follow camera; every turn is explicit (useful if another simulation coupled to the character reacts to **angular velocity**).
 
-Tradeoff: no hay strafe; las curvas son “W + A” o “W + D”, no “solo D”.
+Tradeoff: there is no strafe; curves are “W + A” or “W + D”, not “D only”.
 
 ### Runner / lane / arcade
-- locomotion más guionizada
-- menos libertad, más control del feel
+- more scripted locomotion
+- less freedom, more control over feel
 
-No mezclar necesidades de estos tipos sin decidir cuál manda.
+Do not mix these types' needs without deciding which one leads.
 
-## Default recomendado
-Para muchos juegos 3D web:
-- player kinemático
-- collider simple, normalmente cápsula
-- mundo estático consultable con estructura espacial si hace falta
-- gravedad y salto controlados por lógica propia
-- movimiento relativo a cámara
-- cámara y locomotion desacopladas, pero coordinadas
+## Recommended default
+For many 3D web games:
+- kinematic player
+- simple collider, usually a capsule
+- static world queried with a spatial structure if needed
+- gravity and jump controlled by custom logic
+- movement relative to camera
+- camera and locomotion decoupled, but coordinated
 
-## Collider del personaje
-El example `games_fps` deja una señal muy útil:
-- la **cápsula** suele ser una base mucho más sana que una caja para movimiento humano básico
+## Character collider
+The `games_fps` example leaves a very useful signal:
+- the **capsule** is usually a much healthier base than a box for basic human movement
 
-Ventajas:
-- sube mejor pequeñas irregularidades
-- se engancha menos en esquinas
-- representa bastante bien un cuerpo de pie
+Advantages:
+- climbs small irregularities better
+- catches less on corners
+- represents a standing body fairly well
 
-Regla práctica:
-- collider simple primero
-- collider complejo del jugador, casi nunca como default
+Practical rule:
+- simple collider first
+- complex player collider almost never as the default
 
-## Suelo, pendientes y paredes
-No basta con detectar colisión. Hay que clasificarla.
+## Ground, slopes, and walls
+Detecting collision is not enough. You have to classify it.
 
-Patrón útil:
-- usar la normal del contacto
-- decidir si algo cuenta como suelo según un umbral
-- tratar paredes aparte
+Useful pattern:
+- use the contact normal
+- decide whether something counts as ground using a threshold
+- handle walls separately
 
-`games_fps` deja una idea canónica:
-- no toda superficie colisionada es suelo
-- las pendientes necesitan criterio explícito
+`games_fps` leaves a canonical idea:
+- not every collided surface is ground
+- slopes need an explicit criterion
 
-## Movimiento en suelo vs aire
-Separar claramente:
-- aceleración en suelo
-- fricción o damping en suelo
-- control aéreo
-- gravedad
+## Ground movement vs air movement
+Separate clearly:
+- ground acceleration
+- ground friction or damping
+- air control
+- gravity
 
-Patrón fuerte:
-- más control y respuesta en suelo
-- menos control en aire
-- salto solo desde estado válido de grounded
+Strong pattern:
+- more control and response on the ground
+- less control in the air
+- jump only from a valid grounded state
 
-La demo oficial mete incluso un air control reducido. Ese detalle merece quedarse como doctrina porque cambia muchísimo la sensación del juego.
+The official demo even includes reduced air control. That detail deserves to stay as doctrine because it changes game feel enormously.
 
 ## Substeps
-Cuando hay velocidad, gravedad o colisiones rápidas:
-- usar substeps de simulación puede ahorrar bastantes problemas
+When there is speed, gravity, or fast collisions:
+- using simulation substeps can prevent many problems
 
-El example `games_fps` lo hace con intención clara:
-- divide el frame en varios pasos para reducir tunneling y errores de resolución
+The `games_fps` example does this with clear intent:
+- it divides the frame into several steps to reduce tunneling and resolution errors
 
-Regla:
-- no confiar ciegamente en un único paso por frame cuando ya ves clipping o inestabilidad
+Rule:
+- do not blindly trust a single step per frame once you already see clipping or instability
 
-## Orden de update recomendado
-1. leer input normalizado
-2. construir intención de locomotion
-3. aplicar aceleración y gravedad
-4. integrar movimiento
-5. resolver colisiones
-6. actualizar estado (`grounded`, `falling`, `jumping`, etc.)
-7. sincronizar cámara
-8. emitir estado para animación
+## Recommended update order
+1. read normalized input
+2. build locomotion intent
+3. apply acceleration and gravity
+4. integrate movement
+5. resolve collisions
+6. update state (`grounded`, `falling`, `jumping`, etc.)
+7. synchronize camera
+8. emit state for animation
 
-## Estado de locomotion
-No quedarse en `velocity` y ya.
+## Locomotion state
+Do not stop at `velocity` and call it done.
 
-Mínimo útil:
+Useful minimum:
 - `grounded`
 - `jumpRequested`
 - `falling`
@@ -133,15 +133,15 @@ Mínimo útil:
 - `speed`
 - `facingDirection`
 - `sprint`
-- `crouch` si existe
+- `crouch` if it exists
 
-Este estado debería ser suficientemente limpio como para alimentar animación y multiplayer sin exponer detalles crudos del input.
+This state should be clean enough to feed animation and multiplayer without exposing raw input details.
 
 ## State machine
-En cuanto el personaje hace algo más que caminar:
-- conviene una state machine explícita o, mínimo, estados bien delimitados
+As soon as the character does more than walk:
+- an explicit state machine is useful, or at least well-delimited states
 
-Estados típicos:
+Typical states:
 - idle
 - locomotion
 - jump start
@@ -151,89 +151,89 @@ Estados típicos:
 - climb
 - knockback
 
-No hace falta una mega jerarquía desde el día 1, pero sí evitar reglas dispersas tipo `if` por todos lados.
+You do not need a mega hierarchy from day one, but you should avoid scattered `if` rules everywhere.
 
-## Root motion vs movimiento por gameplay
-Decidirlo pronto.
+## Root motion vs gameplay-driven movement
+Decide early.
 
 ### Gameplay-driven locomotion
-- el movimiento real lo manda el controller
-- la animación acompaña
-- suele ser el default más sano para web y prototipos de juego
+- actual movement is controlled by the controller
+- animation follows along
+- usually the healthiest default for web and game prototypes
 
 ### Root motion
-- la animación empuja parte del desplazamiento
-- útil en casos concretos, combate o acciones authoradas
-- exige más disciplina para colisiones, networking y blending
+- animation drives part of the displacement
+- useful in specific cases, combat, or authored actions
+- requires more discipline for collisions, networking, and blending
 
-Recomendación inicial:
-- usar locomotion gobernada por gameplay por defecto
-- meter root motion solo donde aporte muchísimo y sepas por qué
+Initial recommendation:
+- use gameplay-governed locomotion by default
+- add root motion only where it provides a lot of value and you know why
 
-## Cámara
-La cámara no debería decidir el movimiento del personaje por accidente.
+## Camera
+The camera should not decide character movement by accident.
 
-Regla útil:
-- usar la orientación de cámara como referencia de intención
-- pero mantener estado propio del personaje para facing y locomotion
+Useful rule:
+- use camera orientation as the reference for intent
+- but keep the character's own state for facing and locomotion
 
-En first-person la unión puede ser más directa.
-En third-person, si atas todo a la cámara sin filtro, el personaje suele sentirse raro o nervioso.
+In first-person, the connection can be more direct.
+In third-person, if you bind everything to the camera without filtering, the character often feels strange or twitchy.
 
-## Pointer lock y lifecycle
-El example `misc_controls_pointerlock` recuerda algo importante:
-- el control de ratón en escritorio tiene lifecycle real: lock, unlock, overlay, foco
+## Pointer lock and lifecycle
+The `misc_controls_pointerlock` example reminds us of something important:
+- mouse control on desktop has a real lifecycle: lock, unlock, overlay, focus
 
-Eso no es detalle menor.
-Diseñarlo como parte del controller, no como parche suelto.
+That is not a minor detail.
+Design it as part of the controller, not as a loose patch.
 
-## Física y queries
-Aunque uses un motor físico o estructuras como octree:
-- el player controller merece reglas específicas
-- no delegar toda la sensación del personaje a la simulación bruta
+## Physics and queries
+Even if you use a physics engine or structures like an octree:
+- the player controller deserves specific rules
+- do not delegate the entire feel of the character to raw simulation
 
-Patrón sano:
-- locomotion propia
-- queries/collisions de apoyo
-- sincronización clara con la representación visual
+Healthy pattern:
+- custom locomotion
+- supporting queries/collisions
+- clear synchronization with the visual representation
 
-## Teleport y recuperación
-Otro patrón muy real de demos y juegos:
-- si el personaje cae fuera del mundo, hay que recuperarlo
+## Teleport and recovery
+Another very real pattern from demos and games:
+- if the character falls out of the world, recover it
 
-Parece obvio, pero conviene dejarlo como regla explícita:
-- tener `teleportToSafePoint()` o equivalente
-- no dejar el estado roto tras una caída o NaN espacial
+It seems obvious, but it is worth making explicit:
+- have `teleportToSafePoint()` or equivalent
+- do not leave state broken after a fall or spatial NaN
 
-## Debug útil
-- visualizar collider del player
-- mostrar normal de contacto y grounded
-- mostrar velocidad horizontal/vertical
-- mostrar estado de locomotion
-- toggles para substeps y gravedad
-- puntos de respawn o safe points visibles
+## Useful debug
+- visualize the player collider
+- show contact normal and grounded state
+- show horizontal/vertical velocity
+- show locomotion state
+- toggles for substeps and gravity
+- visible respawn or safe points
 
-## Anti-patrones
-- unir input DOM, cámara, salto y colisiones en una sola función monstruo
-- usar mesh visual como collider real del player
-- no distinguir suelo de pared
-- depender de física totalmente realista para el movimiento principal
-- no separar aire y suelo
-- no tener estado explícito de locomotion
-- acoplar animación directamente al teclado en vez de al estado del personaje
+## Anti-patterns
+- joining DOM input, camera, jump, and collisions into one monster function
+- using the visual mesh as the player's real collider
+- failing to distinguish ground from wall
+- depending on fully realistic physics for the main movement
+- not separating air and ground
+- not having explicit locomotion state
+- coupling animation directly to the keyboard instead of to character state
 
-## Recomendación fuerte
-Crear un `characterController` o `locomotionSystem` que:
-- consuma input abstracto
-- mantenga collider y estado del personaje
-- resuelva movimiento y colisiones
-- publique estado de locomotion para cámara y animación
-- tenga recuperación, respawn y debug
+## Strong recommendation
+Create a `characterController` or `locomotionSystem` that:
+- consumes abstract input
+- maintains the character collider and state
+- resolves movement and collisions
+- publishes locomotion state for camera and animation
+- includes recovery, respawn, and debug
 
-## Pendiente de ampliar
+## To expand later
 - third-person camera rigs
-- stair stepping más fino
+- finer stair stepping
 - ledge detection
-- root motion selectiva
-- networking de locomotion
-- combate y locomotion avanzada
+- selective root motion
+- locomotion networking
+- combat and advanced locomotion

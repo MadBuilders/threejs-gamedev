@@ -1,35 +1,35 @@
 # Animation State Machines
 
-## Objetivo
-Convertir la animación de personajes en una capa explícita de estados, transiciones y capas, en vez de una colección de clips reproducidos a mano.
+## Objective
+Turn character animation into an explicit layer of states, transitions, and layers, instead of a collection of clips played by hand.
 
-## Regla principal
-**No gobernar animación con teclas ni con clips sueltos.**
-Gobernarla con estados de personaje e intents de gameplay.
+## Main rule
+**Do not drive animation with keys or loose clips.**
+Drive it with character states and gameplay intents.
 
-## Separación sana
-Separar al menos:
+## Healthy separation
+Separate at least:
 1. **locomotion state**
 2. **animation state machine**
 3. **clip/actions layer**
 4. **additive or partial-body layers**
 5. **event-driven one-shots**
 
-Patrón sano:
-- locomotion/controller publica estado alto nivel
-- animation state machine decide estado visual principal
-- actions concretas se activan por transición controlada
-- capas additive o upper-body se mezclan por separado
+Healthy pattern:
+- locomotion/controller publishes high-level state
+- animation state machine decides the main visual state
+- concrete actions activate through controlled transitions
+- additive or upper-body layers blend separately
 
-## Qué resuelve una state machine
-- qué clip base debe estar activo
-- cuándo cambiar de estado
-- qué transición usar
-- qué eventos disparan one-shots
-- qué capas pueden convivir
-- qué prioridades mandan si hay conflicto
+## What a state machine resolves
+- which base clip should be active
+- when to change state
+- which transition to use
+- which events trigger one-shots
+- which layers can coexist
+- which priorities win when there is a conflict
 
-## Estados base típicos
+## Typical base states
 ### Locomotion base
 - idle
 - walk
@@ -39,7 +39,7 @@ Patrón sano:
 - airborne
 - land
 
-### Estados contextuales
+### Contextual states
 - crouch
 - aim
 - block
@@ -47,21 +47,21 @@ Patrón sano:
 - attack
 - dead
 
-No todos deben vivir en la misma máquina. A veces conviene:
-- una state machine principal de locomotion
-- una capa superior de combate/interacción
+Not all of them should live in the same machine. Sometimes it is better to have:
+- one main locomotion state machine
+- one upper layer for combat/interaction
 
-## Default recomendado
-Para un personaje jugable típico:
-- una máquina principal para locomotion
-- clips base mutuamente excluyentes
-- capas additive o parciales para poses secundarias
-- eventos discretos para acciones cortas
-- transiciones centralizadas con duraciones coherentes
+## Recommended default
+For a typical playable character:
+- one main machine for locomotion
+- mutually exclusive base clips
+- additive or partial layers for secondary poses
+- discrete events for short actions
+- centralized transitions with coherent durations
 
-## Patrón base
-### 1. Estado del personaje
-Consumir cosas como:
+## Base pattern
+### 1. Character state
+Consume things like:
 - `grounded`
 - `speed`
 - `moveDirection`
@@ -71,62 +71,62 @@ Consumir cosas como:
 - `attackRequested`
 - `hitReaction`
 
-### 2. Resolución de estado animado
-Ejemplo:
-- si `!grounded` -> `airborne`
-- si `grounded` y `speed` casi cero -> `idle`
-- si `grounded` y `speed` media -> `walk`
-- si `grounded` y `speed` alta + sprint -> `run`
+### 2. Animated state resolution
+Example:
+- if `!grounded` -> `airborne`
+- if `grounded` and `speed` is near zero -> `idle`
+- if `grounded` and `speed` is medium -> `walk`
+- if `grounded` and `speed` is high + sprint -> `run`
 
-### 3. Resolución de clips
-- `idle` -> clip idle
-- `walk` -> clip walk
-- `run` -> clip run
-- `airborne` -> clip jump/fall loop
+### 3. Clip resolution
+- `idle` -> idle clip
+- `walk` -> walk clip
+- `run` -> run clip
+- `airborne` -> jump/fall loop clip
 
-### 4. Resolución de capas
-- `aim` ajusta upper body
-- `hitReact` o gesto puede entrar como one-shot o capa temporal
+### 4. Layer resolution
+- `aim` adjusts upper body
+- `hitReact` or a gesture can enter as a one-shot or temporary layer
 
 ## Base layer vs additive layer
-El example oficial de additive blending deja una doctrina muy buena:
+The official additive blending example leaves very good doctrine:
 
 ### Base layer
-- locomotion y cuerpo principal
-- solo una action dominante o casi dominante a la vez
+- locomotion and main body
+- only one dominant, or almost dominant, action at a time
 
 ### Additive layer
-- poses o correcciones parciales
-- pesos continuos
-- útil para aim, sneak pose, head shake, reacción ligera
+- poses or partial corrections
+- continuous weights
+- useful for aim, sneak pose, head shake, light reaction
 
-Regla fuerte:
-- no usar additive como parche para arreglar una base rota
-- primero resolver bien la locomotion base
-- luego añadir capas con propósito claro
+Strong rule:
+- do not use additive as a patch to fix a broken base
+- first resolve base locomotion properly
+- then add layers with a clear purpose
 
 ## Full body vs upper body
-Patrón muy útil en juegos:
-- locomotion en cuerpo completo o lower body dominante
-- acciones como aim, reload, attack windup o gesto en upper body
+Very useful game pattern:
+- locomotion in the full body, or lower body as dominant
+- actions like aim, reload, attack windup, or gesture in upper body
 
-Aunque Three.js no trae una “layer graph” lista como motor completo, la doctrina sigue siendo válida:
-- separar conceptualmente capas completas de capas parciales
-- no dejar que una acción de upper body rompa la locomotion base sin querer
+Although Three.js does not ship a ready-made “layer graph” like a full engine, the doctrine still applies:
+- conceptually separate full layers from partial layers
+- do not let an upper-body action accidentally break base locomotion
 
-## Transiciones
-Centralizar transiciones, no dispararlas por todo el código.
+## Transitions
+Centralize transitions; do not fire them from all over the code.
 
-Buenas reglas:
-- duraciones pequeñas y coherentes
-- resetear tiempo del clip de entrada si corresponde
-- no encadenar fades contradictorios sin control
-- si una transición debe esperar al final de loop, sincronizarla explícitamente
+Good rules:
+- short, coherent durations
+- reset the incoming clip time when appropriate
+- do not chain contradictory fades without control
+- if a transition must wait for the end of a loop, synchronize it explicitly
 
-El example oficial hace justo esto con `prepareCrossFade`, `synchronizeCrossFade` y `executeCrossFade`. Muy buena señal.
+The official example does exactly this with `prepareCrossFade`, `synchronizeCrossFade`, and `executeCrossFade`. Very good signal.
 
-## Estados instantáneos vs sostenidos
-### Sostenidos
+## Instant vs sustained states
+### Sustained
 - idle
 - walk
 - run
@@ -134,20 +134,20 @@ El example oficial hace justo esto con `prepareCrossFade`, `synchronizeCrossFade
 - crouch
 - aim mode
 
-### Instantáneos o one-shot
+### Instant or one-shot
 - attack start
 - roll
 - hit reaction
-- emote corto
+- short emote
 - interact
 
-Regla:
-- un one-shot no debería destruir la lógica de locomotion si solo debe superponerse o bloquear temporalmente
+Rule:
+- a one-shot should not destroy locomotion logic if it only needs to overlay or temporarily block it
 
-## Prioridades
-Definir qué gana cuando hay conflicto.
+## Priorities
+Define what wins when there is a conflict.
 
-Ejemplo posible:
+Possible example:
 1. dead
 2. hard stun / knockback
 3. attack locked animation
@@ -155,60 +155,60 @@ Ejemplo posible:
 5. locomotion
 6. idle
 
-No hace falta esta lista exacta, pero sí una política explícita.
+It does not need to be this exact list, but there should be an explicit policy.
 
 ## Root motion
-Si usas root motion, la state machine tiene aún más responsabilidad.
+If you use root motion, the state machine has even more responsibility.
 
-Recomendación base:
-- locomotion gobernada por gameplay para movimiento normal
-- root motion selectiva para acciones especiales si compensa
+Base recommendation:
+- gameplay-governed locomotion for normal movement
+- selective root motion for special actions if it pays off
 
-Porque si todo depende del root motion:
-- colisiones se complican
-- multiplayer se complica
-- prediction se complica
-- ajustar feel se complica
+Because if everything depends on root motion:
+- collisions get more complicated
+- multiplayer gets more complicated
+- prediction gets more complicated
+- tuning feel gets more complicated
 
 ## Multiplayer
-La state machine ayuda mucho a no replicar basura visual.
+The state machine helps a lot with not replicating visual junk.
 
-Replicar mejor:
-- estado alto nivel
-- velocidad o intención relevante
-- eventos discretos
+Better to replicate:
+- high-level state
+- velocity or relevant intent
+- discrete events
 
-No replicar:
-- pesos internos exactos de todas las actions
-- detalles de mezcla salvo necesidad extrema
+Do not replicate:
+- exact internal weights of every action
+- blending details unless there is an extreme need
 
-## Debug útil
-- estado actual de la máquina
-- estado previo
-- transición en curso
-- clip base activo
-- pesos de capas additive
-- flags de bloqueo o prioridad
+## Useful debug
+- current machine state
+- previous state
+- transition in progress
+- active base clip
+- additive layer weights
+- lock or priority flags
 
-## Anti-patrones
+## Anti-patterns
 - `if (keyW) play('walk')`
-- transiciones disparadas desde input, gameplay y UI a la vez
-- additive layers sin ownership ni límites
-- no distinguir one-shot de estado sostenido
-- no definir prioridades entre ataque, salto, golpe y locomotion
-- replicar detalles internos de mixer como si fueran gameplay
+- transitions fired from input, gameplay, and UI at the same time
+- additive layers with no ownership or limits
+- not distinguishing one-shots from sustained state
+- not defining priorities between attack, jump, hit, and locomotion
+- replicating internal mixer details as if they were gameplay
 
-## Recomendación fuerte
-Crear un `characterAnimationStateMachine` o equivalente que:
-- consuma estado de personaje
-- resuelva estado visual principal
-- dispare transiciones centralizadas
-- gestione capas y one-shots
-- publique debug legible
+## Strong recommendation
+Create a `characterAnimationStateMachine` or equivalent that:
+- consumes character state
+- resolves the main visual state
+- fires centralized transitions
+- manages layers and one-shots
+- publishes readable debug
 
-## Pendiente de ampliar
-- máscaras de huesos o estrategias de upper/lower body
-- one-shots con cancel windows
-- combate cuerpo a cuerpo
-- locomotion 8-directional
-- root motion selectiva por acción
+## To expand later
+- bone masks or upper/lower body strategies
+- one-shots with cancel windows
+- melee combat
+- 8-directional locomotion
+- selective root motion by action

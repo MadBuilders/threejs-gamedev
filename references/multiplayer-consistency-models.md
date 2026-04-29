@@ -1,191 +1,191 @@
 # Multiplayer Consistency Models: Rollback, Lockstep, Hit Validation
 
-## Objetivo
-Elegir y aplicar el modelo de consistencia adecuado para un juego multijugador con Three.js en el cliente, sin mezclar presentación visual con autoridad de simulación.
+## Goal
+Choose and apply the right consistency model for a multiplayer game with Three.js on the client, without mixing visual presentation with simulation authority.
 
-## Regla principal
-**No todos los géneros necesitan rollback.**
-Y meter rollback donde no toca puede complicar el proyecto mucho más de lo que lo mejora.
+## Main rule
+**Not every genre needs rollback.**
+And adding rollback where it does not belong can make the project far more complex than the benefit is worth.
 
-Three.js aquí sigue siendo capa de presentación. El modelo de consistencia vive en networking y simulación.
+Three.js is still the presentation layer here. The consistency model lives in networking and simulation.
 
-## Tres familias principales
-### 1. Servidor autoritativo con snapshots e interpolación
-Es el default sano para muchísimos juegos.
+## Three main families
+### 1. Authoritative server with snapshots and interpolation
+This is the healthy default for many games.
 
-Encaja bien en:
-- acción general
-- cooperativo PvE
-- shooters no hiper exigentes
-- juegos con físicas compartidas moderadas
+Works well for:
+- general action
+- cooperative PvE
+- shooters that are not hyper-demanding
+- games with moderate shared physics
 
-Patrón:
-- servidor decide estado real
-- cliente local puede predecir lo justo
-- resto de clientes interpolan snapshots
+Pattern:
+- the server decides the real state
+- the local client may predict only what is needed
+- other clients interpolate snapshots
 
 ### 2. Rollback netcode
-Encaja mejor cuando:
-- el juego depende mucho de inputs precisos y justos
-- hay pocos actores relevantes por frame
-- la simulación puede re-ejecutarse de forma determinista o suficientemente estable
+Best fit when:
+- the game depends heavily on precise, fair inputs
+- there are few relevant actors per frame
+- the simulation can be re-run deterministically or with enough stability
 
-Muy típico en:
-- lucha
-- versus 1v1 o 2v2 pequeño
-- acción muy input-sensitive
+Very common in:
+- fighting games
+- 1v1 or small 2v2 versus games
+- very input-sensitive action
 
-Coste:
-- guardar historial de inputs y/o estado
-- re-simular
-- soportar correcciones frecuentes
-- separar muy bien lógica, FX y audio para no duplicar caos visual
+Cost:
+- store input and/or state history
+- re-simulate
+- support frequent corrections
+- separate logic, FX, and audio very cleanly to avoid duplicating visual chaos
 
 ### 3. Lockstep
-Encaja cuando:
-- la simulación puede avanzar por comandos sincronizados
-- el ritmo tolera esperar a inputs remotos
-- el determinismo es una exigencia seria
+Fits when:
+- the simulation can advance through synchronized commands
+- the pace can tolerate waiting for remote inputs
+- determinism is a serious requirement
 
-Muy típico en:
-- estrategia
-- tácticos
-- juegos de baja frecuencia o turnos híbridos
+Very common in:
+- strategy games
+- tactical games
+- low-frequency games or hybrid turn-based games
 
-Coste:
-- disciplina dura de determinismo
-- mal encaje con acción rápida en navegador si no está muy pensado
-- sensibilidad a desincronizaciones
+Cost:
+- strict determinism discipline
+- poor fit for fast action in the browser unless carefully designed
+- sensitivity to desyncs
 
-## Default por género
-### Fighting / duel muy preciso
-- mirar rollback primero
-- presentation layer muy desacoplada de la simulación
-- FX y animaciones como consecuencia re-aplicable, no como authority
+## Default by genre
+### Very precise fighting / duel games
+- consider rollback first
+- keep the presentation layer strongly decoupled from simulation
+- treat FX and animations as re-applicable consequences, not authority
 
-### Shooter / acción competitiva 3D
-- servidor autoritativo
-- snapshots + interpolación
-- predicción local limitada
-- hit validation autoritativa
-- rollback parcial o lag compensation del servidor, no rollback total del cliente como dogma
+### 3D shooter / competitive action
+- authoritative server
+- snapshots + interpolation
+- limited local prediction
+- authoritative hit validation
+- partial rollback or server lag compensation, not total client rollback as dogma
 
-### RTS / táctica
-- lockstep o variantes por comandos si la simulación lo permite
-- si no, servidor autoritativo con snapshots más abstractos
+### RTS / tactics
+- lockstep or command-based variants if the simulation supports it
+- otherwise, authoritative server with more abstract snapshots
 
 ### Coop / sandbox
-- snapshots + interpolación + predicción local moderada
-- no meter rollback total salvo que haya una razón fortísima
+- snapshots + interpolation + moderate local prediction
+- avoid full rollback unless there is an extremely strong reason
 
-## Rollback en cliente: reglas sanas
-Si se usa rollback:
-- separar `simulationState` de `presentationState`
-- guardar historial por tick
-- re-simular solo la parte necesaria
-- re-disparar FX visuales con cuidado para no duplicar flashes, partículas o sonidos
-- aislar random y tiempo para no romper determinismo
+## Client rollback: healthy rules
+If rollback is used:
+- separate `simulationState` from `presentationState`
+- keep history by tick
+- re-simulate only the necessary part
+- re-trigger visual FX carefully so flashes, particles, or sounds are not duplicated
+- isolate random and time so determinism does not break
 
-Patrón sano:
-1. input local entra con tick
-2. se simula provisionalmente
-3. llega confirmación o corrección remota
-4. se restaura estado base
-5. se re-simulan ticks pendientes
-6. presentación se suaviza si hace falta
+Healthy pattern:
+1. local input enters with a tick
+2. provisional simulation runs
+3. remote confirmation or correction arrives
+4. base state is restored
+5. pending ticks are re-simulated
+6. presentation is smoothed if needed
 
-Patrón tóxico:
-- usar rollback sin tick fijo claro
-- mezclar estado visual con estado lógico reversible
-- disparar audio/partículas sin control y repetirlos en cada re-simulación
+Toxic pattern:
+- using rollback without a clear fixed tick
+- mixing visual state with reversible logical state
+- firing audio/particles without control and replaying them on every re-simulation
 
-## Lockstep: reglas sanas
-Si se usa lockstep:
-- inputs o comandos discretos por tick
-- estado inicial idéntico
-- misma lógica determinista para todos
-- random con seed/tick controlados
-- evitar depender de tiempos del navegador o floats caóticos sin control
+## Lockstep: healthy rules
+If lockstep is used:
+- discrete inputs or commands per tick
+- identical initial state
+- the same deterministic logic for everyone
+- random controlled by seed/tick
+- avoid depending on browser timing or chaotic floats without control
 
-Three.js no debe decidir nada crítico aquí.
-Solo representa el resultado del tick acordado.
+Three.js must not decide anything critical here.
+It only represents the result of the agreed tick.
 
 ## Hit validation
-### Regla principal
-**El cliente puede proponer un hit. El servidor decide si cuenta.**
+### Main rule
+**The client may propose a hit. The server decides whether it counts.**
 
-Especialmente en shooters o acción competitiva:
-- cliente puede mandar intención de disparo
-- quizá origen, dirección, tick, target esperado
-- servidor valida con su estado autoritativo o con lag compensation controlada
+Especially in shooters or competitive action:
+- the client may send a firing intent
+- maybe origin, direction, tick, expected target
+- the server validates using its authoritative state or controlled lag compensation
 
 ## Lag compensation
-Útil cuando el género premia puntería y tiempo de reacción.
+Useful when the genre rewards aim and reaction time.
 
-Patrón típico:
-- servidor guarda breve historial de posiciones autoritativas
-- al validar un disparo, reconstruye estado aproximado del momento relevante
-- decide hit con esa ventana, no solo con el “ahora” del servidor
+Typical pattern:
+- the server keeps a short history of authoritative positions
+- when validating a shot, it reconstructs the approximate state at the relevant moment
+- it decides the hit within that window, not only against the server's “now”
 
-Riesgos:
-- ventanas demasiado generosas
-- sensación de morir detrás de cobertura
-- inconsistencias si el historial es pobre o el tick no está bien definido
+Risks:
+- overly generous windows
+- the feeling of dying behind cover
+- inconsistencies if history is poor or the tick is not well defined
 
-Para bajar esto a políticas distintas por arma o familia, ver `server-rewind-weapons.md`.
+To turn this into different policies by weapon or family, see `server-rewind-weapons.md`.
 
-## Qué mandar para hit validation
-Mandar mejor:
+## What to send for hit validation
+Prefer sending:
 - `tick`
 - `shooterId`
-- origen o muzzle si aplica
-- dirección o ray
-- tipo de arma/acción
-- contexto mínimo necesario
+- origin or muzzle if applicable
+- direction or ray
+- weapon/action type
+- minimum required context
 
-No mandar como verdad:
-- “le he dado, resta 40 HP”
-- estado visual del ragdoll
-- resultado final ya cocinado por cliente
+Do not send as truth:
+- “I hit them, subtract 40 HP”
+- visual ragdoll state
+- final result already precomputed by the client
 
-## Anti-cheat mínimo sensato
-No hace falta prometer imposibles, pero sí evitar ingenuidades.
+## Sensible minimum anti-cheat
+There is no need to promise the impossible, but do avoid naive designs.
 
-Como mínimo:
-- servidor autoritativo para vida, daño, cooldowns, posiciones importantes o validación derivada
-- límites plausibles de movimiento/inputs
-- validación de cadencia de armas y acciones
-- rechazo de mensajes imposibles o fuera de tick razonable
+At minimum:
+- authoritative server for health, damage, cooldowns, important positions, or derived validation
+- plausible movement/input limits
+- validation for weapon and action cadence
+- rejection of impossible messages or messages outside a reasonable tick range
 
-Para una capa adicional de telemetría, scoring de sospecha y mitigaciones graduales, ver `anti-cheat-anomalies.md`.
+For an additional layer of telemetry, suspicion scoring, and gradual mitigations, see `anti-cheat-anomalies.md`.
 
 ## Presentation firewall
-Muy importante con Three.js:
-- impactos visuales locales pueden mostrarse al instante
-- daño real, muerte o confirmación importante deben esperar autoridad
-- no mezclar hitmarker bonito con verdad de gameplay sin capa intermedia
+Very important with Three.js:
+- local visual impacts can be shown immediately
+- real damage, death, or important confirmation should wait for authority
+- do not mix a nice hitmarker with gameplay truth without an intermediate layer
 
-## Estructura útil
+## Useful structure
 - `inputBuffer`
 - `snapshotBuffer`
 - `predictionSystem`
 - `reconciliationSystem`
 - `hitValidationProtocol`
-- `lagCompensationStore` si el género lo necesita
+- `lagCompensationStore` if the genre needs it
 
-## Errores típicos
-- asumir que rollback es siempre “más pro”
-- intentar lockstep con simulación no determinista y luego rezar
-- dar autoridad total al cliente en daño o hits
-- mezclar FX de Three.js con estado reversible de simulación
-- no separar validación del disparo de presentación local del disparo
+## Common mistakes
+- assuming rollback is always “more pro”
+- trying lockstep with a non-deterministic simulation and then praying
+- giving the client total authority over damage or hits
+- mixing Three.js FX with reversible simulation state
+- not separating shot validation from local shot presentation
 
-## Recomendación fuerte
-Elegir modelo por género y coste de mantenimiento:
-- acción 3D general: snapshots + predicción limitada + hit validation autoritativa
-- lucha o input crítico: rollback
-- estrategia/táctica: lockstep si la simulación lo soporta
+## Strong recommendation
+Choose the model based on genre and maintenance cost:
+- general 3D action: snapshots + limited prediction + authoritative hit validation
+- fighting games or critical input: rollback
+- strategy/tactics: lockstep if the simulation supports it
 
-## Pendiente de ampliar
-- rollback con físicas complejas
-- reconciliación de projectiles persistentes
+## To expand later
+- rollback with complex physics
+- reconciliation of persistent projectiles

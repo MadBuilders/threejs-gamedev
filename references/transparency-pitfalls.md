@@ -1,102 +1,102 @@
 # Transparency Pitfalls
 
-## Objetivo
-Evitar uno de los pozos clásicos de Three.js: asumir que materiales transparentes se comportarán de forma intuitiva solo por poner `transparent = true`.
+## Goal
+Avoid one of Three.js’s classic traps: assuming transparent materials will behave intuitively just because you set `transparent = true`.
 
-## Regla principal
-**La transparencia en tiempo real no es magia.**
-Orden de render, depth y sorting importan muchísimo, y hay casos donde no existe una solución perfecta barata.
+## Main rule
+**Realtime transparency is not magic.**
+Render order, depth, and sorting matter a lot, and there are cases where no cheap perfect solution exists.
 
-## Qué suele salir mal
-- objetos transparentes que se dibujan en orden raro
-- caras traseras o internas que desaparecen o parpadean
-- vidrio o overlays que tapan cosas de forma incorrecta
-- partículas y transparencias apiladas que se ven mal
-- postprocessing que empeora los artefactos
+## What usually goes wrong
+- transparent objects draw in a weird order
+- back or internal faces disappear or flicker
+- glass or overlays cover things incorrectly
+- stacked particles and transparencies look bad
+- postprocessing worsens artifacts
 
-## Modelo mental sano
-Con opacos, el depth buffer ayuda mucho.
-Con transparentes, Three.js suele depender bastante de sorting por objeto, y eso tiene límites claros.
+## Healthy mental model
+With opaque objects, the depth buffer helps a lot.
+With transparent objects, Three.js usually relies heavily on object sorting, and that has clear limits.
 
-Resultado:
-- entre objetos transparentes complejos, el orden puede fallar
-- dentro del mismo mesh, el problema puede ser todavía peor
+Result:
+- between complex transparent objects, order can fail
+- inside the same mesh, the problem can be even worse
 
-## Defaults sanos
-Antes de tocar hacks raros:
-- preguntarse si de verdad hace falta transparencia real
-- preferir opaco, alpha test o dither si visualmente basta
-- mantener pocas capas transparentes simultáneas
-- evitar geometrías transparentes complejas e interpenetradas como base del juego
+## Healthy defaults
+Before reaching for weird hacks:
+- ask whether real transparency is truly needed
+- prefer opaque, alpha test, or dither if that is visually enough
+- keep few simultaneous transparent layers
+- avoid complex interpenetrating transparent geometry as the game’s foundation
 
-## Alternativas más sanas
+## Healthier alternatives
 ### 1. Alpha test / cutout
-Útil para:
-- hojas
-- vallas
-- sprites recortados
-- detalles donde no hace falta semitransparencia suave
+Useful for:
+- leaves
+- fences
+- cutout sprites
+- details where smooth semitransparency is not needed
 
-Ventaja:
-- mucho más estable que la transparencia clásica
+Advantage:
+- much more stable than classic transparency
 
 ### 2. Fake transparency
-Útil para:
-- HUDs diegéticos
-- efectos estilizados
-- superficies donde importa la sensación más que la física correcta
+Useful for:
+- diegetic HUDs
+- stylized effects
+- surfaces where the feeling matters more than physical correctness
 
 ### 3. Dither / temporal tricks
-A veces encaja mejor que apilar materiales transparentes caros y frágiles.
+Sometimes fits better than stacking expensive, fragile transparent materials.
 
-## Si hace falta transparencia real
-Mirar estas palancas:
-- `depthWrite = false` muchas veces ayuda
-- `depthTest` según el caso, con cuidado
-- `renderOrder` para casos concretos y controlados
-- separar geometría en capas o meshes distintos
-- simplificar la forma o el número de capas visibles
+## If real transparency is needed
+Look at these levers:
+- `depthWrite = false` often helps
+- `depthTest` depending on the case, carefully
+- `renderOrder` for concrete, controlled cases
+- split geometry into separate layers or meshes
+- simplify the shape or number of visible layers
 
-## Qué no hacer
-- usar `renderOrder` como martillo universal
-- asumir que un único material transparente arregla vidrio complejo, partículas y overlays a la vez
-- mezclar demasiadas superficies transparentes con expectativas de corrección perfecta
-- meter transparencia por gusto cuando alpha test u opaco resolvían el problema
+## What not to do
+- use `renderOrder` as a universal hammer
+- assume one transparent material fixes complex glass, particles, and overlays at the same time
+- mix too many transparent surfaces while expecting perfect correctness
+- add transparency for fun when alpha test or opaque materials solved the problem
 
-## Casos típicos
-### Follaje
-- casi siempre mejor alpha test que transparencia suave
+## Typical cases
+### Foliage
+- almost always better with alpha test than smooth transparency
 
-### Vidrio
-- usar con moderación
-- separar piezas si hace falta
-- confirmar si el efecto visual compensa el coste y los artefactos
+### Glass
+- use in moderation
+- split pieces if needed
+- confirm whether the visual effect is worth the cost and artifacts
 
-### Partículas
-- controlar blending y número de capas
-- asumir que mucha superposición traerá problemas visuales y de rendimiento
+### Particles
+- control blending and number of layers
+- assume heavy overlap will bring visual and performance problems
 
-### UI en mundo 3D
-- intentar composición y capas simples
-- no tratarla como si fuera vidrio físicamente correcto
+### UI in a 3D world
+- try simple composition and layers
+- do not treat it as physically correct glass
 
-## Cuándo prototipar antes
-Hacer spike temprano si el juego depende mucho de:
-- mucho vidrio
-- partículas densas
-- materiales semitransparentes hero
-- composición compleja con postprocessing
+## When to prototype first
+Do an early spike if the game depends heavily on:
+- lots of glass
+- dense particles
+- hero semitransparent materials
+- complex composition with postprocessing
 
-## Recomendación fuerte
-Primero decidir si necesitas:
-- opaco
+## Strong recommendation
+First decide whether you need:
+- opaque
 - alpha test
 - fake transparency
-- transparencia real
+- real transparency
 
-Y elegir la opción más barata que mantenga la lectura visual.
+Then choose the cheapest option that preserves visual readability.
 
-## Referencias asociadas
+## Related references
 - `render-targets.md`
 - `postprocessing.md`
 - `quality-tiers.md`

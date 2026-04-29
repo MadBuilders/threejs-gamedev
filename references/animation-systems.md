@@ -1,104 +1,104 @@
 # Animation Systems
 
-## Objetivo
-Usar el sistema de animación de Three.js como un subsistema de juego serio, no como una serie de `play()` sueltos pegados al loader.
+## Objective
+Use the Three.js animation system as a serious game subsystem, not as a series of loose `play()` calls glued to the loader.
 
-## Regla principal
-Separar claramente:
-1. **assets y clips**
-2. **mixer y actions**
-3. **estado de animación**
-4. **reglas de transición**
-5. **sincronización con gameplay**
+## Main rule
+Clearly separate:
+1. **assets and clips**
+2. **mixer and actions**
+3. **animation state**
+4. **transition rules**
+5. **synchronization with gameplay**
 
-## Piezas base del sistema
-El sistema oficial gira alrededor de:
+## Base pieces of the system
+The official system revolves around:
 - `AnimationClip`
 - `KeyframeTrack`
 - `AnimationMixer`
 - `AnimationAction`
-- opcionalmente `AnimationObjectGroup`
+- optionally `AnimationObjectGroup`
 
-## Default recomendado
-- un `AnimationMixer` por personaje o raíz animada, salvo casos especiales
-- tratar cada clip como dato
-- tratar cada `AnimationAction` como control runtime
-- mantener un módulo o system de animación separado del input y de las reglas de juego
+## Recommended default
+- one `AnimationMixer` per character or animated root, except in special cases
+- treat each clip as data
+- treat each `AnimationAction` as runtime control
+- keep an animation module or system separate from input and game rules
 
-## Patrón sano
-No hacer esto:
-- cargar glTF
-- crear mixer
-- llamar a `clipAction(...).play()` en cualquier sitio
-- cruzar dedos
+## Healthy pattern
+Do not do this:
+- load glTF
+- create mixer
+- call `clipAction(...).play()` anywhere
+- cross your fingers
 
-Hacer esto:
-- registrar clips por nombre
-- crear actions controladas
-- definir estado base (`idle`, `walk`, `run`, etc.)
-- encapsular transiciones y pesos
-- actualizar mixer en el loop con `delta`
+Do this:
+- register clips by name
+- create controlled actions
+- define base state (`idle`, `walk`, `run`, etc.)
+- encapsulate transitions and weights
+- update the mixer in the loop with `delta`
 
 ## Base actions vs additive actions
-Los examples oficiales dejan una separación muy útil:
+The official examples leave a very useful separation:
 
 ### Base actions
-Estados principales mutuamente excluyentes o casi:
+Main states that are mutually exclusive or almost:
 - idle
 - walk
 - run
 - jump loop
 
 ### Additive actions
-Capas parciales o poses adicionales:
+Partial layers or additional poses:
 - head shake
 - aim
 - upper-body pose
 - sneak pose
-- gesto o reacción
+- gesture or reaction
 
-Regla fuerte:
-- no mezclar ambas categorías sin nombrarlas
-- las base actions mandan el cuerpo principal
-- las additive ajustan por encima con pesos controlados
+Strong rule:
+- do not mix both categories without naming them
+- base actions drive the main body
+- additive actions adjust on top with controlled weights
 
 ## Crossfades
-El sistema oficial soporta crossfade, pero eso no significa que toda transición deba dispararse sin criterio.
+The official system supports crossfade, but that does not mean every transition should be fired without criteria.
 
-Patrón recomendable:
-- centralizar transiciones
-- usar duraciones pequeñas y consistentes
-- resetear tiempo y peso cuando toca
-- si una transición depende del final del loop actual, sincronizarlo explícitamente
+Recommended pattern:
+- centralize transitions
+- use short, consistent durations
+- reset time and weight when appropriate
+- if a transition depends on the end of the current loop, synchronize it explicitly
 
-## Time scale y weights
-`AnimationAction` y `AnimationMixer` permiten cambiar:
-- peso
-- velocidad
-- pausado
-- repetición
+## Time scale and weights
+`AnimationAction` and `AnimationMixer` can change:
+- weight
+- speed
+- paused state
+- repetition
 
-Eso es potente, pero también fácil de convertir en caos.
+That is powerful, but also easy to turn into chaos.
 
-Regla:
-- el gameplay decide intención
-- el animation system decide pesos, crossfades y timeScale efectivos
+Rule:
+- gameplay decides intent
+- the animation system decides effective weights, crossfades, and timeScale
 
 ## Update loop
-Regla obligatoria:
-- actualizar `mixer.update(delta)` en el loop principal
-- usar `delta` real del frame
-- no depender de tiempos hardcoded fuera del sistema
+Mandatory rule:
+- update `mixer.update(delta)` in the main loop
+- use the real frame `delta`
+- do not depend on hardcoded times outside the system
 
-## Locomotion y state machine
-En juegos con personaje controlable, la animación debería colgar de un estado de locomotion más estable que el teclado crudo.
+## Locomotion and state machine
+In games with a controllable character, animation should hang from a locomotion state that is more stable than raw keyboard input.
 
-Patrón recomendado:
+Recommended pattern:
 - input -> locomotion intent
-- locomotion/controller -> estado del personaje
-- animation system -> resolución de clips, blending y capas
+- locomotion/controller -> character state
+- animation system -> clip, blending, and layer resolution
 
-Estados útiles para animación:
+Useful states for animation:
 - idle
 - move
 - sprint
@@ -106,100 +106,100 @@ Estados útiles para animación:
 - airborne
 - land
 
-Regla fuerte:
-- no disparar `walk` porque `W` está pulsada
-- disparar `walk` o `run` porque el personaje realmente se está desplazando según su locomotion state
+Strong rule:
+- do not trigger `walk` because `W` is pressed
+- trigger `walk` or `run` because the character is actually moving according to its locomotion state
 
-Para diseño explícito de estados, prioridades, one-shots y layering conceptual, ver `animation-state-machines.md`.
+For explicit design of states, priorities, one-shots, and conceptual layering, see `animation-state-machines.md`.
 
 ## Root motion
-Decidir pronto si el movimiento real viene de gameplay/controller o del clip animado.
+Decide early whether actual movement comes from gameplay/controller or from the animated clip.
 
-Recomendación inicial:
-- locomotion gobernada por gameplay por defecto
-- root motion solo en casos concretos donde compense de verdad
+Initial recommendation:
+- gameplay-governed locomotion by default
+- root motion only in specific cases where it truly pays off
 
-Motivo:
-- simplifica colisiones
-- simplifica multiplayer
-- simplifica sincronización entre cámara, controller y animación
+Reason:
+- simplifies collisions
+- simplifies multiplayer
+- simplifies synchronization between camera, controller, and animation
 
-## Clonado de personajes
-Los examples enseñan algo muy útil:
-- usar `SkeletonUtils.clone()` para duplicar personajes animados
-- distinguir entre clones con skeleton independiente y setups con skeleton compartido
+## Character cloning
+The examples teach something very useful:
+- use `SkeletonUtils.clone()` to duplicate animated characters
+- distinguish between clones with independent skeletons and setups with a shared skeleton
 
-Recomendación:
-- independencia total si cada personaje puede tener estado distinto
-- shared skeleton solo si realmente buscas compartir estado y sabes lo que haces
+Recommendation:
+- full independence if each character can have different state
+- shared skeleton only if you really want to share state and know what you are doing
 
-### Gotchas concretos al clonar SkinnedMesh
-Probados en producción al clonar un mismo personaje para múltiples actores (NPCs, jugadores remotos, etc.). Estos errores son silenciosos hasta que pasan, y cuando pasan cuestan tiempo:
+### Concrete gotchas when cloning SkinnedMesh
+Proven in production when cloning one character for multiple actors (NPCs, remote players, etc.). These errors are silent until they happen, and when they happen they cost time:
 
-- **No vale `Object3D.clone()` para skinned meshes**. El clon nativo comparte el `Skeleton` por referencia y todos los actores acaban con la misma pose (o NaN). Hay que usar `clone` de `three/examples/jsm/utils/SkeletonUtils.js`. Síntoma típico: "todos los clones se mueven igual", o "el clon aparece en pose T".
-- **Los exports de `SkeletonUtils.js` son nombrados, no namespace**. Importar como `import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'`. `import { SkeletonUtils } from '...'` falla en runtime con `does not provide an export named 'SkeletonUtils'`.
-- **`SkeletonUtils.clone` comparte materiales por referencia**. Si tintas un clon, tintas a todos. Para tintes per-instancia hay que recorrer el clon y hacer `material.clone()` por mesh (y multiplicar `.color` por el tint). El tinte multiplicativo sobre `.color` preserva la textura subyacente; sustituir el material rompe el aspecto.
-- **`SkeletonUtils.clone` también comparte geometrías**, lo cual está bien (un upload de GPU para todos). Pero implica que **disponer la geometría desde el `dispose()` de un clon rompe a los demás**. Regla: el clon dispone solo lo que clonó (materiales tinte, mixer, sprite tags). La geometría vive con la fuente.
+- **`Object3D.clone()` is not enough for skinned meshes**. The native clone shares the `Skeleton` by reference and all actors end up with the same pose (or NaN). Use `clone` from `three/examples/jsm/utils/SkeletonUtils.js`. Typical symptom: "all clones move the same", or "the clone appears in T-pose".
+- **Exports from `SkeletonUtils.js` are named, not a namespace**. Import as `import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'`. `import { SkeletonUtils } from '...'` fails at runtime with `does not provide an export named 'SkeletonUtils'`.
+- **`SkeletonUtils.clone` shares materials by reference**. If you tint one clone, you tint them all. For per-instance tints, traverse the clone and call `material.clone()` per mesh (then multiply `.color` by the tint). Multiplicative tinting on `.color` preserves the underlying texture; replacing the material breaks the look.
+- **`SkeletonUtils.clone` also shares geometries**, which is good (one GPU upload for all). But it means **disposing geometry from one clone's `dispose()` breaks all the others**. Rule: the clone disposes only what it cloned (tinted materials, mixer, sprite tags). Geometry lives with the source.
 
-### Patrón "source + instance" para activos compartidos
-Cuando el mismo GLB se usa en N actores (jugador local + NPCs, jugador local + remotos, etc.), separar la carga del activo de la creación de instancias:
+### “source + instance” pattern for shared assets
+When the same GLB is used in N actors (local player + NPCs, local player + remotes, etc.), separate asset loading from instance creation:
 
-- `loadCharacterSource(url)`: fetch + parse del GLB con caché por URL. Devuelve un objeto inmutable con `{ scene, clips }`.
-- `createCharacterInstance(source, opts)`: síncrono. Hace `cloneSkinned(source.scene)`, monta su propio `AnimationMixer`, opcionalmente clona y tinta materiales, y devuelve la API runtime (`tick`, `dispose`, `getJugWorldPosition`, etc.).
-- `loadCharacter(url, opts)`: helper async para call sites simples. Internamente `await loadCharacterSource(url)` + `createCharacterInstance(source, opts)`.
+- `loadCharacterSource(url)`: fetch + parse the GLB with cache by URL. Returns an immutable object with `{ scene, clips }`.
+- `createCharacterInstance(source, opts)`: synchronous. Runs `cloneSkinned(source.scene)`, sets up its own `AnimationMixer`, optionally clones and tints materials, and returns the runtime API (`tick`, `dispose`, `getJugWorldPosition`, etc.).
+- `loadCharacter(url, opts)`: async helper for simple call sites. Internally `await loadCharacterSource(url)` + `createCharacterInstance(source, opts)`.
 
-Ventajas:
-- Una sola descarga + parseo por URL.
-- Spawnear el segundo actor es un `clone` + setup sync, sin esperar red.
-- El call site del jugador local no cambia.
-- El sistema de "remote actors" (NPC manager, jugador remoto, etc.) puede instanciar dentro de un callback sin awaits.
+Advantages:
+- One download + parse per URL.
+- Spawning the second actor is a sync `clone` + setup, with no network wait.
+- The local player call site does not change.
+- The “remote actors” system (NPC manager, remote player, etc.) can instantiate inside a callback without awaits.
 
-Aplicar el mismo split a props no-animados (e.g. `loadJugSource` + `createJugInstance`): plain `Object3D.clone(true)` basta porque no hay esqueleto, pero el patrón de caché + clone-de-materiales-solo-si-tintas mantiene las reglas claras.
+Apply the same split to non-animated props (e.g. `loadJugSource` + `createJugInstance`): plain `Object3D.clone(true)` is enough because there is no skeleton, but the cache + clone-materials-only-if-tinting pattern keeps the rules clear.
 
-### Animación de clones
-Cada clon necesita su propio `AnimationMixer` corriendo sobre su propia escena clonada. Los `AnimationClip` son datos puros, así que el `mixer` del clon puede reutilizar los clips parseados en la fuente sin riesgo (limpiar tracks de scale **una vez** en la fuente, no por instancia).
+### Clone animation
+Each clone needs its own `AnimationMixer` running on its own cloned scene. `AnimationClip` instances are pure data, so the clone's `mixer` can reuse the clips parsed in the source safely (clean scale tracks **once** in the source, not per instance).
 
-## Skeletons y cleanup
-Si un skinned mesh o skeleton deja de usarse:
-- revisar si el skeleton es compartido
-- si no lo es, limpiar con `Skeleton.dispose()` cuando toque
-- en el patrón source/instance: la fuente vive lo que vive la página; el `dispose()` del instance solo limpia mixer + materiales clonados + sprites propios. Geometrías y skeletons originales se dejan en paz.
+## Skeletons and cleanup
+If a skinned mesh or skeleton is no longer used:
+- check whether the skeleton is shared
+- if it is not, clean up with `Skeleton.dispose()` when appropriate
+- in the source/instance pattern: the source lives as long as the page; the instance `dispose()` only cleans up mixer + cloned materials + its own sprites. Original geometries and skeletons are left alone.
 
 ## Bounding volumes
-La guía oficial de updates recuerda algo importante:
-- `SkinnedMesh` tiene bounding volumes propias
-- si el juego depende de culling, queries o debug fiable sobre una malla animada, conviene revisar bounding boxes/spheres en estados relevantes
+The official update guide reminds us of something important:
+- `SkinnedMesh` has its own bounding volumes
+- if the game depends on reliable culling, queries, or debug over an animated mesh, review bounding boxes/spheres in relevant states
 
-## Debug útil
+## Useful debug
 - `SkeletonHelper`
-- panel para pesos y actions activas
-- visualización del estado actual (`idle`, `walk`, etc.)
-- toggles para additive layers
-- estado de máquina y transición activa si existe
+- panel for weights and active actions
+- visualization of current state (`idle`, `walk`, etc.)
+- toggles for additive layers
+- machine state and active transition if one exists
 
-## Anti-patrones
-- animación mezclada con input directo
-- `clipAction(...).play()` disperso por todo el código
-- no distinguir base vs additive
-- no centralizar crossfades
-- no nombrar clips y depender de índices mágicos
-- clonar personajes animados sin pensar en skeletons y ownership
-- usar `Object3D.clone()` en SkinnedMesh y luego perseguir por qué los clones se mueven idénticos
-- tintar el material original esperando independencia entre clones
-- disponer la geometría en el `dispose()` de un clon (rompe a todos los demás)
+## Anti-patterns
+- animation mixed directly with input
+- `clipAction(...).play()` scattered through the codebase
+- not distinguishing base vs additive
+- not centralizing crossfades
+- not naming clips and depending on magic indices
+- cloning animated characters without thinking about skeletons and ownership
+- using `Object3D.clone()` on SkinnedMesh and then chasing why clones move identically
+- tinting the original material while expecting clone independence
+- disposing geometry in a clone's `dispose()` (breaks all the others)
 
-## Recomendación fuerte
-Para juegos reales, crear un `animationSystem` o `characterAnimationController` que:
-- indexe clips por nombre
-- exponga intents de alto nivel
-- resuelva transiciones
-- actualice mixer
-- sepa limpiar recursos si el actor desaparece
+## Strong recommendation
+For real games, create an `animationSystem` or `characterAnimationController` that:
+- indexes clips by name
+- exposes high-level intents
+- resolves transitions
+- updates the mixer
+- knows how to clean resources if the actor disappears
 
-Si el personaje ya tiene varias acciones, combate o capas parciales, separar además un `characterAnimationStateMachine` explícito.
+If the character already has multiple actions, combat, or partial layers, also separate out an explicit `characterAnimationStateMachine`.
 
-## Pendiente de ampliar
-- root motion vs movimiento gobernado por gameplay
+## To expand later
+- root motion vs gameplay-governed movement
 - upper/lower body layering
-- integración con combate o locomotion avanzada
-- multiplayer y replicación de estado de animación
+- integration with combat or advanced locomotion
+- multiplayer and animation state replication

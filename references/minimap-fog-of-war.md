@@ -1,139 +1,139 @@
 # Minimap Fog of War
 
-## Objetivo
-Construir minimapas útiles con niebla de guerra sin convertir el sistema en otra cámara cara que renderiza el mundo entero por costumbre.
+## Goal
+Build useful minimaps with fog of war without turning the system into another expensive camera that renders the whole world out of habit.
 
-## Regla principal
-**El minimapa debe priorizar legibilidad y estado táctico, no fidelidad visual.**
-La fog of war pertenece más a un subsistema de visibilidad/juego que a un render bonito.
+## Main rule
+**The minimap should prioritize readability and tactical state, not visual fidelity.**
+Fog of war belongs more to a visibility/gameplay subsystem than to pretty rendering.
 
-## Qué suele necesitar de verdad
-- geometría o mapa base simplificado
-- posición del jugador o equipo
-- zonas exploradas
-- zonas visibles ahora
-- markers relevantes
+## What it usually really needs
+- simplified geometry or base map
+- player or team position
+- explored zones
+- zones visible now
+- relevant markers
 
-No suele necesitar:
-- materiales completos del mundo
-- sombras complejas
+It usually does not need:
+- full world materials
+- complex shadows
 - postprocessing
-- props cosméticos completos
+- complete cosmetic props
 
-## Dos capas útiles
-### 1. Capa base del mapa
-Puede venir de:
-- cámara ortográfica simplificada
-- textura prehorneada
-- chunks/proxies tácticos
+## Two useful layers
+### 1. Base map layer
+Can come from:
+- simplified orthographic camera
+- prebaked texture
+- tactical chunks/proxies
 
-### 2. Capa de visibilidad
-Representa:
-- visible ahora
-- explorado antes
-- desconocido
+### 2. Visibility layer
+Represents:
+- currently visible
+- previously explored
+- unknown
 
-Esta capa puede actualizarse con lógica propia y no tiene por qué salir de renderizar el mundo entero cada frame.
+This layer can update through its own logic and does not need to come from rendering the whole world every frame.
 
-Para decidir cómo representar esa capa con masks y blending legible, ver `fog-mask-blending.md`.
+To decide how to represent that layer with readable masks and blending, see `fog-mask-blending.md`.
 
-## Modelo sano
-Pensar el minimapa como combinación de:
-- representación estática o barata del mundo
-- overlay dinámico de visibilidad
-- iconos/markers de entidades relevantes
+## Healthy model
+Think of the minimap as a combination of:
+- static or cheap world representation
+- dynamic visibility overlay
+- icons/markers for relevant entities
 
-## Implementaciones razonables
-### Opción A: minimapa RTT + overlay de fog
-- render target con vista ortográfica simplificada
-- textura o máscara adicional para la fog
-- composición final sencilla
+## Reasonable implementations
+### Option A: minimap RTT + fog overlay
+- render target with simplified orthographic view
+- additional texture or mask for fog
+- simple final composition
 
-### Opción B: mapa prehorneado + fog dinámica
-Muchas veces es la opción más sana.
+### Option B: prebaked map + dynamic fog
+Often the healthiest option.
 
-- imagen o textura base del mapa
-- sistema de coordenadas mundo -> mapa
-- máscara dinámica de exploración/visibilidad
-- iconos actualizados aparte
+- base map image or texture
+- world -> map coordinate system
+- dynamic exploration/visibility mask
+- separately updated icons
 
-### Opción C: chunks tácticos
-Útil en mundos grandes:
-- mapa base por chunks
-- visibilidad por sector
-- actualización local, no global
+### Option C: tactical chunks
+Useful in large worlds:
+- base map by chunks
+- visibility by sector
+- local updates, not global
 
-## Qué conviene trackear
-Separar al menos:
+## What to track
+Separate at least:
 - `currentlyVisible`
 - `explored`
 - `neverSeen`
 
-Eso permite niebla clásica:
-- visible: claro
-- explorado: atenuado
-- no visto: oculto
+That enables classic fog:
+- visible: clear
+- explored: dimmed
+- unseen: hidden
 
-## Update policy sana
-La fog no siempre necesita 60 fps.
+## Healthy update policy
+Fog does not always need 60 fps.
 
-Opciones:
-- actualizar por tick táctico
-- actualizar al moverse una distancia mínima
-- actualizar solo si cambia un revelador relevante
-- recalcular parcialmente por zona/chunk
+Options:
+- update by tactical tick
+- update after moving a minimum distance
+- update only if a relevant revealer changes
+- recalculate partially by zone/chunk
 
-## Fuentes de visibilidad
-Según el juego:
-- radio alrededor del jugador
-- raycasts simplificados
-- visibilidad por habitaciones
-- grid o nav sectors
-- influencia por unidades aliadas
+## Visibility sources
+Depending on the game:
+- radius around the player
+- simplified raycasts
+- room-based visibility
+- grid or nav sectors
+- influence from allied units
 
-No atar esto directamente al coste del render target. Primero decidir la lógica de visibilidad.
+Do not tie this directly to render target cost. Decide the visibility logic first.
 
-## Chunks y mundos grandes
-En mapas grandes:
-- no mantener todo con detalle uniforme
-- dividir exploración por tiles/chunks/sectores
-- serializar estado de exploración separado del render
-- cargar solo overlays necesarios cerca o en UI activa
+## Chunks and large worlds
+In large maps:
+- do not keep everything at uniform detail
+- split exploration by tiles/chunks/sectors
+- serialize exploration state separately from rendering
+- load only needed overlays nearby or in active UI
 
-## Integración con RTT
-Si el minimapa usa cámara:
-- ortográfica por defecto
-- resolución modesta
-- layers filtradas
-- update independiente de la vista principal
+## Integration with RTT
+If the minimap uses a camera:
+- orthographic by default
+- modest resolution
+- filtered layers
+- update independent from the main view
 
-La fog debería poder sobrevivir incluso si bajas mucho la frecuencia del RTT.
+Fog should survive even if you lower the RTT frequency a lot.
 
-## Integración con gameplay
-La fog of war no es solo decoración.
-Puede afectar:
-- markers visibles
-- enemigos detectables
-- objetivos conocidos
-- navegación táctica
+## Integration with gameplay
+Fog of war is not just decoration.
+It can affect:
+- visible markers
+- detectable enemies
+- known objectives
+- tactical navigation
 
-Por eso conviene que el estado de fog viva fuera de Three.js y Three.js solo lo pinte.
+That is why fog state should live outside Three.js, and Three.js should only paint it.
 
-## Anti-patrones
-- renderizar el mundo entero para una UI táctica pequeña
-- calcular visibilidad solo con estética y no con reglas del juego
-- mezclar “explorado” con “visible ahora” como si fueran lo mismo
-- hacer depender toda la fog de un RTT a 60 fps
+## Anti-patterns
+- rendering the entire world for a small tactical UI
+- calculating visibility only from aesthetics, not game rules
+- mixing “explored” with “currently visible” as if they were the same
+- making all fog depend on a 60 fps RTT
 
-## Recomendación fuerte
-En la mayoría de juegos, empezar por:
-- mapa base simplificado o prehorneado
-- overlay de fog separado
-- iconos relevantes
-- actualización por eventos, ticks o sectores
+## Strong recommendation
+In most games, start with:
+- simplified or prebaked base map
+- separate fog overlay
+- relevant icons
+- updates by events, ticks, or sectors
 
-Solo subir complejidad visual si la lectura táctica ya está resuelta.
+Only increase visual complexity once tactical reading is solved.
 
-## Pendiente de ampliar
-- multijugador con fog compartida por equipo
-- streaming de exploración persistente
+## To expand later
+- multiplayer with team-shared fog
+- streaming persistent exploration

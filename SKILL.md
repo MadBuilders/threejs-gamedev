@@ -5,272 +5,272 @@ description: Build, extend and review web games with pure Three.js (no React or 
 
 # Three.js Gamedev
 
-Trabajar con Three.js puro. No mezclar React ni R3F salvo que el usuario lo pida explícitamente.
+Work with pure Three.js. Do not mix in React or R3F unless the user explicitly asks for it.
 
 ## Workflow
 
-1. Si el usuario quiere empezar un juego nuevo, cerrar primero kickoff, stack y primer slice jugable.
-2. Identificar el problema principal.
-3. Leer solo las referencias necesarias (ver *Uso del contexto*).
-4. Preferir patrones mantenibles antes que demo code.
-5. Tratar docs/manual/examples/repo oficial como base canónica.
-6. Usar DeepWiki para preguntas concretas sobre estructura o implementación del repo oficial cuando ayude.
-7. Usar la búsqueda semántica del foro oficial (Discourse AI) para edge cases, dolores recurrentes o preguntas específicas del ecosistema.
-8. Explicitar tradeoffs de rendimiento, móvil y complejidad cuando importen.
+1. If the user wants to start a new game, settle kickoff, stack, and the first playable slice first.
+2. Identify the main problem.
+3. Read only the references needed (see *Context usage*).
+4. Prefer maintainable patterns over demo code.
+5. Treat the official docs/manual/examples/repo as the canonical base.
+6. Use DeepWiki for concrete questions about the official repo structure or implementation when helpful.
+7. Use semantic search in the official forum (Discourse AI) for edge cases, recurring pain points, or ecosystem-specific questions.
+8. Make performance, mobile, and complexity tradeoffs explicit when they matter.
 
-## Uso del contexto
+## Context usage
 
-La skill tiene muchas referencias. Cargarlas todas en un turno es un anti-patrón.
+The skill has many references. Loading all of them in one turn is an anti-pattern.
 
-Reglas duras:
-- **Máximo 3 referencias por turno** salvo justificación clara.
-- **Nunca leer el bloque avanzado de multiplayer si el proyecto es singleplayer**.
-- Si el usuario pregunta algo transversal, leer primero el router de abajo y elegir; si sigue sin estar claro, preguntar antes de leer.
-- Si una referencia remite a otra, no encadenar lecturas sin criterio: evaluar si la segunda de verdad cambia la respuesta.
+Hard rules:
+- **Maximum 3 references per turn** unless there is a clear justification.
+- **Never read the advanced multiplayer block if the project is singleplayer**.
+- If the user asks something cross-cutting, read the router below first and choose; if it is still unclear, ask before reading.
+- If one reference points to another, do not chain reads blindly: evaluate whether the second one would truly change the answer.
 
-## Router rápido
+## Quick router
 
-Intención del usuario → referencia por la que empezar.
+User intent → reference to start with.
 
-- *"Quiero empezar un juego"* → `game-kickoff-planning.md`, luego `default-project-stack.md`.
-- *"¿Cómo organizo el código?"* → `architecture.md`.
-- *"¿En qué orden ataco el proyecto?"* → `phased-game-workflow.md`.
-- *"Carga de modelos/texturas/audio"* → `assets.md`, y si hay 3D complejo `gltf-pipeline.md` (incluye **gltf-transform** para inspección/optimización de GLB).
-- *"Texturas: maps, color space, tiling, compresión"* → `texturing-pipeline.md` (incluye **ribbon meshes sobre curvas** para caminos/ríos).
-- *"El cielo se ve feo / materiales PBR apagados"* → `lights-shadows.md` sección **IBL con HDRI**.
-- *"Cargar GLBs/HDRIs sin bloquear el boot"* → `assets.md` sección **placeholder first, swap later** (+ disposal correcto).
-- *"Animaciones de personaje"* → `animation-systems.md` + `animation-state-machines.md`.
-- *"Mover al jugador / cámara de seguimiento"* → `character-locomotion.md` + `cameras.md`.
-- *"Tank / sin strafe, girar con A-D"* → `character-locomotion.md` sección **tank / vehicle-lite**.
-- *"Mirar alrededor con el ratón sin que la cámara rompa el control"* → `cameras.md` (**seguimiento + offset**) + `input-controls.md` (**hold-to-look / pointer capture**).
-- *"Minimapa o radar sin otro render pass"* → `ui-hud.md` (**Canvas 2D**), no `render-targets.md` salvo que necesites ver el mundo texturizado.
-- *"Input (teclado, touch, gamepad)"* → `input-controls.md`.
-- *"Dos joysticks virtuales / multi-touch en móvil"* → `input-controls.md` sección **Dos joysticks virtuales** (gotcha clave: `setPointerCapture` **por zona**, no por canvas).
-- *"HUD en móvil / portrait lock / safe areas"* → `ui-hud.md` sección **HUD en móvil real** (CSS-only orientation lock, `100dvh`, CTA gemela para atajos de teclado).
-- *"Necesito física"* → `physics.md`.
-- *"¿Cómo hago colisiones sin motor físico?"* → `physics.md` sección **Antes de meter un motor** (escalera raycast → AABB/cápsula a mano → BVH → motor).
-- *"¿Rapier mete overhead? / ¿lo meto ya?"* → `physics.md` secciones **Cuándo sí vale la pena el switch**, **Rendimiento** (coste concreto) y **Anti-patrones específicos de Rapier**.
-- *"Mundo grande / streaming / proceduralismo"* → `world-generation.md`.
-- *"Horizon feo / quiero relieve real en el terreno"* → `world-generation.md` + aplicar **Patrones de producción** de abajo (**heightfield / grid terrain**, **terrain como sistema**).
-- *"Horizonte vacío pero el gameplay es plano"* → `world-generation.md` sección **Relieve de horizonte como silueta** (no meter heightfield completo para esto).
-- *"Cientos de árboles/props iguales van lentos"* → `gltf-pipeline.md` sección **Migración de `clone()` a `InstancedMesh` por leaf**.
-- *"Pocos árboles/props pero el juego va lento igual / apagar una categoría decor mejora mucho"* → `gpu-vs-cpu-heuristics.md` sección **"Pocos assets" no implica "barato"** (coste real = tris × doubleSided × PBR × shadow × worldScale²).
-- *"Asset generado por IA (Meshy, Rodin, Luma, etc.), ¿qué reviso antes de meterlo?"* → `gltf-pipeline.md` sección **AI-generated GLBs** (doubleSided, texturas 2K, polycount, pipeline post-download, FrontSide en loader, no pasar skinned por AI-remesh).
-- *"Sombras caras o con poca nitidez cerca del jugador"* → `lights-shadows.md` sección **Shadow camera que sigue al foco**.
-- *"¿receiveShadow en foliage/árboles lo dejo?"* → `lights-shadows.md` sección **`receiveShadow` también cuesta por fragmento** (por defecto `false` en canopies y scattered trees).
-- *"Stutter rítmico sin FPS obvio bajo"* → `profiling-budgets.md` (bullet de **asignaciones per-frame en el hot path**).
-- *"Quiero source editable y runtime rápido"* → aplicar **Patrones de producción** de abajo y leer `assets.md` / `world-generation.md` según el cuello.
-- *"Quiero editor de niveles / mapa authored"* → `level-editor-in-browser.md` (+ **Level editors / authored worlds** de abajo para doctrina).
-- *"Limpiar recursos / memory leak"* → `resource-lifecycle.md`.
-- *"Va lento en móvil"* → `mobile-performance.md` + `profiling-budgets.md`.
-- *"¿Es GPU, CPU o stutter?"* → `gpu-vs-cpu-heuristics.md` + `frame-pacing-stutter.md`.
-- *"Animaciones distorsionan el mesh (scale de hueso raíz, root motion no deseado)"* → `gltf-pipeline.md` sección **tracks de scale**.
-- *"Quality settings y escalado"* → `quality-tiers.md` + `adaptive-quality-scaling.md`.
-- *"Benchmark y regresiones"* → `benchmarking.md` + `stress-scenes-benchmarks.md`.
-- *"Luces y sombras"* → `lights-shadows.md`.
-- *"Espejos, portales, minimapas, agua"* → `render-targets.md` + `render-target-families.md` (+ `portal-*` o `minimap-fog-of-war.md` según caso).
-- *"Transparencias que se ven raras"* → `transparency-pitfalls.md`.
-- *"Postpro (bloom, SSAO, etc.)"* → `postprocessing.md`.
-- *"Audio del juego"* → `audio-systems.md`.
-- *"HUD, menús, overlays"* → `ui-hud.md`.
-- *"Shader custom (dissolve, water, terrain blend, etc.)"* → `custom-shaders.md`.
-- *"Pathfinding / enemigos / IA"* → `ai-navigation.md`.
-- *"Guardar partida, progreso, settings"* → `persistence-save.md`.
-- *"Build, compresión de assets, deploy"* → `build-deploy.md`.
-- *"Debug visual"* → `debugging.md`.
-- *"Multiplayer"* → ir a *Bloque avanzado* (bajo demanda explícita).
+- *"I want to start a game"* → `game-kickoff-planning.md`, then `default-project-stack.md`.
+- *"How should I organize the code?"* → `architecture.md`.
+- *"In what order should I tackle the project?"* → `phased-game-workflow.md`.
+- *"Loading models/textures/audio"* → `assets.md`, and if there is complex 3D, `gltf-pipeline.md` (includes **gltf-transform** for GLB inspection/optimization).
+- *"Textures: maps, color space, tiling, compression"* → `texturing-pipeline.md` (includes **ribbon meshes over curves** for roads/rivers).
+- *"The sky looks ugly / PBR materials look flat"* → `lights-shadows.md` section **IBL with HDRI**.
+- *"Load GLBs/HDRIs without blocking boot"* → `assets.md` section **placeholder first, swap later** (+ correct disposal).
+- *"Character animations"* → `animation-systems.md` + `animation-state-machines.md`.
+- *"Move the player / follow camera"* → `character-locomotion.md` + `cameras.md`.
+- *"Tank / no strafe, turn with A-D"* → `character-locomotion.md` section **tank / vehicle-lite**.
+- *"Look around with the mouse without breaking camera control"* → `cameras.md` (**follow + offset**) + `input-controls.md` (**hold-to-look / pointer capture**).
+- *"Minimap or radar without another render pass"* → `ui-hud.md` (**Canvas 2D**), not `render-targets.md` unless you need to see the textured world.
+- *"Input (keyboard, touch, gamepad)"* → `input-controls.md`.
+- *"Two virtual joysticks / mobile multi-touch"* → `input-controls.md` section **Two virtual joysticks** (key gotcha: `setPointerCapture` **per zone**, not per canvas).
+- *"Mobile HUD / portrait lock / safe areas"* → `ui-hud.md` section **Real mobile HUD** (CSS-only orientation lock, `100dvh`, twin CTA for keyboard shortcuts).
+- *"I need physics"* → `physics.md`.
+- *"How do I do collisions without a physics engine?"* → `physics.md` section **Before adding an engine** (ladder: raycast → manual AABB/capsule → BVH → engine).
+- *"Does Rapier add overhead? / should I add it now?"* → `physics.md` sections **When the switch is worth it**, **Performance** (concrete cost), and **Rapier-specific anti-patterns**.
+- *"Large world / streaming / proceduralism"* → `world-generation.md`.
+- *"Ugly horizon / I want real terrain relief"* → `world-generation.md` + apply **Production patterns** below (**heightfield / grid terrain**, **terrain as a system**).
+- *"Empty horizon but flat gameplay"* → `world-generation.md` section **Horizon relief as silhouette** (do not add a full heightfield just for this).
+- *"Hundreds of identical trees/props are slow"* → `gltf-pipeline.md` section **Migration from `clone()` to `InstancedMesh` by leaf**.
+- *"Few trees/props but the game is still slow / disabling one decorative category helps a lot"* → `gpu-vs-cpu-heuristics.md` section **"Few assets" does not mean "cheap"** (real cost = tris × doubleSided × PBR × shadow × worldScale²).
+- *"AI-generated asset (Meshy, Rodin, Luma, etc.), what should I review before adding it?"* → `gltf-pipeline.md` section **AI-generated GLBs** (doubleSided, 2K textures, polycount, post-download pipeline, FrontSide in loader, do not AI-remesh skinned meshes).
+- *"Expensive shadows or low sharpness near the player"* → `lights-shadows.md` section **Shadow camera that follows the focus**.
+- *"Should I keep receiveShadow on foliage/trees?"* → `lights-shadows.md` section **`receiveShadow` also costs per fragment** (default `false` on canopies and scattered trees).
+- *"Rhythmic stutter without obviously low FPS"* → `profiling-budgets.md` (bullet about **per-frame allocations in the hot path**).
+- *"I want editable source and fast runtime"* → apply **Production patterns** below and read `assets.md` / `world-generation.md` depending on the bottleneck.
+- *"I want a level editor / authored map"* → `level-editor-in-browser.md` (+ **Level editors / authored worlds** below for doctrine).
+- *"Clean up resources / memory leak"* → `resource-lifecycle.md`.
+- *"It is slow on mobile"* → `mobile-performance.md` + `profiling-budgets.md`.
+- *"Is it GPU, CPU, or stutter?"* → `gpu-vs-cpu-heuristics.md` + `frame-pacing-stutter.md`.
+- *"Animations distort the mesh (root bone scale, unwanted root motion)"* → `gltf-pipeline.md` section **scale tracks**.
+- *"Quality settings and scaling"* → `quality-tiers.md` + `adaptive-quality-scaling.md`.
+- *"Benchmark and regressions"* → `benchmarking.md` + `stress-scenes-benchmarks.md`.
+- *"Lights and shadows"* → `lights-shadows.md`.
+- *"Mirrors, portals, minimaps, water"* → `render-targets.md` + `render-target-families.md` (+ `portal-*` or `minimap-fog-of-war.md` as appropriate).
+- *"Transparency looks weird"* → `transparency-pitfalls.md`.
+- *"Postprocessing (bloom, SSAO, etc.)"* → `postprocessing.md`.
+- *"Game audio"* → `audio-systems.md`.
+- *"HUD, menus, overlays"* → `ui-hud.md`.
+- *"Custom shader (dissolve, water, terrain blend, etc.)"* → `custom-shaders.md`.
+- *"Pathfinding / enemies / AI"* → `ai-navigation.md`.
+- *"Save game, progress, settings"* → `persistence-save.md`.
+- *"Build, asset compression, deploy"* → `build-deploy.md`.
+- *"Visual debugging"* → `debugging.md`.
+- *"Multiplayer"* → go to *Advanced block* (only on explicit demand).
 
 ## Defaults
 
-- Three.js puro como base.
-- `glTF` como formato principal de assets 3D.
-- `setAnimationLoop` como loop por defecto.
-- Separar bootstrap, render, world/systems y gameplay cuando el proyecto lo pida.
-- Mantener addons explícitos y minimizados.
-- Diseñar primero para claridad, luego para optimización.
-- **Singleplayer first** salvo requisito claro de multiplayer.
+- Pure Three.js as the base.
+- `glTF` as the main 3D asset format.
+- `setAnimationLoop` as the default loop.
+- Separate bootstrap, render, world/systems, and gameplay when the project asks for it.
+- Keep addons explicit and minimized.
+- Design for clarity first, then optimize.
+- **Singleplayer first** unless there is a clear multiplayer requirement.
 
-## Patrones de producción
+## Production patterns
 
-- **Source editable -> artifact de runtime**: cuando un mundo/nivel crece, separar el archivo cómodo de editar (JSON, curvas, placements) del archivo cómodo de cargar en juego. Mantener fallback al source mientras el pipeline madura.
-- **Worker-first para trabajo pesado**: terreno, chunking, máscaras, nubes o preprocesos largos no deberían competir con input/cámara/HUD en el hilo principal.
-- **Authored data + LOD + instancing**: usar data authored para decidir *qué* va dónde; usar LOD e instancing para decidir *cómo* se dibuja barato. No mezclar layout con optimización ad-hoc.
-- **Boot con fallbacks**: si falta un asset o artifact secundario, el juego debería degradar con una ruta más simple en vez de romper el arranque completo.
-- **Heightfield / grid terrain para relieve real**: si el horizonte o el suelo necesitan forma de verdad, modelar el terreno como datos de altura (authorados, generados o mixtos) en vez de “parchear” un plano con fórmulas locales difíciles de razonar.
-- **Heightfield no implica física**: un heightfield puede servir solo para render, solo para placement, o para render + colliders. No meter Rapier “porque hay colinas” si el juego solo necesita `getGroundHeight(x, z)` y quizá la normal del terreno.
-- **Terreno como sistema, no como truco visual**: separar `terrain data` / `terrain build` / `terrain render` del resto de `level.ts`. Cuando el relieve importa, conviene que terreno, horizonte y posibles colliders salgan del mismo modelo mental.
-- **Rapier cuando la interacción lo pide**: ruedas, suspensión, cuerpos rígidos apoyados en pendiente o contacto físico continuo sí empujan hacia Rapier/heightfield collider. Un walking game con relieve suave suele poder seguir kinemático.
+- **Editable source -> runtime artifact**: when a world/level grows, separate the file that is comfortable to edit (JSON, curves, placements) from the file that is comfortable to load in-game. Keep a fallback to source while the pipeline matures.
+- **Worker-first for heavy work**: terrain, chunking, masks, clouds, or long preprocessing should not compete with input/camera/HUD on the main thread.
+- **Authored data + LOD + instancing**: use authored data to decide *what* goes where; use LOD and instancing to decide *how* it is drawn cheaply. Do not mix layout with ad-hoc optimization.
+- **Boot with fallbacks**: if an asset or secondary artifact is missing, the game should degrade to a simpler path instead of breaking the whole startup.
+- **Heightfield / grid terrain for real relief**: if the horizon or ground truly needs shape, model terrain as height data (authored, generated, or mixed) instead of “patching” a plane with local formulas that are hard to reason about.
+- **Heightfield does not imply physics**: a heightfield can serve only rendering, only placement, or rendering + colliders. Do not add Rapier “because there are hills” if the game only needs `getGroundHeight(x, z)` and maybe the terrain normal.
+- **Terrain as a system, not a visual trick**: separate `terrain data` / `terrain build` / `terrain render` from the rest of `level.ts`. When relief matters, terrain, horizon, and possible colliders should come from the same mental model.
+- **Rapier when the interaction asks for it**: wheels, suspension, rigid bodies resting on slopes, or continuous physical contact push toward Rapier/heightfield collider. A walking game with smooth relief can usually stay kinematic.
 
 ## Level editors / authored worlds
 
-- **El editor escribe source humano**: JSON o estructuras fáciles de inspeccionar/diffear. El editor no debería escribir formatos opacos como fuente principal.
-- **Runtime loader separado del editor**: `levelDefinition` / schema por un lado, render/runtime por otro. Así el editor no arrastra dependencias del juego entero.
-- **El bake es opcional y posterior**: primero validar que el workflow authored funciona. Solo añadir artifact/binario cuando el tamaño, el parseo o el boot lo justifiquen.
-- **Fallback sano**: si el artifact derivado falta, cargar el source authored. Si eso falla, usar un default interno para no romper el arranque.
-- **Data antes que render code**: paths, placements, spawn, boundary, props y tuning del layout deberían vivir en data editable, no enterrados en constantes visuales.
-- **El editor es una ruta del mismo bundle**: activar con `?editor=1` y reusar bootstrap (renderer, scene, loaders) para que la preview *sea* el juego. Ver `level-editor-in-browser.md` para patrones concretos: save endpoint dev, doble `TransformControls` para translate+rotate simultáneos, snap+Shift, draft en `localStorage`, catálogo de assets extensible y disposal correcto de helpers.
-- **Si el terreno importa, también debería authorarse**: para mundos con relieve real, tratar el terreno como data editable (height grid, masks, splines, stamps o mezcla) y no como una deformación escondida en el código de render del nivel.
+- **The editor writes human-readable source**: JSON or structures that are easy to inspect/diff. The editor should not write opaque formats as the main source.
+- **Runtime loader separate from the editor**: `levelDefinition` / schema on one side, render/runtime on the other. That way the editor does not drag in dependencies from the whole game.
+- **Bake is optional and later**: first validate that the authored workflow works. Only add an artifact/binary when size, parsing, or boot justify it.
+- **Healthy fallback**: if the derived artifact is missing, load the authored source. If that fails, use an internal default so startup does not break.
+- **Data before render code**: paths, placements, spawn, boundary, props, and layout tuning should live in editable data, not be buried in visual constants.
+- **The editor is a route in the same bundle**: enable it with `?editor=1` and reuse bootstrap (renderer, scene, loaders) so the preview *is* the game. See `level-editor-in-browser.md` for concrete patterns: dev save endpoint, dual `TransformControls` for simultaneous translate+rotate, snap+Shift, draft in `localStorage`, extensible asset catalog, and correct helper disposal.
+- **If terrain matters, it should also be authored**: for worlds with real relief, treat terrain as editable data (height grid, masks, splines, stamps, or a mix) and not as a hidden deformation in the level render code.
 
-## Mapa de referencias
+## Reference map
 
-### Kickoff y defaults de proyecto
-- `references/game-kickoff-planning.md` para preguntas iniciales, kickoff brief y primer slice jugable.
-- `references/phased-game-workflow.md` para forzar fases, validar mecánica antes de polish y evitar scope explosion.
-- `references/threejs-game-viability.md` para viabilidad general, límites sanos, ideas que encajan bien e inspiración con scope realista.
-- `references/default-project-stack.md` para stack por defecto, estructura de carpetas, Rapier y criterio singleplayer-first.
-- `references/default-content-sourcing.md` para fuentes opinionadas de assets, texturas y audio provisional.
-- `references/project-agents-md.md` para usar `AGENTS.md` como memoria operativa por juego.
+### Kickoff and project defaults
+- `references/game-kickoff-planning.md` for initial questions, kickoff brief, and first playable slice.
+- `references/phased-game-workflow.md` to force phases, validate mechanics before polish, and avoid scope explosion.
+- `references/threejs-game-viability.md` for general viability, healthy limits, good-fit ideas, and realistic-scope inspiration.
+- `references/default-project-stack.md` for the default stack, folder structure, Rapier, and singleplayer-first criteria.
+- `references/default-content-sourcing.md` for opinionated sources of temporary assets, textures, and audio.
+- `references/project-agents-md.md` for using `AGENTS.md` as operational memory per game.
 
-### Core y gameplay
-- `references/architecture.md` para estructura, bootstrap, loop, resize y lifecycle.
-- `references/assets.md` para formatos, loaders e importación.
-- `references/gltf-pipeline.md` para export, carga coordinada, compresión e instanciación.
-- `references/texturing-pipeline.md` para maps, color space, tiling/anisotropy, compresión y blending de terreno.
-- `references/animation-systems.md` para clips, mixers, actions y blending.
-- `references/animation-state-machines.md` para estados visuales, transiciones y one-shots.
-- `references/character-locomotion.md` para player controllers, grounded state, cámara, locomotion state y variantes (**tank controls** cuando el strafe compite con otra mecánica).
-- `references/cameras.md` para follow cameras, spring-damped, orbital, cinematic y collision-aware.
-- `references/input-controls.md` para input abstraction, teclado, touch, gamepad y raycasting.
-- `references/physics.md` para integración de motor físico y límites de responsabilidad.
-- `references/world-generation.md` para streaming, chunking y contenido procedural.
-- `references/level-editor-in-browser.md` para meter un editor de niveles dentro de la misma app (save endpoint dev, dual `TransformControls`, snap, draft en `localStorage`, asset catalog, gotchas de disposal).
-- `references/ai-navigation.md` para pathfinding, nav meshes, steering y behavior simple.
-- `references/resource-lifecycle.md` para ownership, limpieza y `dispose()`.
+### Core and gameplay
+- `references/architecture.md` for structure, bootstrap, loop, resize, and lifecycle.
+- `references/assets.md` for formats, loaders, and imports.
+- `references/gltf-pipeline.md` for export, coordinated loading, compression, and instancing.
+- `references/texturing-pipeline.md` for maps, color space, tiling/anisotropy, compression, and terrain blending.
+- `references/animation-systems.md` for clips, mixers, actions, and blending.
+- `references/animation-state-machines.md` for visual states, transitions, and one-shots.
+- `references/character-locomotion.md` for player controllers, grounded state, camera, locomotion state, and variants (**tank controls** when strafe competes with another mechanic).
+- `references/cameras.md` for follow cameras, spring-damped, orbital, cinematic, and collision-aware.
+- `references/input-controls.md` for input abstraction, keyboard, touch, gamepad, and raycasting.
+- `references/physics.md` for physics engine integration and responsibility boundaries.
+- `references/world-generation.md` for streaming, chunking, and procedural content.
+- `references/level-editor-in-browser.md` for putting a level editor inside the same app (dev save endpoint, dual `TransformControls`, snap, draft in `localStorage`, asset catalog, disposal gotchas).
+- `references/ai-navigation.md` for pathfinding, nav meshes, steering, and simple behavior.
+- `references/resource-lifecycle.md` for ownership, cleanup, and `dispose()`.
 
-### Presentación y UX
-- `references/audio-systems.md` para buses, spatial audio, loading y pool de voces.
-- `references/ui-hud.md` para HUD, menús, overlays DOM vs canvas y acoplamiento sano.
-- `references/persistence-save.md` para guardar partida, progreso y settings.
+### Presentation and UX
+- `references/audio-systems.md` for buses, spatial audio, loading, and voice pools.
+- `references/ui-hud.md` for HUD, menus, DOM vs canvas overlays, and healthy coupling.
+- `references/persistence-save.md` for saving game state, progress, and settings.
 
-### Performance y validación
-- `references/mobile-performance.md` para presupuestos y reducción de coste.
-- `references/profiling-budgets.md` para frame time, draw calls y budgets reales.
-- `references/gpu-vs-cpu-heuristics.md` para distinguir cuello visual, lógico, mixto o stutter.
-- `references/frame-pacing-stutter.md` para picos, warmup y activación suave.
-- `references/quality-tiers.md` para presets coherentes por dispositivo.
-- `references/adaptive-quality-scaling.md` para histéresis, cooldown y `renderScale`.
-- `references/stress-scenes-benchmarks.md` para benches internos y escenas de estrés.
-- `references/benchmarking.md` para runs reproducibles, diffs, thresholds y clasificación final (reporting + diffs + thresholds unificados).
+### Performance and validation
+- `references/mobile-performance.md` for budgets and cost reduction.
+- `references/profiling-budgets.md` for frame time, draw calls, and real budgets.
+- `references/gpu-vs-cpu-heuristics.md` for distinguishing visual, logic, mixed, or stutter bottlenecks.
+- `references/frame-pacing-stutter.md` for spikes, warmup, and smooth activation.
+- `references/quality-tiers.md` for coherent presets by device.
+- `references/adaptive-quality-scaling.md` for hysteresis, cooldown, and `renderScale`.
+- `references/stress-scenes-benchmarks.md` for internal benches and stress scenes.
+- `references/benchmarking.md` for reproducible runs, diffs, thresholds, and final classification (unified reporting + diffs + thresholds).
 
-### Rendering, RTT y lighting
-- `references/render-targets.md` para RTT como subsistema, resolución, frecuencia y lifecycle.
-- `references/render-target-families.md` para mirrors, refractors, portals y minimaps.
-- `references/portal-recursion.md` para profundidad, resolución por nivel y fallbacks.
-- `references/portal-masking-stencil-scissor.md` para recorte de área, stencil y overdraw.
-- `references/minimap-fog-of-war.md` para minimapas tácticos, visibilidad y explored state.
-- `references/fog-mask-blending.md` para masks y blending de fog.
-- `references/transparency-pitfalls.md` para sorting, depth, alpha test y decisiones sanas con materiales transparentes.
-- `references/lights-shadows.md` para estrategia de iluminación y shadow maps.
-- `references/postprocessing.md` para cadenas de effects, resize y criterio de uso.
-- `references/custom-shaders.md` para `ShaderMaterial`, `onBeforeCompile`, patrones comunes y anti-patrones.
+### Rendering, RTT, and lighting
+- `references/render-targets.md` for RTT as a subsystem, resolution, frequency, and lifecycle.
+- `references/render-target-families.md` for mirrors, refractors, portals, and minimaps.
+- `references/portal-recursion.md` for depth, per-level resolution, and fallbacks.
+- `references/portal-masking-stencil-scissor.md` for area clipping, stencil, and overdraw.
+- `references/minimap-fog-of-war.md` for tactical minimaps, visibility, and explored state.
+- `references/fog-mask-blending.md` for fog masks and blending.
+- `references/transparency-pitfalls.md` for sorting, depth, alpha test, and healthy decisions with transparent materials.
+- `references/lights-shadows.md` for lighting strategy and shadow maps.
+- `references/postprocessing.md` for effect chains, resize, and usage criteria.
+- `references/custom-shaders.md` for `ShaderMaterial`, `onBeforeCompile`, common patterns, and anti-patterns.
 
-### Debug y build
-- `references/debugging.md` para helpers e inspección visual.
-- `references/build-deploy.md` para Vite build, compresión de assets, cache busting y deploy.
+### Debug and build
+- `references/debugging.md` for helpers and visual inspection.
+- `references/build-deploy.md` for Vite build, asset compression, cache busting, and deploy.
 
-### Bloque avanzado (solo bajo demanda explícita)
-No cargar estas referencias por defecto. Entrar aquí solo si el usuario declara multiplayer como core del juego, o si va a añadirlo a un proyecto singleplayer existente.
+### Advanced block (only on explicit demand)
+Do not load these references by default. Enter here only if the user declares multiplayer as core to the game, or if they are adding it to an existing singleplayer project.
 
-- `references/multiplayer.md` para arquitectura base de red, snapshots, interest management y **stack concreto recomendado (Colyseus)** con sus gotchas en 0.17.
-- `references/multiplayer-consistency-models.md` para rollback, lockstep e hit validation.
-- `references/server-rewind-weapons.md` para rewind o lag compensation por arma.
-- `references/anti-cheat-anomalies.md` para telemetría, scoring de sospecha y mitigaciones.
+- `references/multiplayer.md` for base network architecture, snapshots, interest management, and the **concrete recommended stack (Colyseus)** with its 0.17 gotchas.
+- `references/multiplayer-consistency-models.md` for rollback, lockstep, and hit validation.
+- `references/server-rewind-weapons.md` for per-weapon rewind or lag compensation.
+- `references/anti-cheat-anomalies.md` for telemetry, suspicion scoring, and mitigations.
 
-Default sano para juegos casual / cooperativo / competitivo ligero: empezar por `multiplayer.md` y plantear Colyseus con monorepo (`client/` + `server/`). Saltar a los otros tres solo si el género lo justifica.
+Healthy default for casual / cooperative / lightweight competitive games: start with `multiplayer.md` and propose Colyseus with a monorepo (`client/` + `server/`). Jump to the other three only if the genre justifies it.
 
-## Reglas de criterio
+## Judgment rules
 
-- No copiar la documentación oficial dentro de la skill.
-- No presentar demo code como arquitectura de producción.
-- Marcar qué es core, qué es addon y qué es doctrina de proyecto.
-- Recomendar herramientas externas solo cuando añadan un pipeline claro.
-- Si una decisión afecta móvil o rendimiento, explicitar el tradeoff.
-- Si una referencia declara un anti-patrón, no contradecirlo sin justificar por qué este caso es excepción.
+- Do not copy official documentation into the skill.
+- Do not present demo code as production architecture.
+- Mark what is core, what is addon, and what is project doctrine.
+- Recommend external tools only when they add a clear pipeline.
+- If a decision affects mobile or performance, make the tradeoff explicit.
+- If a reference declares an anti-pattern, do not contradict it without justifying why this case is an exception.
 
-## Fuentes base
+## Base sources
 
 - `threejs.org/docs`
 - `threejs.org/manual`
 - `threejs.org/examples`
 - `github.com/mrdoob/three.js`
-- DeepWiki sobre el repo oficial como ayuda puntual
-- búsqueda semántica del foro oficial (`/discourse-ai/embeddings/semantic-search.json`) como ayuda puntual para problemas concretos
+- DeepWiki on the official repo as targeted help
+- semantic search in the official forum (`/discourse-ai/embeddings/semantic-search.json`) as targeted help for concrete problems
 
-## Estado actual
+## Current state
 
-**v1.12**. Recogidos aprendizajes de portar un juego Three.js singleplayer a móvil con esquema de dos joysticks virtuales:
+**v1.12**. Captured learnings from porting a singleplayer Three.js game to mobile with a two-virtual-joystick scheme:
 
-- `input-controls.md`: sección nueva **Dos joysticks virtuales (pattern reusable)**. Gotchas concretos que ahorran tiempo: **`setPointerCapture(e.pointerId)` por zona, no por el canvas** (sin eso iOS Safari rutea el `pointermove` del segundo dedo hacia quien tenga la captura más reciente y la diagonal se rompe), **centro dinámico** en la base del stick, dead zone ~0.12 + radio 60 px como defaults, **touch como override sobre el mismo struct `axes`** (no un pipeline paralelo: gameplay lee un único struct y el código desktop no necesita `if (isTouch)`), **hold-to-look y dos sticks son mutuamente excluyentes en móvil** (hay que *quitar* el `pointerdown` del canvas, no sólo no pintarlo), `touch-action: none` + `user-select: none` en el canvas pero no en `body`, y **device class una sola vez al boot** con `matchMedia('(pointer: coarse)')` → `body.is-touch`. Quitado `virtual joystick` de *Pendiente de ampliar*.
-- `ui-hud.md`: sección nueva **HUD en móvil real (landscape first)** con los patrones que no son gamedev-obvios pero sí mobile-obvios: `100dvh` en contenedores críticos por el colapso de la URL bar en iOS Safari, `env(safe-area-inset-*)` también en el padding exterior de CTAs (no sólo en `body`), **orientation lock como CSS-only** (explicitar que no se debe llamar al `ScreenOrientation API`: soporte desigual, exige fullscreen), gemela táctil obligatoria para cualquier atajo de teclado en game-over / paused, y la misma `body.is-touch` como switch compartido con el input system.
-- `SKILL.md`: dos entradas nuevas en el router (*"Dos joysticks virtuales / multi-touch en móvil"* y *"HUD en móvil / portrait lock / safe areas"*) para que caigan directo en las secciones nuevas.
+- `input-controls.md`: new section **Two virtual joysticks (reusable pattern)**. Concrete time-saving gotchas: **`setPointerCapture(e.pointerId)` per zone, not per canvas** (without that, iOS Safari routes the second finger's `pointermove` to whoever has the most recent capture and the diagonal breaks), **dynamic center** in the stick base, dead zone ~0.12 + 60 px radius as defaults, **touch as an override over the same `axes` struct** (not a parallel pipeline: gameplay reads one struct and desktop code does not need `if (isTouch)`), **hold-to-look and two sticks are mutually exclusive on mobile** (you must *remove* `pointerdown` from the canvas, not merely stop drawing it), `touch-action: none` + `user-select: none` on the canvas but not on `body`, and **device class once at boot** with `matchMedia('(pointer: coarse)')` → `body.is-touch`. Removed `virtual joystick` from *Pending expansion*.
+- `ui-hud.md`: new section **Real mobile HUD (landscape first)** with patterns that are not gamedev-obvious but are mobile-obvious: `100dvh` on critical containers because of iOS Safari URL bar collapse, `env(safe-area-inset-*)` also on outer CTA padding (not only on `body`), **CSS-only orientation lock** (make explicit that the `ScreenOrientation API` should not be called: uneven support, requires fullscreen), mandatory touch twin for any keyboard shortcut in game-over / paused, and the same `body.is-touch` as the shared switch with the input system.
+- `SKILL.md`: two new router entries (*"Two virtual joysticks / mobile multi-touch"* and *"Mobile HUD / portrait lock / safe areas"*) so they land directly in the new sections.
 
-**v1.11**. Reforzada la doctrina de colisión/física a partir de preguntas frecuentes de kickoff ("¿cómo funciona la colisión en Three.js?", "¿Rapier mete overhead si lo meto?"):
+**v1.11**. Strengthened collision/physics doctrine based on common kickoff questions ("how does collision work in Three.js?", "does Rapier add overhead if I add it?"):
 
-- `physics.md`: bloque nuevo al principio **Antes de meter un motor** con la afirmación explícita *"Three.js no tiene detección de colisiones"* y la **escalera de cuatro estrategias** (raycast puntual → bounding volumes manuales → BVH sobre mesh estático → motor físico). Da permiso explícito a quedarse en el escalón 2 (colisión a mano en XZ o AABB) para la mayoría de juegos casual/walking/multijugador ligero.
-- `physics.md`: sección nueva **El collider nunca es el asset visual** como regla dura. El GLB se renderiza, el collider lo declaras tú (radio, cápsula, AABB). Complementa al aviso de `gltf-pipeline.md` sobre GLBs de IA con `doubleSided: true` y 2–3M tris.
-- `physics.md`: sección nueva **Cuándo sí vale la pena el switch a motor físico** con checklist operativa (ruedas/suspensión, stacking, pendientes con contacto continuo, proyectiles físicos, joints/constraints, mecánicas emergentes). Reemplaza el genérico "cuándo usar física completa" con señales concretas. Cierra con el corolario *"Rapier cuando la interacción lo pide"*.
-- `physics.md`: ampliada la sección **Rendimiento** con el **coste concreto de Rapier** (bundle 1–1.5 MB compat, init async, step según tipo de cuerpo, fixed timestep obligatorio, sync sin asignaciones, queries cacheables) y **números mentales** orientativos (<1 ms con decenas de kinemáticos, 2–5 ms con 500+ dinámicos, 10–20 ms con trimesh del nivel entero).
-- `physics.md`: sección nueva **Anti-patrones específicos de Rapier** con los 8 tiros en el pie típicos (trimesh del mundo, dinámico por defecto, sleep roto, crear/destruir en hot path, delta variable al step, raycasts per-NPC, sync con asignaciones, collider = GLB).
-- `SKILL.md`: dos entradas nuevas en el router (*"¿Cómo hago colisiones sin motor físico?"* y *"¿Rapier mete overhead? / ¿lo meto ya?"*) para que estas preguntas caigan directamente en las secciones nuevas de `physics.md` en vez de en la entrada genérica *"Necesito física"*.
+- `physics.md`: new block at the beginning, **Before adding an engine**, with the explicit statement *"Three.js has no collision detection"* and the **four-strategy ladder** (point raycast → manual bounding volumes → BVH over static mesh → physics engine). It explicitly permits staying on step 2 (manual XZ or AABB collision) for most casual/walking/light-multiplayer games.
+- `physics.md`: new section **The collider is never the visual asset** as a hard rule. The GLB is rendered; you declare the collider yourself (radius, capsule, AABB). Complements the warning in `gltf-pipeline.md` about AI GLBs with `doubleSided: true` and 2–3M tris.
+- `physics.md`: new section **When the switch to a physics engine is worth it** with an operational checklist (wheels/suspension, stacking, slopes with continuous contact, physical projectiles, joints/constraints, emergent mechanics). Replaces the generic "when to use full physics" with concrete signals. Ends with the corollary *"Rapier when the interaction asks for it"*.
+- `physics.md`: expanded **Performance** section with the **concrete cost of Rapier** (1–1.5 MB compat bundle, async init, step cost by body type, mandatory fixed timestep, sync without allocations, cacheable queries) and orienting **mental numbers** (<1 ms with dozens of kinematics, 2–5 ms with 500+ dynamics, 10–20 ms with a trimesh for the entire level).
+- `physics.md`: new section **Rapier-specific anti-patterns** with the 8 typical footguns (world trimesh, dynamic by default, broken sleep, create/destroy in hot path, variable delta in step, per-NPC raycasts, sync with allocations, collider = GLB).
+- `SKILL.md`: two new router entries (*"How do I do collisions without a physics engine?"* and *"Does Rapier add overhead? / should I add it now?"*) so these questions land directly in the new `physics.md` sections instead of the generic *"I need physics"* entry.
 
-**v1.10**. Recogidos aprendizajes de una sesión de optimización centrada en assets generados por IA en un juego 3D real:
+**v1.10**. Captured learnings from an optimization session focused on AI-generated assets in a real 3D game:
 
-- `gltf-pipeline.md`: sección nueva **AI-generated GLBs (Meshy y similares)** con los defaults silenciosos que traen (`doubleSided: true` en opacos, texturas 2K por slot PBR, polycount de 0.5M–3M tris, sin compresión), el pipeline post-download canónico (`resize` → `webp` → `meshopt`), la regla de **forzar `FrontSide` en el loader** en vez de corregir el GLB (robustez ante re-exports futuros), el aviso de **no pasar skinned meshes por AI-remesh** (rompe weights/skeleton/animaciones), y la práctica de **variant scale como dato authored, no baked in GLB** para poder regenerar la malla sin retunear la escena.
-- `gpu-vs-cpu-heuristics.md`: sección nueva **"Pocos assets" no implica "barato"** con la fórmula mental del coste GPU real por asset (`tris × instancias × fragments × doubleSided × PBR samples × shadow samples × worldScale²`) y el aviso explícito de que **`InstancedMesh` colapsa draw calls pero no baja el coste por instancia**. Nuevo síntoma en GPU-bound: apagar una categoría decor entera gana mucho aunque solo haya 20 instancias.
-- `lights-shadows.md`: sección nueva **`receiveShadow` también cuesta por fragmento** — no sólo `castShadow`. En foliage denso y canopies que están por encima del jugador, `receiveShadow = false` es casi siempre la respuesta correcta. Recomendación de exponer el flag en los factories de carga para que árboles y props compartan loader pero diverjan en política de sombras.
-- `SKILL.md`: tres entradas nuevas en el router (assets de IA, pocos assets que tanquean, `receiveShadow` en foliage).
+- `gltf-pipeline.md`: new section **AI-generated GLBs (Meshy and similar)** with their silent defaults (`doubleSided: true` on opaque materials, 2K textures per PBR slot, 0.5M–3M triangle polycount, no compression), the canonical post-download pipeline (`resize` → `webp` → `meshopt`), the rule to **force `FrontSide` in the loader** instead of correcting the GLB (robustness against future re-exports), the warning to **not pass skinned meshes through AI-remesh** (breaks weights/skeleton/animations), and the practice of **variant scale as authored data, not baked in the GLB** so the mesh can be regenerated without retuning the scene.
+- `gpu-vs-cpu-heuristics.md`: new section **"Few assets" does not mean "cheap"** with the mental formula for real GPU cost per asset (`tris × instances × fragments × doubleSided × PBR samples × shadow samples × worldScale²`) and the explicit warning that **`InstancedMesh` collapses draw calls but does not lower per-instance cost**. New GPU-bound symptom: disabling an entire decorative category wins a lot even when there are only 20 instances.
+- `lights-shadows.md`: new section **`receiveShadow` also costs per fragment** — not only `castShadow`. In dense foliage and canopies above the player, `receiveShadow = false` is almost always the right answer. Recommendation to expose the flag in loader factories so trees and props can share a loader but diverge in shadow policy.
+- `SKILL.md`: three new router entries (AI assets, few assets tanking performance, `receiveShadow` in foliage).
 
-**v1.9**. Recogidos aprendizajes de una pasada de optimización sobre un juego single-player 3D ya en producción:
+**v1.9**. Captured learnings from an optimization pass on a 3D singleplayer game already in production:
 
-- `world-generation.md`: nueva sección **Relieve de horizonte como silueta** para el caso "el gameplay es plano pero el horizonte se ve vacío". Receta reutilizable basada en **máscara radial · patrón angular · detalle fbm**, con tradeoffs frente a heightfield authored y aviso explícito de que es render-only (no tocar colliders / navmesh con esto).
-- `gltf-pipeline.md` (Caso 3): sección nueva **Migración de `clone()` a `InstancedMesh` por leaf** con la plantilla reutilizable de aplanar leaf meshes al cargar y exponer un factory `createInstancedMeshes(placements)` paralelo al `instance()` existente. Incluye reglas sobre agrupar por variante, mantener `instance()` para casos interactivos y qué pasa con obstáculos/colisión.
-- `lights-shadows.md`: sección nueva **Shadow camera que sigue al foco** (sun position + `sun.target` moviéndose con el jugador manteniendo el offset original) como alternativa al frustum gigante estático. Permite bajar `mapSize` y combinar con `PCFShadowMap` sin perder nitidez cerca.
-- `assets.md`: nueva sección **Prefetch paralelo para colecciones de props** con el patrón `Promise.all(uniqueKinds.map(getModel))` cuando el loader ya cachea por kind; elimina el serializado oculto del primer prop de cada tipo. Nota sobre pool limitado si los kinds únicos son cientos.
-- `ui-hud.md` (minimap): bullet extra sobre **cull por distancia antes del píxel math** (`dx² + dz² > radio² · 2`) cuando la lista de obstáculos crece a cientos.
-- `profiling-budgets.md`: el bullet CPU-bound sobre "trabajo JS evitable" se expande a **asignaciones per-frame en el hot path**, con la receta de scratch buffers a nivel de módulo y el gotcha de no reasignar arrays compartidos con `result.xxx` (usar `length = 0`).
-- `SKILL.md`: cinco entradas nuevas en el router para cada uno de los patrones anteriores.
+- `world-generation.md`: new section **Horizon relief as silhouette** for the case “gameplay is flat but the horizon looks empty.” Reusable recipe based on **radial mask · angular pattern · fbm detail**, with tradeoffs versus authored heightfields and an explicit warning that it is render-only (do not touch colliders / navmesh with this).
+- `gltf-pipeline.md` (Case 3): new section **Migration from `clone()` to `InstancedMesh` by leaf** with the reusable template for flattening leaf meshes on load and exposing a factory `createInstancedMeshes(placements)` parallel to the existing `instance()`. Includes rules about grouping by variant, keeping `instance()` for interactive cases, and what happens with obstacles/collision.
+- `lights-shadows.md`: new section **Shadow camera that follows the focus** (sun position + `sun.target` moving with the player while preserving the original offset) as an alternative to a huge static frustum. Allows reducing `mapSize` and combining with `PCFShadowMap` without losing sharpness nearby.
+- `assets.md`: new section **Parallel prefetch for prop collections** with the `Promise.all(uniqueKinds.map(getModel))` pattern when the loader already caches by kind; removes hidden serialization of the first prop of each type. Note about limited pools if unique kinds number in the hundreds.
+- `ui-hud.md` (minimap): extra bullet about **cull by distance before pixel math** (`dx² + dz² > radius² · 2`) when the obstacle list grows into the hundreds.
+- `profiling-budgets.md`: the CPU-bound bullet about "avoidable JS work" expands to **per-frame allocations in the hot path**, with the recipe of module-level scratch buffers and the gotcha of not reassigning arrays shared with `result.xxx` (use `length = 0`).
+- `SKILL.md`: five new router entries for each of the previous patterns.
 
-**v1.8**. Terreno/worldbuilding más explícito para juegos con relieve real:
+**v1.8**. More explicit terrain/worldbuilding for games with real relief:
 
-- `SKILL.md`: router rápido con una entrada nueva para *horizon feo / quiero relieve real en el terreno*.
-- `SKILL.md`: en **Patrones de producción** se añaden dos heurísticas nuevas: **heightfield / grid terrain** y **terrain como sistema**.
-- `SKILL.md`: se aclara que **heightfield no implica Rapier** y que Rapier entra sobre todo cuando hay ruedas/suspensión o contacto físico continuo.
-- `SKILL.md`: en **Level editors / authored worlds** se fija que, si el terreno importa, también debería authorarse como data editable y no vivir como deformación opaca en render code.
+- `SKILL.md`: quick router with a new entry for *ugly horizon / I want real terrain relief*.
+- `SKILL.md`: in **Production patterns**, two new heuristics added: **heightfield / grid terrain** and **terrain as a system**.
+- `SKILL.md`: clarified that **heightfield does not imply Rapier** and that Rapier enters mostly when there are wheels/suspension or continuous physical contact.
+- `SKILL.md`: in **Level editors / authored worlds**, fixed that if terrain matters, it should also be authored as editable data and not live as an opaque deformation in render code.
 
-**v1.7**. Recogidos aprendizajes de montar un editor de niveles real dentro del bundle del juego:
+**v1.7**. Captured learnings from building a real level editor inside the game bundle:
 
-- Nueva referencia `level-editor-in-browser.md` con patrones probados: editor como subruta `?editor=1` que reusa el bootstrap, save vía endpoint dev `POST /dev/level` con guard de `NODE_ENV`, `localStorage` draft con restore silencioso, **doble `TransformControls`** al mismo objeto (translate XZ + rotate Y simultáneos) para evitar el toggle move/rotate, snap 0.5m / 15° con Shift para libre, catálogo de assets centralizado para extensibilidad sin tocar el editor, backward-compat del schema con campos opcionales + helpers `resolveXxx`, y la trampa clásica de `group.children` que no se vacía al hacer sólo `dispose()` (helpers fantasma).
-- `SKILL.md`: router y bloque **Level editors / authored worlds** apuntan a la nueva referencia. Añadida doctrina de que **el editor es una ruta del mismo bundle**, no una app aparte.
+- New reference `level-editor-in-browser.md` with proven patterns: editor as subroute `?editor=1` that reuses bootstrap, save through dev endpoint `POST /dev/level` with `NODE_ENV` guard, `localStorage` draft with silent restore, **dual `TransformControls`** on the same object (simultaneous translate XZ + rotate Y) to avoid the move/rotate toggle, 0.5m / 15° snap with Shift for free movement, centralized asset catalog for extensibility without touching the editor, schema backward compatibility with optional fields + `resolveXxx` helpers, and the classic `group.children` trap where the group is not emptied by calling only `dispose()` (ghost helpers).
+- `SKILL.md`: router and **Level editors / authored worlds** block point to the new reference. Added doctrine that **the editor is a route in the same bundle**, not a separate app.
 
-**v1.6**. Authoring/editor pipeline más explícito:
+**v1.6**. More explicit authoring/editor pipeline:
 
-- `SKILL.md`: nueva entrada de router para **editor de niveles / mapa authored**.
-- Nuevo bloque **Level editors / authored worlds** para fijar el patrón reusable: source humano, loader separado, bake opcional, fallback al source y layout guardado como data.
+- `SKILL.md`: new router entry for **level editor / authored map**.
+- New **Level editors / authored worlds** block to fix the reusable pattern: human-readable source, separate loader, optional bake, fallback to source, and layout saved as data.
 
-**v1.5**. Patrones de producción reforzados a partir de juegos web ya enviados:
+**v1.5**. Production patterns reinforced from shipped web games:
 
-- `SKILL.md`: nuevo bloque **Patrones de producción** para recordar cuatro heurísticas que suelen llegar tarde pero conviene modelar pronto: **source editable -> artifact de runtime**, **worker-first heavy subsystems**, **authored data + LOD + instancing**, y **boot con fallbacks**.
-- Router rápido: añadida una entrada explícita para cuando el problema es menos "cómo renderizo esto" y más "cómo paso de datos/editing a runtime sin romper el proyecto".
+- `SKILL.md`: new **Production patterns** block to remember four heuristics that often arrive late but should be modeled early: **editable source -> runtime artifact**, **worker-first heavy subsystems**, **authored data + LOD + instancing**, and **boot with fallbacks**.
+- Quick router: added an explicit entry for when the problem is less "how do I render this" and more "how do I move from data/editing to runtime without breaking the project".
 
-**v1.4**. Ajustes tras seguir iterando el mismo proyecto real hasta una fase más madura:
+**v1.4**. Adjustments after continuing to iterate on the same real project into a more mature phase:
 
-- `project-agents-md.md`: reforzado que `AGENTS.md` debe **refrescarse cuando el proyecto cambia de fase** y que conviene abrir documentos satélite (`MULTIPLAYER.md`, etc.) cuando un subsistema gana roadmap propio. Evita que la memoria operativa se quede congelada en el V0.
-- `default-project-stack.md`: añadido patrón de evolución sana a **monorepo `client/` + `server/` + `shared/`** cuando multiplayer deja de ser hipotético, y nota sobre authoring/data-driven layout (`public/levels/` + definiciones explícitas) para no enterrar contenido jugable en constantes dispersas.
-- `multiplayer.md`: nuevas reglas concretas sobre **validar score/progreso contra estado que el servidor ya conoce** (no contra payloads de claim) y sobre **no bloquear rondas por persistencia externa**; persistencia de leaderboard en background + timeout como default sano.
+- `project-agents-md.md`: reinforced that `AGENTS.md` should be **refreshed when the project changes phase** and that it is worth opening satellite documents (`MULTIPLAYER.md`, etc.) when a subsystem gains its own roadmap. Prevents operational memory from freezing at V0.
+- `default-project-stack.md`: added healthy evolution pattern to **monorepo `client/` + `server/` + `shared/`** when multiplayer stops being hypothetical, and a note about authoring/data-driven layout (`public/levels/` + explicit definitions) so playable content is not buried in scattered constants.
+- `multiplayer.md`: new concrete rules about **validating score/progress against state the server already knows** (not against claim payloads) and about **not blocking rounds on external persistence**; leaderboard persistence in background + timeout as the healthy default.
 
-**v1.3**. Añadidos aprendizajes de un proyecto multijugador real (cliente Three.js puro + servidor Colyseus en monorepo):
+**v1.3**. Added learnings from a real multiplayer project (pure Three.js client + Colyseus server in a monorepo):
 
-- `multiplayer.md`: nueva sección **Stack concreto recomendado: Colyseus** con cuándo elegirlo, cuándo no, y los **gotchas de la 0.17** que cuestan tiempo (`MapSchema` no iterable, `getStateCallbacks` reemplaza a `onAdd`/`onRemove` directos, hidratación tardía del estado, `useDefineForClassFields: false`, `@types/express` para Express 5). También: patrón de integración con conexión no bloqueante, `MultiplayerHandle` único como capa de aislamiento, identidad visual determinista server-side (color hue desde paleta fija), y smoke test multi-cliente headless.
-- `animation-systems.md`: sección **Gotchas concretos al clonar SkinnedMesh** (no vale `Object3D.clone`, exports nombrados de `SkeletonUtils.js`, materiales y geometrías compartidos por el clone, regla de ownership en `dispose`) + patrón **source + instance** (`loadCharacterSource` / `createCharacterInstance`) para reusar GLBs entre jugador local, NPCs y remotos sin refetch ni doble parseo. Anti-patrones extendidos.
+- `multiplayer.md`: new section **Concrete recommended stack: Colyseus** with when to choose it, when not to, and the **0.17 gotchas** that cost time (`MapSchema` not iterable, `getStateCallbacks` replaces direct `onAdd`/`onRemove`, late state hydration, `useDefineForClassFields: false`, `@types/express` for Express 5). Also: integration pattern with non-blocking connection, a single `MultiplayerHandle` as the isolation layer, deterministic server-side visual identity (color hue from a fixed palette), and a multi-client headless smoke test.
+- `animation-systems.md`: section **Concrete gotchas when cloning SkinnedMesh** (`Object3D.clone` is not enough, named exports from `SkeletonUtils.js`, materials and geometries shared by the clone, ownership rule in `dispose`) + **source + instance** pattern (`loadCharacterSource` / `createCharacterInstance`) to reuse GLBs between local player, NPCs, and remotes without refetch or double parse. Anti-patterns extended.
 
-**v1.2**. Patrones genéricos probados en producción web:
-- `cameras.md`: **follow detrás + yaw/pitch offset con decay** (visuales desacoplados del frame de movimiento cuando otra mecánica fija la referencia).
-- `input-controls.md`: **hold-to-look** con `pointerdown` + `setPointerCapture` como alternativa a pointer lock.
-- `character-locomotion.md`: **tank / vehicle-lite** (W/S eje, A/D giran; facing como estado, no derivado de velocidad).
-- `ui-hud.md`: **minimapa/radar con Canvas 2D**, player-up.
-- `gltf-pipeline.md`: **tracks de scale** en clips que distorsionan rigs retargeteados + sección **gltf-transform (CLI)**.
-- `texturing-pipeline.md` nuevo: maps, color space, tiling, compresión y **ribbon meshes sobre curvas** para caminos/ríos.
-- `lights-shadows.md`: **IBL con HDRI** (`PMREMGenerator` como `scene.environment` + `scene.background`).
-- `assets.md`: **placeholder first, swap later** y recetas de `dispose()` al sustituir material/textura/render-target.
+**v1.2**. Generic patterns proven in web production:
+- `cameras.md`: **follow from behind + yaw/pitch offset with decay** (visuals decoupled from the movement frame when another mechanic fixes the reference).
+- `input-controls.md`: **hold-to-look** with `pointerdown` + `setPointerCapture` as an alternative to pointer lock.
+- `character-locomotion.md`: **tank / vehicle-lite** (W/S axis, A/D turn; facing as state, not derived from velocity).
+- `ui-hud.md`: **minimap/radar with Canvas 2D**, player-up.
+- `gltf-pipeline.md`: **scale tracks** in clips that distort retargeted rigs + **gltf-transform (CLI)** section.
+- `texturing-pipeline.md` new: maps, color space, tiling, compression, and **ribbon meshes over curves** for roads/rivers.
+- `lights-shadows.md`: **IBL with HDRI** (`PMREMGenerator` as `scene.environment` + `scene.background`).
+- `assets.md`: **placeholder first, swap later** and `dispose()` recipes when replacing material/texture/render-target.
 
-Router actualizado. El bloque avanzado de multiplayer ya tiene un default concreto (Colyseus) además de la doctrina general; sigue cargándose solo bajo demanda.
+Router updated. The advanced multiplayer block now has a concrete default (Colyseus) in addition to the general doctrine; it is still loaded only on demand.
