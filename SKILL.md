@@ -1,6 +1,9 @@
 ---
 name: threejs-gamedev
 description: Build, extend and review web games with pure Three.js (no React or R3F). Covers architecture, render loop, assets, input, physics integration, rendering/RTT, performance and mobile trade-offs, audio, UI/HUD, cameras, shaders, AI/navigation, persistence, build/deploy and debugging. Use for singleplayer-first 3D/2.5D web games where control and clarity matter more than framework convenience. Not for React Three Fiber projects.
+metadata:
+  openclaw:
+    emoji: "🎮"
 ---
 
 # Three.js Gamedev
